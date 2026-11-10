@@ -1,0 +1,4 @@
+src/navico_autopilot_pi.cpp
+src/ap_panel.cpp
+src/ap_prefs.cpp
+src/simnet.cpp

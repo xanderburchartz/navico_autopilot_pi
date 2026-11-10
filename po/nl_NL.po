@@ -1,0 +1,98 @@
+# Dutch translation of navico_autopilot_pi.
+# SPDX-License-Identifier: GPL-3.0-or-later
+msgid ""
+msgstr ""
+"Project-Id-Version: navico_autopilot_pi 0.1.0\n"
+"PO-Revision-Date: 2026-11-10 19:00+0100\n"
+"Last-Translator: navico_autopilot_pi\n"
+"Language-Team: Dutch\n"
+"Language: nl_NL\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Autopilot"
+msgstr "Stuurautomaat"
+
+msgid "Navico autopilot"
+msgstr "Navico-stuurautomaat"
+
+msgid "Navico autopilot settings"
+msgstr "Instellingen Navico-stuurautomaat"
+
+msgid "Heading"
+msgstr "Koers"
+
+msgid "Target"
+msgstr "Doel"
+
+msgid "port"
+msgstr "BB"
+
+msgid "stbd"
+msgstr "SB"
+
+msgid "STBY"
+msgstr "STBY"
+
+msgid "AUTO"
+msgstr "AUTO"
+
+msgid "WIND"
+msgstr "WIND"
+
+msgid "NAV"
+msgstr "NAV"
+
+msgid "NO DRIFT"
+msgstr "NO DRIFT"
+
+msgid "%s at address %d"
+msgstr "%s op adres %d"
+
+msgid "Pilot"
+msgstr "Pilot"
+
+msgid "no data"
+msgstr "geen gegevens"
+
+msgid "More than one autopilot found"
+msgstr "Meer dan één stuurautomaat gevonden"
+
+msgid "No autopilot found"
+msgstr "Geen stuurautomaat gevonden"
+
+msgid "Choose the NMEA 2000 connection in the plugin settings."
+msgstr "Kies de NMEA 2000-verbinding in de instellingen van de plugin."
+
+msgid "Choose the autopilot in the plugin settings."
+msgstr "Kies de stuurautomaat in de instellingen van de plugin."
+
+msgid "No confirmation from the autopilot."
+msgstr "Geen bevestiging van de stuurautomaat."
+
+msgid "No NMEA 2000 connection chosen."
+msgstr "Geen NMEA 2000-verbinding gekozen."
+
+msgid "No autopilot selected."
+msgstr "Geen stuurautomaat gekozen."
+
+#, c-format
+msgid "Sending failed (error %d)."
+msgstr "Zenden mislukt (fout %d)."
+
+msgid "NMEA 2000 connection"
+msgstr "NMEA 2000-verbinding"
+
+msgid "(no NMEA 2000 connection in OpenCPN)"
+msgstr "(geen NMEA 2000-verbinding in OpenCPN)"
+
+msgid "Automatic (only if there is exactly one)"
+msgstr "Automatisch (alleen als er precies één is)"
+
+msgid "Fixed address"
+msgstr "Vast adres"
+
+msgid "Address"
+msgstr "Adres"

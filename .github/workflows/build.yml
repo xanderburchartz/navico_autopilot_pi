@@ -1,0 +1,188 @@
+---
+# Builds the plugin for all catalog targets on GitHub Actions only (no
+# CircleCI/AppVeyor). Each job keeps its tarball as a workflow artifact.
+# Upload to Cloudsmith and the catalog metadata push only run when the
+# CLOUDSMITH_API_KEY secret is set; the template scripts skip them otherwise.
+name: build
+on:
+  push:
+    branches:
+      - '**'
+    tags:
+      - '*'
+  pull_request:
+  workflow_dispatch:
+
+env:
+  # Key for upload write access to cloudsmith repo; blank on PRs.
+  CLOUDSMITH_API_KEY: ${{ github.event_name != 'pull_request' && secrets.CLOUDSMITH_API_KEY || '' }}
+  # git-push setup (catalog metadata)
+  GIT_REPO: ${{ secrets.GIT_REPO }}
+  GIT_KEY_PASSWORD: ${{ github.event_name != 'pull_request' && secrets.GIT_KEY_PASSWORD || '' }}
+  # Custom Cloudsmith repos instead of the defaults in Plugin.cmake
+  CLOUDSMITH_UNSTABLE_REPO: ${{ secrets.CLOUDSMITH_UNSTABLE_REPO }}
+  CLOUDSMITH_STABLE_REPO: ${{ secrets.CLOUDSMITH_STABLE_REPO }}
+  CLOUDSMITH_BETA_REPO: ${{ secrets.CLOUDSMITH_BETA_REPO }}
+
+jobs:
+  flatpak:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-22.04
+            target: flatpak
+          - arch: aarch64
+            runner: ubuntu-22.04-arm
+            target: flatpak-arm64
+    runs-on: ${{ matrix.runner }}
+    env:
+      OCPN_TARGET: ${{ matrix.target }}
+      CMAKE_BUILD_PARALLEL_LEVEL: 2
+      # OpenCPN stable on Flathub uses the freedesktop 25.08 runtime.
+      BRANCH: 2508
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build flatpak ${{ matrix.arch }}
+        run: ci/circleci-build-flatpak.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flatpak-${{ matrix.arch }}
+          path: /build-flatpak/*.tar.gz
+      - name: Upload tarball
+        if: env.CLOUDSMITH_API_KEY != ''
+        run: cd /build-flatpak; /bin/bash < upload.sh
+      - name: Upload metadata
+        if: env.CLOUDSMITH_API_KEY != ''
+        run: ci/git-push.sh /build-flatpak
+
+  debian:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {dist: bookworm, version: 12, arch: x86_64, runner: ubuntu-22.04}
+          - {dist: bookworm, version: 12, arch: arm64, runner: ubuntu-22.04-arm}
+          - {dist: trixie, version: 13, arch: x86_64, runner: ubuntu-22.04}
+          - {dist: trixie, version: 13, arch: arm64, runner: ubuntu-22.04-arm}
+          - {dist: forky, version: 14, arch: x86_64, runner: ubuntu-22.04}
+          - {dist: forky, version: 14, arch: arm64, runner: ubuntu-22.04-arm}
+    runs-on: ${{ matrix.runner }}
+    env:
+      OCPN_TARGET: ${{ matrix.dist }}
+      TARGET_TUPLE: debian-${{ matrix.arch }};${{ matrix.version }};${{ matrix.arch }}
+      CMAKE_BUILD_PARALLEL_LEVEL: 2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build ${{ matrix.dist }} ${{ matrix.arch }}
+        run: ci/circleci-build-debian-docker.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: debian-${{ matrix.dist }}-${{ matrix.arch }}
+          path: build-debian/*.tar.gz
+      - name: Upload tarball
+        if: env.CLOUDSMITH_API_KEY != ''
+        run: cd build-debian; /bin/bash < upload.sh
+      - name: Upload metadata
+        if: env.CLOUDSMITH_API_KEY != ''
+        run: ci/git-push.sh build-debian
+
+  macos:
+    runs-on: macos-14
+    env:
+      OCPN_TARGET: macos
+      CMAKE_BUILD_PARALLEL_LEVEL: 3
+      OSX_ARCHITECTURES: arm64;x86_64
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo chmod go+w /usr/local
+      - name: Build macOS universal
+        run: ci/circleci-build-macos.sh
+      - name: Check architectures and libraries
+        run: |
+          lipo -info build-osx/app/*/OpenCPN.app/Contents/PlugIns/*.dylib
+          otool -L build-osx/app/*/OpenCPN.app/Contents/PlugIns/*.dylib
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-universal
+          path: build-osx/*.tar.gz
+      - name: Upload tarball
+        if: env.CLOUDSMITH_API_KEY != ''
+        run: cd build-osx; /bin/bash < upload.sh
+      - name: Upload metadata
+        if: env.CLOUDSMITH_API_KEY != ''
+        run: ci/git-push.sh build-osx
+
+  android:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {abi: arm64, target: android-aarch64}
+          - {abi: armhf, target: android-armhf}
+    runs-on: ubuntu-22.04
+    env:
+      OCPN_TARGET: ${{ matrix.target }}
+      CMAKE_BUILD_PARALLEL_LEVEL: 2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      # Same NDK as used for the local test builds (r27d, long-term release).
+      - uses: nttld/setup-ndk@v1
+        id: ndk
+        with:
+          ndk-version: r27d
+          add-to-path: false
+      - name: Install build tools
+        run: |
+          sudo apt-get -q update
+          sudo apt-get -q install -y cmake gettext
+      - name: Build Android ${{ matrix.abi }}
+        env:
+          NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+        run: |
+          mkdir -p build-$OCPN_TARGET && cd build-$OCPN_TARGET
+          cmake -DCMAKE_TOOLCHAIN_FILE=cmake/$OCPN_TARGET-toolchain.cmake ..
+          make VERBOSE=1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-${{ matrix.abi }}
+          path: build-${{ matrix.target }}/*.tar.gz
+      - name: Upload tarball and metadata
+        if: env.CLOUDSMITH_API_KEY != ''
+        run: |
+          python3 -m pip install -q --user cloudsmith-cli cryptography
+          cd build-$OCPN_TARGET; /bin/bash < upload.sh; cd ..
+          ci/git-push.sh build-$OCPN_TARGET
+
+  msvc:
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # OpenCPN for Windows ships as 32-bit with wxWidgets 3.2 (5.14).
+          - platform: Win32
+            arch: x86
+          - platform: x64
+            arch: x64
+    env:
+      PLATFORM: ${{ matrix.platform }}
+      CONFIGURATION: RelWithDebInfo
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 10
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.arch }}
+      - name: Build (upload and metadata push only with a Cloudsmith key)
+        shell: cmd
+        run: call ci\appveyor.bat
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-${{ matrix.platform }}
+          path: build/*.tar.gz

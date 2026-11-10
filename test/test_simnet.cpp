@@ -1,0 +1,197 @@
+/***************************************************************************
+ *   navico_autopilot_pi: unit tests for simnet and pilot_state
+ *   SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ *   Expected bytes come from recordings of a real bus (B&G Triton2 keypad,
+ *   NAC-3 at address 4, commands via a Yacht Devices gateway that the NAC-3
+ *   followed). Build and run: see test/CMakeLists.txt or README.md.
+ ***************************************************************************/
+
+#include <cmath>
+#include <cstdio>
+#include <string>
+#include <vector>
+
+#include "pilot_state.h"
+#include "simnet.h"
+
+using namespace simnet;
+
+static int failures = 0;
+
+#define CHECK(cond)                                                \
+  do {                                                             \
+    if (!(cond)) {                                                 \
+      std::printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); \
+      failures++;                                                  \
+    }                                                              \
+  } while (0)
+
+static std::vector<uint8_t> Bytes(const std::string& hex) {
+  std::vector<uint8_t> out;
+  for (size_t i = 0; i + 1 < hex.size();) {
+    if (hex[i] == ' ') { i++; continue; }
+    out.push_back(static_cast<uint8_t>(std::stoi(hex.substr(i, 2), nullptr, 16)));
+    i += 2;
+  }
+  return out;
+}
+
+static void CheckEq(const std::vector<uint8_t>& got, const std::string& want,
+                    const char* what) {
+  if (got != Bytes(want)) {
+    std::printf("FAIL %s: got %s, want %s\n", what, Hex(got).c_str(), want.c_str());
+    failures++;
+  }
+}
+
+// A received message as OpenCPN hands it to a plugin (0x93 layout).
+static Message Rx(int pgn, uint8_t src, const std::string& hex) {
+  std::vector<uint8_t> d = Bytes(hex);
+  std::vector<uint8_t> v = {0x93, static_cast<uint8_t>(d.size() + 11), 2,
+                            static_cast<uint8_t>(pgn & 0xFF),
+                            static_cast<uint8_t>((pgn >> 8) & 0xFF),
+                            static_cast<uint8_t>((pgn >> 16) & 0xFF),
+                            255, src, 0xFF, 0xFF, 0xFF, 0xFF,
+                            static_cast<uint8_t>(d.size())};
+  v.insert(v.end(), d.begin(), d.end());
+  v.push_back(0x55);
+  auto m = ParseOcpnPayload(v);
+  CHECK(m.has_value());
+  return *m;
+}
+
+static void TestCommands() {
+  // Recording 16 Oct 2026, 07:05 (opname-signalk-130850-20261016.log): fast
+  // packets 09FF2264 "40 0B 41 9F 04 FF FF 0A" + "41 09 00 FF FF FF FF FF".
+  CheckEq(CommandData(Command::kAuto, 4), "41 9F 04 FF FF 0A 09 00 FF FF FF", "auto");
+  CheckEq(CommandData(Command::kStandby, 4), "41 9F 04 FF FF 0A 06 00 FF FF FF", "standby");
+  CheckEq(CommandData(Command::kWind, 4), "41 9F 04 FF FF 0A 0F 00 FF FF FF", "wind");
+  // "40 0C 41 9F 04 FF FF 0A" + "41 1A 00 03 D1 06 FF FF": +10
+  CheckEq(CommandData(Command::kStarboard10, 4), "41 9F 04 FF FF 0A 1A 00 03 D1 06 FF", "+10");
+  CheckEq(CommandData(Command::kPort10, 4), "41 9F 04 FF FF 0A 1A 00 02 D1 06 FF", "-10");
+  // "41 1A 00 03 AF 00 FF FF": +1
+  CheckEq(CommandData(Command::kStarboard1, 4), "41 9F 04 FF FF 0A 1A 00 03 AF 00 FF", "+1");
+  CheckEq(CommandData(Command::kPort1, 4), "41 9F 04 FF FF 0A 1A 00 02 AF 00 FF", "-1");
+  // Not recorded; canboat events 10 (nav) and 12 (no drift).
+  CheckEq(CommandData(Command::kNav, 4), "41 9F 04 FF FF 0A 0A 00 FF FF FF", "nav");
+  CheckEq(CommandData(Command::kNoDrift, 7), "41 9F 07 FF FF 0A 0C 00 FF FF FF", "nodrift");
+  // Byte 7 must be 0x00 for every command.
+  for (int c = 0; c <= static_cast<int>(Command::kStarboard10); c++)
+    CHECK(CommandData(static_cast<Command>(c), 4)[7] == 0x00);
+}
+
+static void TestParse() {
+  // 65305 from the NAC-3 (04FF1904), recording 16 Oct 2026.
+  auto standby = ParsePilotMode(Bytes("41 9F 64 0A 08 00 00 00"));
+  CHECK(standby && standby->mode == Mode::kStandby && standby->model == 0x64);
+  auto heading = ParsePilotMode(Bytes("41 9F 64 0A 10 00 00 00"));
+  CHECK(heading && heading->mode == Mode::kAuto);
+  auto wind = ParsePilotMode(Bytes("41 9F 64 0A 00 04 00 00"));
+  CHECK(wind && wind->mode == Mode::kWind);
+  // From the TwoCan notes and canboat, not recorded here.
+  CHECK(ParsePilotMode(Bytes("41 9F 64 0A 40 00 00 40"))->mode == Mode::kNav);
+  CHECK(ParsePilotMode(Bytes("41 9F 64 0A 00 01 00 00"))->mode == Mode::kNoDrift);
+  // The keypad (0CFF1902) sends requests with report 0x0B and 0x03: not a pilot.
+  CHECK(!ParsePilotMode(Bytes("41 9F 64 0B 00 00 00 00")));
+  CHECK(!ParsePilotMode(Bytes("41 9F 64 03 04 00 00 00")));
+  // Status report.
+  CHECK(ParsePilotEngaged(Bytes("41 9F 64 02 02 00 00 00")) == false);
+  CHECK(ParsePilotEngaged(Bytes("41 9F 64 02 10 00 00 00")) == true);
+  CHECK(!ParsePilotEngaged(Bytes("41 9F 64 02 06 00 00 00")).has_value());
+
+  // 127237: true reference, target 0x5BB5 = 2.3477 rad.
+  auto hc = ParseHeadingControl(Bytes("00 3F FF FF 7F B5 5B FF FF FF FF FF FF FF FF FF FF FF FF FF FF"));
+  CHECK(hc && hc->target && std::fabs(*hc->target - 2.3477) < 1e-6 && !hc->magnetic);
+  auto hc_standby = ParseHeadingControl(Bytes("00 7F FF FF 7F FF FF FF"));
+  CHECK(hc_standby && !hc_standby->target && hc_standby->magnetic);
+
+  // 65341, wind mode, 0x2710 = 1.0 rad.
+  auto aa = ParseApAngle(Bytes("41 9F FF FF 03 FF 10 27"));
+  CHECK(aa && aa->mode == 3 && aa->angle && std::fabs(*aa->angle - 1.0) < 1e-9);
+
+  // 60928 of the NAC-3 autopilot: manufacturer 275, function 150.
+  uint64_t raw = 1907005ull | (275ull << 21) | (150ull << 40) | (40ull << 49) | (4ull << 60) | (1ull << 63);
+  std::vector<uint8_t> claim;
+  for (int i = 0; i < 8; i++) claim.push_back((raw >> (8 * i)) & 0xFF);
+  auto n = ParseAddressClaim(claim);
+  CHECK(n && n->manufacturer == 275 && n->function == 150 && n->unique == 1907005 && n->IsAutopilot());
+
+  // Own transmission looped back (0x94 layout).
+  std::vector<uint8_t> own = {0x94, 0x13, 2, 0x22, 0xFF, 0x01, 255, 255, 0x41, 0x9F, 0x55};
+  auto m = ParseOcpnPayload(own);
+  CHECK(m && m->own && m->pgn == 130850 && m->data.size() == 2);
+}
+
+static void TestPilotState() {
+  PilotState s;
+  double t = 100;
+  CHECK(!s.Address(t));
+  // Keypad at 2 sends requests, NAC-3 at 4 reports.
+  s.Handle(Rx(65305, 2, "41 9F 64 0B 00 00 00 00"), t);
+  CHECK(!s.Address(t));
+  s.Handle(Rx(65305, 4, "41 9F 64 0A 08 00 00 00"), t);
+  CHECK(s.Address(t) == 4 && s.Alive(t) && s.Mode() == Mode::kStandby);
+  CHECK(!s.NeedsChoice(t));
+
+  // AUTO confirmed by the next report.
+  s.CommandSent(Command::kAuto, t);
+  s.Handle(Rx(65305, 4, "41 9F 64 0A 10 00 00 00"), t + 0.03);
+  CHECK(s.Mode() == Mode::kAuto && !s.Unconfirmed(t + 2));
+
+  // +10 confirmed by a new target in 127237.
+  s.Handle(Rx(127237, 4, "00 3F FF FF 7F 00 50 FF FF FF FF FF FF FF FF FF FF FF FF FF FF"), t + 0.1);
+  s.CommandSent(Command::kStarboard10, t + 0.2);
+  CHECK(!s.Unconfirmed(t + 0.5));
+  s.Handle(Rx(127237, 4, "00 3F FF FF 7F D1 56 FF FF FF FF FF FF FF FF FF FF FF FF FF FF"), t + 0.3);
+  CHECK(!s.Unconfirmed(t + 3));
+
+  // No answer: unconfirmed after the timeout.
+  s.CommandSent(Command::kWind, t + 4);
+  CHECK(!s.Unconfirmed(t + 4.5));
+  CHECK(s.Unconfirmed(t + 6));
+
+  // Silence: not alive after kAliveTimeout (10 s).
+  CHECK(s.Alive(t + 9) && !s.Alive(t + 11));
+
+  // Second pilot (e.g. an emulated AC12): automatic choice stops.
+  double u = 200;
+  s.Handle(Rx(65305, 4, "41 9F 64 0A 08 00 00 00"), u);
+  s.Handle(Rx(65305, 6, "41 9F 00 0A 08 00 00 00"), u);
+  CHECK(s.NeedsChoice(u) && !s.Address(u));
+  // Messages from either are then ignored for the state.
+  s.Handle(Rx(65305, 4, "41 9F 64 0A 10 00 00 00"), u + 0.1);
+  CHECK(!s.Alive(u + 0.1));
+  // The user picks 4.
+  s.SetFixedAddress(4);
+  s.Handle(Rx(65305, 4, "41 9F 64 0A 10 00 00 00"), u + 0.2);
+  CHECK(s.Address(u) == 4 && s.Alive(u + 0.2) && s.Mode() == Mode::kAuto);
+
+  // Pilot moves to address 9: followed by NAME.
+  uint64_t raw = 1907005ull | (275ull << 21) | (150ull << 40) | (40ull << 49) | (4ull << 60) | (1ull << 63);
+  std::string hex;
+  char b[4];
+  for (int i = 0; i < 8; i++) { std::snprintf(b, sizeof b, "%02X ", static_cast<unsigned>((raw >> (8 * i)) & 0xFF)); hex += b; }
+  s.Handle(Rx(60928, 4, hex), u + 1);
+  s.SetPilotName(raw);
+  s.Handle(Rx(60928, 9, hex), u + 2);
+  CHECK(s.FixedAddress() == 9);
+
+  // Own messages are ignored.
+  PilotState o;
+  std::vector<uint8_t> own = {0x94, 0x13, 7, 0x19, 0xFF, 0x00, 255, 255, 0x41, 0x9F, 0x64, 0x0A, 0x08, 0, 0, 0, 0x55};
+  o.Handle(*ParseOcpnPayload(own), 1);
+  CHECK(!o.Address(1));
+}
+
+int main() {
+  TestCommands();
+  TestParse();
+  TestPilotState();
+  if (failures) {
+    std::printf("%d failure(s)\n", failures);
+    return 1;
+  }
+  std::printf("all tests passed\n");
+  return 0;
+}
