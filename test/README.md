@@ -31,8 +31,5 @@ address 4 and logs every 130850 it receives, for example
    `build/ocpn-home/Library/Application Support/OpenCPN/Contents/PlugIns`.
 3. Add a network connection: NMEA 2000, TCP, 127.0.0.1, port 1457,
    input and output.
-4. Enable the plugin, open its settings, choose the connection and enable
-   control. Press STBY, AUTO, +1, +10, -1, -10, WIND, STBY and compare with
-   the simulator log.
-
-Only after that, and with someone at the helm: on a boat.
+4. Enable the plugin and choose the connection in its settings. Press STBY,
+   AUTO, +1, +10, -1, -10, WIND, STBY and compare with the simulator log.

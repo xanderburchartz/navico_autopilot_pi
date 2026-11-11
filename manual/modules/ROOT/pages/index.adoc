@@ -1,0 +1,90 @@
+:imagesdir: ../images/
+
+= Navico Autopilot
+
+Controls a Navico autopilot computer, B&G or Simrad, directly over
+NMEA 2000.
+
+image::panel.png[Autopilot panel]
+
+== Links
+
+* Source and test builds: https://github.com/xanderburchartz/navico_autopilot_pi[GitHub]
+* Test reports and issues: https://github.com/xanderburchartz/navico_autopilot_pi/issues[GitHub issues]
+* Installation: xref:opencpn-plugins:misc:plugin-install.adoc[Plugin Download, Install and Enable]
+
+== What it does
+
+* Switches the pilot to Standby, Auto (heading hold), Wind, Nav or No Drift.
+* Changes the course by -10, -1, +1 or +10 degrees. In Wind mode these
+  buttons change the wind angle to hold.
+* Shows the pilot mode, the heading and the target heading or wind angle.
+
+It works with the autopilot computers that take commands from a B&G or
+Simrad pilot keypad over NMEA 2000: NAC-1, NAC-2, NAC-3, AC12 and AC42.
+So far it has been used with a B&G NAC-3.
+
+== Requirements
+
+* OpenCPN 5.14 or later.
+* An NMEA 2000 connection in OpenCPN that can transmit, for example a
+  Yacht Devices or Actisense gateway on the network, an Actisense NGT-1 or
+  SocketCAN on Linux. The plugin has no CAN driver of its own.
+
+OpenCPN 5.12 loses every second command on network gateways (Yacht Devices
+RAW, Actisense RAW ASCII), so the plugin needs 5.14 for those.
+
+== Setting up
+
+. Make sure the NMEA 2000 connection exists in Options, Connections, with
+  output enabled.
+. Enable the plugin in Options, Plugins.
+. Open its Preferences and choose the NMEA 2000 connection.
+. Leave Autopilot on Automatic. The plugin then uses the pilot it finds on
+  the bus, but only if there is exactly one. With more than one, pick it
+  from the list or enter its bus address.
+
+image::preferences.png[Preferences]
+
+== Using it
+
+The steering wheel button in the toolbar shows and hides the panel. The
+panel can float or be docked, like other OpenCPN panels.
+
+The panel shows the pilot mode, the pilot and its bus address, the heading
+and the target. Headings are shown in the reference the pilot uses, true or
+magnetic. In Wind mode the target is the wind angle to hold, to port or
+starboard. *no data* means the pilot has not reported for about 10 seconds.
+
+STBY works whenever a pilot is selected, also without recent data. The
+other mode buttons need recent data from the pilot. The course buttons
+only work in Auto, Wind and No Drift.
+
+Each button press sends one command and nothing else: no heartbeat, no
+requests, no repeats. When the pilot does not confirm a mode change within
+1.5 seconds, the panel says so. Every command is written to the OpenCPN log
+with its bytes, on lines starting with `navico_autopilot_pi:`.
+
+Nav follows the route or waypoint that the pilot gets from the active
+navigation source on the bus. Activate a route in OpenCPN, or on the
+plotter, before pressing NAV.
+
+== Messages
+
+No autopilot found::
+No pilot mode reports seen on the chosen connection. Check that the
+connection receives NMEA 2000 data and that the pilot computer is on.
+More than one autopilot found::
+Choose the pilot in Preferences.
+Choose the NMEA 2000 connection in the plugin settings::
+OpenCPN has no NMEA 2000 connection, or more than one and none is chosen.
+No confirmation from the autopilot::
+The pilot did not change mode after the command. Check that the connection
+has output enabled. NAV without an active route also gives this message.
+
+== How it works
+
+The plugin sends PGN 130850, the proprietary command a B&G or Simrad pilot
+keypad uses, and reads PGN 65305 (pilot mode), 127237 (heading to steer)
+and 65341 (wind angle). The byte layouts are in the
+https://github.com/xanderburchartz/navico_autopilot_pi#protocol[README].
