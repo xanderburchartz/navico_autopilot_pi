@@ -186,3 +186,30 @@ jobs:
         with:
           name: windows-${{ matrix.platform }}
           path: build/*.tar.gz
+
+  # On a tag (for example v0.1.0-alpha): a GitHub release with every tarball,
+  # so testers can install one with "Import plugin" in OpenCPN's plugin
+  # manager. Tags with a hyphen (alpha, beta) become a pre-release.
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [flatpak, debian, macos, android, msvc]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          ls -l dist
+          prerelease=""
+          case "$TAG" in *-*) prerelease="--prerelease" ;; esac
+          gh release create "$TAG" dist/*.tar.gz $prerelease \
+            --title "Navico Autopilot $TAG" \
+            --notes-file .github/release-notes.md

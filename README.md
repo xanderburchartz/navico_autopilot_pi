@@ -22,6 +22,18 @@ followed. Nav was sent but the pilot stayed in Auto (no active route at the
 time); not yet confirmed. AC12/AC42 and NAC-1/2 have not been tried. Reports
 are welcome.
 
+## Installing a test build
+
+Until the plugin is in the OpenCPN catalog, test builds are on the
+[Releases](../../releases) page. Download the tarball for your system (the
+release notes say which), then in OpenCPN choose Options, Plugins,
+**Import plugin...** and pick the file without unpacking it. Enable the
+plugin and choose the NMEA 2000 connection in its preferences.
+
+Please report results, good or bad, with the "Test report" issue form.
+Reports for Nav with an active route, AC12/AC42, NAC-1/2 and Android are
+especially useful.
+
 ## How it works
 
 The plugin uses only OpenCPN's own NMEA 2000 API (`GetActiveDrivers`,
@@ -107,7 +119,9 @@ c++ -std=c++17 -Isrc test/test_simnet.cpp src/simnet.cpp src/pilot_state.cpp -o 
 flatpak (x86_64, aarch64), Debian bookworm/trixie/forky (x86_64, arm64),
 macOS universal, Android (arm64, armhf) and Windows (Win32, x64). Each run
 keeps the tarballs as workflow artifacts. Upload to Cloudsmith and the catalog
-metadata push only happen when the `CLOUDSMITH_API_KEY` secret is set.
+metadata push only happen when the `CLOUDSMITH_API_KEY` secret is set. A tag
+(for example `v0.1.0-alpha`) also creates a GitHub release with all tarballs;
+tags with a hyphen become a pre-release.
 
 ## Testing without a boat
 

@@ -1,0 +1,61 @@
+name: Test report
+description: Tell how the plugin worked with your autopilot, also when it worked.
+title: "Test report: <pilot> on <platform>"
+labels: ["test report"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Plugin version
+      description: Shown in OpenCPN under Options, Plugins.
+      placeholder: 0.1.0-alpha
+    validations:
+      required: true
+  - type: input
+    id: opencpn
+    attributes:
+      label: OpenCPN version and platform
+      placeholder: 5.14.2, Windows 11 / macOS 15 / Raspberry Pi OS flatpak / Android
+    validations:
+      required: true
+  - type: input
+    id: pilot
+    attributes:
+      label: Autopilot computer and control unit
+      placeholder: B&G NAC-3 with Triton2 pilot keypad / Simrad AC12 / ...
+    validations:
+      required: true
+  - type: input
+    id: gateway
+    attributes:
+      label: NMEA 2000 connection
+      description: The gateway and the protocol chosen in OpenCPN's connection settings.
+      placeholder: Yacht Devices YDNR-02 RAW over TCP / Actisense NGT-1 / SocketCAN / ...
+    validations:
+      required: true
+  - type: checkboxes
+    id: worked
+    attributes:
+      label: What the pilot followed
+      options:
+        - label: STBY
+        - label: AUTO
+        - label: WIND
+        - label: NAV (with an active route)
+        - label: NO DRIFT
+        - label: -1 / +1
+        - label: -10 / +10
+        - label: The panel showed the right mode and heading
+  - type: textarea
+    id: details
+    attributes:
+      label: What happened
+      description: What did not work, or anything that looked wrong.
+  - type: textarea
+    id: log
+    attributes:
+      label: Log lines
+      description: >
+        Lines from opencpn.log containing "navico_autopilot_pi" (each command is
+        logged with its bytes). Remove anything you do not want to share.
+      render: text
