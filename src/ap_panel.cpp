@@ -8,7 +8,9 @@
 #include <cmath>
 
 #include <wx/dcbuffer.h>
+#if wxUSE_GRAPHICS_CONTEXT
 #include <wx/dcgraph.h>
+#endif
 
 #include "navico_autopilot_pi.h"
 
@@ -93,7 +95,12 @@ private:
     wxAutoBufferedPaintDC pdc(this);
     pdc.SetBackground(wxBrush(GetParent()->GetBackgroundColour()));
     pdc.Clear();
-    wxGCDC dc(pdc);
+#if wxUSE_GRAPHICS_CONTEXT
+    wxGCDC gdc(pdc);  // anti-aliased rounded corners
+    wxDC& dc = gdc;
+#else
+    wxDC& dc = pdc;  // Android (wxQt) has no graphics context
+#endif
     wxRect r = GetClientRect().Deflate(1);
     wxColour face = m_pressed ? Mix(m_face, m_text, 0.25) : m_face;
     if (!IsEnabled()) face = Mix(m_face, GetParent()->GetBackgroundColour(), 0.5);
