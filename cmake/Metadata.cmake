@@ -69,7 +69,12 @@ else ()
   set(_gitversion "${_git_tag}")
 endif ()
 
-if (WIN32)
+if (WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+  # msvc-64: the dll is x86-64. OpenCPN matches msvc targets on the target
+  # name only, so this is for the file name and the catalog listing.
+  set(_pkg_arch "x86_64")
+  set(target_arch "x86_64")
+elseif (WIN32)
   set(_pkg_arch "x86")
   set(target_arch "x86")
 elseif (APPLE AND CMAKE_OSX_ARCHITECTURES)

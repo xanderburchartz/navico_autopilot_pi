@@ -5,6 +5,7 @@ Test build of the Navico Autopilot plugin. Requires **OpenCPN 5.14 or later**.
 | Your OpenCPN | File ending in |
 |---|---|
 | Windows (the normal 32-bit OpenCPN) | `msvc-wx32-10-x86.tar.gz` |
+| Windows, 64-bit OpenCPN built with wxWidgets 3.3 | `msvc-64-10-x86_64.tar.gz` (not tested) |
 | macOS (Apple silicon and Intel) | `darwin-wx32-10-arm64-x86_64.tar.gz` |
 | Linux flatpak, PC | `flatpak-x86_64-25.08-x86_64.tar.gz` |
 | Linux flatpak, Raspberry Pi 64-bit | `flatpak-aarch64-25.08-aarch64.tar.gz` |
