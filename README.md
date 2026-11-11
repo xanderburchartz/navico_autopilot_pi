@@ -126,7 +126,7 @@ tags with a hyphen become a pre-release.
 ## Testing without a boat
 
 `test/` describes testing against a simulated Yacht Devices gateway with a
-NAC-3 (a small Node.js program). Never try a new version on a boat first.
+NAC-3 (a small Node.js program).
 
 ## How this plugin was made
 

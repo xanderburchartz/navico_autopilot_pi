@@ -19,9 +19,7 @@ Test build of the Navico Autopilot plugin. Requires **OpenCPN 5.14 or later**.
 3. Enable the plugin, open its preferences and choose the NMEA 2000
    connection. The connection must be able to transmit.
 
-Try it against a simulator or in the harbour first, with the pilot's own
-keypad within reach. The plugin sends one command per button press and
-nothing else.
+The plugin sends one command per button press and nothing else.
 
 ## Reporting
 
