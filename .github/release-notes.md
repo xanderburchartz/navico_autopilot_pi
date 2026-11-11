@@ -19,6 +19,13 @@ Test build of the Navico Autopilot plugin. Requires **OpenCPN 5.14 or later**.
 3. Enable the plugin, open its preferences and choose the NMEA 2000
    connection. The connection must be able to transmit.
 
+On Windows, importing the file for the other bitness gives "incompatible
+plugin" and also removes a version that was already installed.
+
+On Android, OpenCPN only shows Import plugin when `CatalogExpert=1` is set
+in `opencpn.conf`, which the Android app does not let you change yet. The
+Android builds will be installable from the plugin catalog later.
+
 The plugin sends one command per button press and nothing else.
 
 ## Reporting
