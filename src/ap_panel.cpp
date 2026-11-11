@@ -7,6 +7,9 @@
 
 #include <cmath>
 
+#include <wx/dcbuffer.h>
+#include <wx/dcgraph.h>
+
 #include "navico_autopilot_pi.h"
 
 using simnet::Command;
@@ -23,12 +26,99 @@ wxString Degrees(double deg, bool magnetic) {
   return wxString::Format(L"%03d\u00B0%s", d, magnetic ? "M" : "T");
 }
 
+/** Mix of two colours, f = 0 gives a, f = 1 gives b. */
+wxColour Mix(const wxColour& a, const wxColour& b, double f) {
+  auto m = [f](int x, int y) { return static_cast<unsigned char>(std::lround(x + (y - x) * f)); };
+  return wxColour(m(a.Red(), b.Red()), m(a.Green(), b.Green()), m(a.Blue(), b.Blue()));
+}
+
+/**
+ * A push button drawn by the plugin itself. Native buttons (macOS above all)
+ * cannot be coloured, so in OpenCPN's dusk and night schemes they stayed
+ * bright. Sends wxEVT_BUTTON like wxButton.
+ */
+class ApButton : public wxWindow {
+public:
+  ApButton(wxWindow* parent, const wxString& label)
+      : wxWindow(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE),
+        m_label(label) {
+    SetBackgroundStyle(wxBG_STYLE_PAINT);
+    Bind(wxEVT_PAINT, &ApButton::OnPaint, this);
+    Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent&) {
+      m_pressed = true;
+      if (!HasCapture()) CaptureMouse();
+      Refresh();
+    });
+    Bind(wxEVT_LEFT_UP, [this](wxMouseEvent& e) {
+      if (HasCapture()) ReleaseMouse();
+      bool click = m_pressed && GetClientRect().Contains(e.GetPosition());
+      m_pressed = false;
+      Refresh();
+      if (click && IsEnabled()) {
+        wxCommandEvent ev(wxEVT_BUTTON, GetId());
+        ev.SetEventObject(this);
+        ProcessWindowEvent(ev);
+      }
+    });
+    Bind(wxEVT_MOUSE_CAPTURE_LOST, [this](wxMouseCaptureLostEvent&) {
+      m_pressed = false;
+      Refresh();
+    });
+  }
+
+  /** face: button colour, border and text: as the names say. */
+  void SetColours(const wxColour& face, const wxColour& border, const wxColour& text,
+                  const wxColour& disabled_text) {
+    m_face = face;
+    m_border = border;
+    m_text = text;
+    m_disabled_text = disabled_text;
+    Refresh();
+  }
+
+  bool Enable(bool enable = true) override {
+    bool changed = wxWindow::Enable(enable);
+    if (changed) Refresh();
+    return changed;
+  }
+
+protected:
+  wxSize DoGetBestSize() const override {
+    wxSize t = GetTextExtent(m_label);
+    return wxSize(t.x + 2 * GetCharWidth(), t.y + GetCharHeight());
+  }
+
+private:
+  void OnPaint(wxPaintEvent&) {
+    wxAutoBufferedPaintDC pdc(this);
+    pdc.SetBackground(wxBrush(GetParent()->GetBackgroundColour()));
+    pdc.Clear();
+    wxGCDC dc(pdc);
+    wxRect r = GetClientRect().Deflate(1);
+    wxColour face = m_pressed ? Mix(m_face, m_text, 0.25) : m_face;
+    if (!IsEnabled()) face = Mix(m_face, GetParent()->GetBackgroundColour(), 0.5);
+    dc.SetBrush(wxBrush(face));
+    dc.SetPen(wxPen(IsEnabled() ? m_border : face));
+    dc.DrawRoundedRectangle(r, 5);
+    dc.SetFont(GetFont());
+    dc.SetTextForeground(IsEnabled() ? m_text : m_disabled_text);
+    wxSize t = dc.GetTextExtent(m_label);
+    dc.DrawText(m_label, r.x + (r.width - t.x) / 2, r.y + (r.height - t.y) / 2);
+  }
+
+  wxString m_label;
+  bool m_pressed = false;
+  wxColour m_face = *wxLIGHT_GREY, m_border = *wxBLACK, m_text = *wxBLACK,
+           m_disabled_text = *wxLIGHT_GREY;
+};
+
 }  // namespace
 
 ApPanel::ApPanel(wxWindow* parent, NavicoAutopilotPi* plugin)
     : wxPanel(parent, wxID_ANY), m_plugin(plugin) {
   // The chart canvas parent has a black background; set our own colours
-  // before creating the children so they inherit them.
+  // before creating the children so they inherit them. ApplyColours() sets
+  // them again for the current colour scheme.
   SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
   SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
   auto* top = new wxBoxSizer(wxVERTICAL);
@@ -83,8 +173,8 @@ ApPanel::ApPanel(wxWindow* parent, NavicoAutopilotPi* plugin)
   UpdateState(m_plugin->Now());
 }
 
-wxButton* ApPanel::AddButton(wxSizer* sizer, const wxString& label, Command c) {
-  auto* b = new wxButton(this, wxID_ANY, label);
+wxWindow* ApPanel::AddButton(wxSizer* sizer, const wxString& label, Command c) {
+  auto* b = new ApButton(this, label);
   // Large enough to hit on a touch screen.
   b->SetMinSize(wxSize(GetCharWidth() * 9, GetCharHeight() * 3));
   b->Bind(wxEVT_BUTTON, [this, c](wxCommandEvent&) {
@@ -163,4 +253,31 @@ void ApPanel::UpdateState(double now) {
     m_message->SetLabel(msg);
     m_message->Wrap(m_message->GetSize().GetWidth());
   }
+}
+
+void ApPanel::ApplyColours(PI_ColorScheme cs) {
+  // Day: the platform's own colours. Dusk and night: OpenCPN's colours for
+  // that scheme (dark background, dialog text colour), so the panel is as dim
+  // as the chart.
+  wxColour back = wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW);
+  wxColour text = wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT);
+  wxColour face = wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE);
+  wxColour border = wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW);
+  wxColour button_text = wxSystemSettings::GetColour(wxSYS_COLOUR_BTNTEXT);
+  if (cs == PI_GLOBAL_COLOR_SCHEME_DUSK || cs == PI_GLOBAL_COLOR_SCHEME_NIGHT) {
+    GetGlobalColor("UIBCK", &back);
+    GetGlobalColor("DILG3", &text);
+    face = Mix(back, text, 0.2);
+    border = Mix(back, text, 0.45);
+    button_text = text;
+  }
+  SetBackgroundColour(back);
+  SetForegroundColour(text);
+  for (wxWindow* child : GetChildren()) {
+    child->SetBackgroundColour(back);
+    child->SetForegroundColour(text);
+  }
+  for (auto& [c, b] : m_buttons)
+    static_cast<ApButton*>(b)->SetColours(face, border, button_text, Mix(face, button_text, 0.4));
+  Refresh();
 }

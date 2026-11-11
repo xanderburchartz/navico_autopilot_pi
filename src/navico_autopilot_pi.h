@@ -56,6 +56,7 @@ public:
   void OnToolbarToolCallback(int id) override;
   void ShowPreferencesDialog(wxWindow* parent) override;
   void SetPositionFixEx(PlugIn_Position_Fix_Ex& pfix) override;
+  void SetColorScheme(PI_ColorScheme cs) override;
 
   // Used by the panel and the settings dialog.
   void SendCommand(simnet::Command c);
@@ -91,6 +92,7 @@ private:
   int m_tool_id = -1;
   ApPanel* m_panel = nullptr;
   bool m_panel_shown = false;
+  PI_ColorScheme m_scheme = PI_GLOBAL_COLOR_SCHEME_DAY;
   wxTimer m_timer;
 };
 

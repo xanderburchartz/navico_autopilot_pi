@@ -256,6 +256,7 @@ void NavicoAutopilotPi::ShowPanel(bool show) {
   if (!m_panel) {
     // Parent and pane setup as the Dashboard plugin does it.
     m_panel = new ApPanel(GetOCPNCanvasWindow(), this);
+    m_panel->ApplyColours(m_scheme);
     wxSize size = m_panel->GetBestSize();
     wxAuiPaneInfo info;
     info.Name(kPaneName)
@@ -274,6 +275,11 @@ void NavicoAutopilotPi::ShowPanel(bool show) {
   aui->Update();
   m_panel_shown = show;
   SetToolbarItemState(m_tool_id, show);
+}
+
+void NavicoAutopilotPi::SetColorScheme(PI_ColorScheme cs) {
+  m_scheme = cs;
+  if (m_panel) m_panel->ApplyColours(cs);
 }
 
 void NavicoAutopilotPi::PanelClosed() {

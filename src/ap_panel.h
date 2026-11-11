@@ -6,6 +6,7 @@
 #ifndef NAVICO_AP_PANEL_H
 #define NAVICO_AP_PANEL_H
 
+#include <cstdint>  // before ocpn_plugin.h, see navico_autopilot_pi.h
 #include <map>
 
 #include <wx/wxprec.h>
@@ -13,6 +14,7 @@
 #include <wx/wx.h>
 #endif
 
+#include "ocpn_plugin.h"
 #include "simnet.h"
 
 class NavicoAutopilotPi;
@@ -23,9 +25,11 @@ public:
   ApPanel(wxWindow* parent, NavicoAutopilotPi* plugin);
   /** Update texts and which buttons can be pressed. */
   void UpdateState(double now);
+  /** Colours for OpenCPN's day, dusk or night scheme. */
+  void ApplyColours(PI_ColorScheme cs);
 
 private:
-  wxButton* AddButton(wxSizer* sizer, const wxString& label, simnet::Command c);
+  wxWindow* AddButton(wxSizer* sizer, const wxString& label, simnet::Command c);
 
   NavicoAutopilotPi* m_plugin;
   wxStaticText* m_mode;
@@ -33,7 +37,7 @@ private:
   wxStaticText* m_heading;
   wxStaticText* m_target;
   wxStaticText* m_message;
-  std::map<simnet::Command, wxButton*> m_buttons;
+  std::map<simnet::Command, wxWindow*> m_buttons;
 };
 
 #endif  // NAVICO_AP_PANEL_H
