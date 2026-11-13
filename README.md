@@ -100,8 +100,14 @@ byte 4 = `01` and 130856 (pilot alarms and their text), 127237 (heading to
 steer), 65341 (set wind angle), 127245 (rudder angle, bytes 4-5, positive =
 starboard), 130306 (apparent wind), 129284 (bearing and distance to the
 waypoint), 128259 (speed through the water, if chosen instead of SOG),
-60928 and 126996 (NAME and model ID, to recognise devices). The
-actual heading and speed come from OpenCPN itself.
+60928 and 126996 (NAME and model ID, to recognise devices), 129285 (the
+waypoints of the plotter's route, for the name of the destination in
+129284 bytes 20-23; a Zeus sends the names empty). The
+actual heading, variation and SOG come from OpenCPN's NavData event; the
+magnetic heading as the sensor sent it from SetPositionFixEx. OpenCPN's
+route messages (OCPN_RTE_ACTIVATED, OCPN_WPT_ACTIVATED, OCPN_WPT_ARRIVED,
+OCPN_RTE_DEACTIVATED, OCPN_RTE_ENDED) give the waypoint OpenCPN steers to
+and a short note on arrival.
 
 **Pilot settings.** The NAC-3 keeps its settings itself and answers reads
 over the Simnet key value channel, PGN 130845: `41 9F <device> 00 FF FF

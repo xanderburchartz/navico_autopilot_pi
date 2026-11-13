@@ -120,6 +120,7 @@ struct DisplayData {
   bool stw = false;  // speed is through the water, not over ground
   bool nfu = false;  // non-follow-up active
   wxString badge;    // "NAC-3 4"
+  wxString waypoint;  // name of the destination waypoint, if known
 };
 
 class ApDisplay : public wxWindow {
@@ -405,7 +406,9 @@ private:
         DrawRow(dc, r2, _("Set angle"), abs_deg(m_data.set_wind), L"°", m_data.set_wind);
         break;
       case Mode::kNav:
-        DrawRow(dc, r1, _("Bearing WPT"), Three(m_data.wpt_bearing ? m_data.wpt_bearing : m_data.target),
+        DrawRow(dc, r1,
+                m_data.waypoint.empty() ? wxString(_("Bearing WPT"))
+                                        : wxString::Format(_("Bearing %s"), m_data.waypoint), Three(m_data.wpt_bearing ? m_data.wpt_bearing : m_data.target),
                 unit, std::nullopt);
         DrawRow(dc, r2, _("Distance WPT"),
                 m_data.dtw_nm ? wxString::Format("%.2f", *m_data.dtw_nm) : wxString("-.--"), "NM",
@@ -1325,6 +1328,7 @@ void ApPanel::UpdateState(double now) {
   if (alive) d.target = Deg(s.TargetHeading());
   if (auto nav = s.NavData(now)) {
     d.wpt_bearing = Deg(nav->bearing);
+    d.waypoint = m_plugin->DestinationName();
     if (nav->distance) d.dtw_nm = *nav->distance / 1852.0;
   }
   d.stw = m_plugin->UseStw();
@@ -1390,6 +1394,11 @@ void ApPanel::UpdateState(double now) {
     else if (s.NotFollowed(now))
       msg = _("The autopilot did not change mode.");
   }
+  wxString note = m_plugin->RouteNote();
+  if (!note.empty()) {
+    if (!msg.empty()) msg += "\n";
+    msg += note;
+  }
   for (const auto& a : s.Alarms(now)) {
     if (a.text.empty()) continue;
     if (!msg.empty()) msg += "\n";
@@ -1425,7 +1434,7 @@ void ApPanel::UpdateConfirmation(double now) {
   auto nav = s.NavData(now);
   std::optional<double> bearing = nav ? Deg(nav->bearing) : std::nullopt;
   int left = static_cast<int>(std::ceil(PilotState::kNavConfirmWindow - (now - s.AwaitingSince())));
-  m_confirm->SetInfo(m_plugin->ActiveWaypoint(), bearing, s.TargetMagnetic(), left);
+  m_confirm->SetInfo(m_plugin->DestinationName(), bearing, s.TargetMagnetic(), left);
 }
 
 void ApPanel::SetNfuButtons(bool nfu) {

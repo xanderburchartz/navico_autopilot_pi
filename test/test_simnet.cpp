@@ -14,6 +14,7 @@
 
 #include "pilot_settings.h"
 #include "pilot_state.h"
+#include "route_info.h"
 #include "simnet.h"
 
 using namespace simnet;
@@ -402,12 +403,52 @@ static void TestKeyValue() {
   CHECK(name && pilot_settings::Text(*name) == "BEAT");
 }
 
+static void TestRoutes() {
+  // 129284 and 129285 from the Zeus (11) on 13 Nov 2026, reassembled.
+  auto nav = ParseNavData(Bytes("74 EC B6 05 00 00 FF FF FF FF FF FF D5 36 D7 36 00 00 00 00 "
+                                "01 00 00 00 09 0C 46 1F D9 EB 08 03 FF FF"));
+  CHECK(nav && nav->destination == 1u && nav->distance && std::fabs(*nav->distance - 3745.08) < 0.01);
+  auto route = simnet::ParseRouteInfo(Bytes(
+      "FF FF 02 00 FF FF FF FF E7 03 01 00 FF 00 00 03 01 00 A2 31 45 1F 79 98 00 03 "
+      "01 00 03 01 00 09 0C 46 1F D9 EB 08 03"));
+  CHECK(route && route->waypoints.size() == 2 && route->waypoints[1].id == 1 &&
+        route->waypoints[1].name.empty() && route->route_name.empty());
+  // The same with a name for waypoint 1 ("WP1", ASCII).
+  auto named = simnet::ParseRouteInfo(Bytes(
+      "FF FF 02 00 FF FF FF FF E7 03 01 00 FF 00 00 03 01 00 A2 31 45 1F 79 98 00 03 "
+      "01 00 05 01 57 50 31 09 0C 46 1F D9 EB 08 03"));
+  CHECK(named && named->waypoints.size() == 2 && named->waypoints[1].name == "WP1");
+  PilotState s;
+  s.Handle(Rx(129285, 11, "FF FF 02 00 FF FF FF FF E7 03 01 00 FF 00 00 03 01 00 A2 31 45 1F 79 98 00 03 "
+                          "01 00 05 01 57 50 31 09 0C 46 1F D9 EB 08 03"), 1);
+  s.Handle(Rx(129284, 11, "74 EC B6 05 00 00 FF FF FF FF FF FF D5 36 D7 36 00 00 00 00 "
+                          "01 00 00 00 09 0C 46 1F D9 EB 08 03 FF FF"), 2);
+  CHECK(s.DestinationName(3) == "WP1");
+  CHECK(s.DestinationName(30).empty());  // stale
+
+  // OpenCPN's route messages.
+  CHECK(route_info::JsonString("{\"Route_activated\" : \"Naar \\\"Den\\\" Helder\",\"GUID\":\"x\"}",
+                               "Route_activated") == std::string("Naar \"Den\" Helder"));
+  CHECK(!route_info::JsonString("{\"GUID\":\"x\"}", "WP_arrived"));
+  route_info::OpenCpnRoute r;
+  CHECK(route_info::Apply(r, "OCPN_RTE_ACTIVATED", "{\"Route_activated\":\"Rondje\",\"GUID\":\"a\"}", 1));
+  CHECK(route_info::Apply(r, "OCPN_WPT_ACTIVATED", "{\"GUID\":\"b\",\"WP_activated\":\"Boei 3\"}", 1));
+  CHECK(r.route == "Rondje" && r.waypoint == "Boei 3");
+  route_info::Apply(r, "OCPN_WPT_ARRIVED",
+                    "{\"isSkipped\":false,\"WP_arrived\":\"Boei 3\",\"Next_WP\":\"Haven\"}", 5);
+  CHECK(r.arrived == "Boei 3" && r.waypoint == "Haven" && r.event_time == 5);
+  route_info::Apply(r, "OCPN_RTE_ENDED", "{\"GUID\":\"a\",\"Route_ended\":\"Rondje\"}", 9);
+  CHECK(r.route.empty() && r.ended == "Rondje");
+  CHECK(!route_info::Apply(r, "WMM_VARIATION_BOAT", "{}", 9));
+}
+
 int main() {
   TestCommands();
   TestParse();
   TestPilotState();
   TestNavAndSensors();
   TestKeyValue();
+  TestRoutes();
   if (failures) {
     std::printf("%d failure(s)\n", failures);
     return 1;

@@ -102,6 +102,11 @@ countdown: the pilot waits 10 seconds. *Confirm* starts navigation,
 *Cancel* leaves the pilot as it was. Confirming on another controller also
 works; the window then closes by itself.
 
+In NAV the panel shows the bearing to the waypoint with its name, when the
+plotter sends the names of its route (129285) or OpenCPN navigates itself.
+When OpenCPN arrives at a waypoint or ends a route, the panel says so for
+half a minute.
+
 The pilot follows the route or waypoint of the active navigation source on
 the bus, for example the plotter or OpenCPN. Without valid navigation data
 the pilot does not change to NAV and reports "Navigation data missing".

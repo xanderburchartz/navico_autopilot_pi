@@ -54,6 +54,8 @@ wxDEFINE_EVENT(EVT_NAVICO_AP_130306, ObservedEvt);
 wxDEFINE_EVENT(EVT_NAVICO_AP_129284, ObservedEvt);
 wxDEFINE_EVENT(EVT_NAVICO_AP_126996, ObservedEvt);
 wxDEFINE_EVENT(EVT_NAVICO_AP_128259, ObservedEvt);
+wxDEFINE_EVENT(EVT_NAVICO_AP_129285, ObservedEvt);
+wxDEFINE_EVENT(EVT_NAVICO_AP_NAVDATA, ObservedEvt);
 wxDEFINE_EVENT(EVT_NAVICO_AP_130845, ObservedEvt);
 wxDEFINE_EVENT(EVT_NAVICO_AP_130846, ObservedEvt);
 
@@ -95,6 +97,10 @@ int NavicoAutopilotPi::Init() {
   listen(simnet::kPgnNavData, EVT_NAVICO_AP_129284);
   listen(simnet::kPgnProductInfo, EVT_NAVICO_AP_126996);
   listen(simnet::kPgnSpeed, EVT_NAVICO_AP_128259);
+  listen(simnet::kPgnRouteInfo, EVT_NAVICO_AP_129285);
+  // Heading, variation and SOG as OpenCPN decoded them (BasicNavDataMsg).
+  m_listeners.push_back(GetListener(NavDataId(), EVT_NAVICO_AP_NAVDATA, this));
+  Bind(EVT_NAVICO_AP_NAVDATA, &NavicoAutopilotPi::OnNavData, this);
   listen(simnet::kPgnKeyValue, EVT_NAVICO_AP_130845);
   listen(simnet::kPgnKeyValueLong, EVT_NAVICO_AP_130846);
 
@@ -107,7 +113,7 @@ int NavicoAutopilotPi::Init() {
 
   wxLogMessage("navico_autopilot_pi: started");
   return WANTS_TOOLBAR_CALLBACK | INSTALLS_TOOLBAR_TOOL | WANTS_PREFERENCES |
-         WANTS_CONFIG | WANTS_NMEA_EVENTS;
+         WANTS_CONFIG | WANTS_NMEA_EVENTS | WANTS_PLUGIN_MESSAGING;
 }
 
 bool NavicoAutopilotPi::DeInit() {
@@ -566,18 +572,55 @@ void NavicoAutopilotPi::SetActiveLegInfo(Plugin_Active_Leg_Info& leg_info) {
 }
 
 wxString NavicoAutopilotPi::ActiveWaypoint() const {
-  // OpenCPN calls SetActiveLegInfo about once a second while it navigates.
-  return Now() - m_leg_time < 5 ? m_leg_name : wxString();
+  // OpenCPN calls SetActiveLegInfo about once a second while it navigates;
+  // its route messages say at once which waypoint is next.
+  if (Now() - m_leg_time < 5) return m_leg_name;
+  if (!m_ocpn_route.route.empty()) return wxString::FromUTF8(m_ocpn_route.waypoint.c_str());
+  return wxString();
 }
 
 // ---- heading from OpenCPN ---------------------------------------------------
 
-void NavicoAutopilotPi::SetPositionFixEx(PlugIn_Position_Fix_Ex& pfix) {
-  m_hdt = pfix.Hdt;
-  m_hdm = pfix.Hdm;
-  m_var = pfix.Var;
-  m_sog = pfix.Sog;
+void NavicoAutopilotPi::OnNavData(ObservedEvt& ev) {
+  PluginNavdata nd = GetEventNavdata(ev);
+  m_hdt = nd.hdt;
+  m_var = nd.var;
+  m_sog = nd.sog;
   m_heading_time = Now();
+}
+
+void NavicoAutopilotPi::SetPositionFixEx(PlugIn_Position_Fix_Ex& pfix) {
+  // Only the magnetic heading as the sensor sent it; the rest comes with
+  // the NavData event. Without it a pilot steering magnetic would depend on
+  // OpenCPN knowing the variation.
+  m_hdm = pfix.Hdm;
+  m_hdm_time = Now();
+}
+
+void NavicoAutopilotPi::SetPluginMessage(wxString& message_id, wxString& message_body) {
+  if (route_info::Apply(m_ocpn_route, message_id.ToStdString(),
+                        std::string(message_body.utf8_str()), Now()))
+    wxLogMessage("navico_autopilot_pi: %s %s", message_id, message_body);
+}
+
+wxString NavicoAutopilotPi::DestinationName() const {
+  std::string plotter = m_state.DestinationName(Now());
+  if (!plotter.empty()) return wxString::FromUTF8(plotter.c_str());
+  return ActiveWaypoint();
+}
+
+wxString NavicoAutopilotPi::RouteNote() const {
+  const auto& r = m_ocpn_route;
+  if (Now() - r.event_time > 30) return "";
+  if (!r.ended.empty())
+    return wxString::Format(_("OpenCPN: route %s ended."), wxString::FromUTF8(r.ended.c_str()));
+  if (!r.arrived.empty())
+    return r.waypoint.empty()
+               ? wxString::Format(_("OpenCPN: arrived at %s."), wxString::FromUTF8(r.arrived.c_str()))
+               : wxString::Format(_("OpenCPN: arrived at %s, next %s."),
+                                  wxString::FromUTF8(r.arrived.c_str()),
+                                  wxString::FromUTF8(r.waypoint.c_str()));
+  return "";
 }
 
 double NavicoAutopilotPi::Sog() const {
@@ -586,10 +629,11 @@ double NavicoAutopilotPi::Sog() const {
 
 double NavicoAutopilotPi::Heading(bool magnetic) const {
   if (Now() - m_heading_time > 5) return NAN;
-  double h = magnetic ? m_hdm : m_hdt;
+  double hdm = Now() - m_hdm_time < 5 ? m_hdm : NAN;
+  double h = magnetic ? hdm : m_hdt;
   if (std::isnan(h) && !std::isnan(m_var)) {
     // Derive one from the other with OpenCPN's variation (east positive).
-    h = magnetic ? m_hdt - m_var : m_hdm + m_var;
+    h = magnetic ? m_hdt - m_var : hdm + m_var;
     if (!std::isnan(h)) h = std::fmod(h + 360.0, 360.0);
   }
   return h;

@@ -486,3 +486,15 @@ msgstr "Uit"
 
 msgid "Manual speed"
 msgstr "Handmatige snelheid"
+
+msgid "Bearing %s"
+msgstr "Peiling %s"
+
+msgid "OpenCPN: route %s ended."
+msgstr "OpenCPN: route %s beëindigd."
+
+msgid "OpenCPN: arrived at %s."
+msgstr "OpenCPN: aangekomen bij %s."
+
+msgid "OpenCPN: arrived at %s, next %s."
+msgstr "OpenCPN: aangekomen bij %s, volgende %s."

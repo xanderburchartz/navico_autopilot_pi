@@ -176,6 +176,13 @@ void PilotState::Handle(const simnet::Message& m, double now) {
       if (!n || !n->bearing) return;  // all "no value" when navigation stops
       m_nav = *n;
       m_nav_time = now;
+      m_nav_source = m.source;
+      return;
+    }
+    case simnet::kPgnRouteInfo: {
+      auto r = simnet::ParseRouteInfo(m.data);
+      if (!r) return;
+      m_routes[m.source] = {*r, now};
       return;
     }
     case simnet::kPgnWind: {
@@ -224,6 +231,16 @@ std::optional<double> PilotState::SpeedThroughWater(double now) const {
 std::optional<simnet::NavData> PilotState::NavData(double now) const {
   if (now - m_nav_time > kSensorTimeout) return std::nullopt;
   return m_nav;
+}
+
+std::string PilotState::DestinationName(double now) const {
+  auto nav = NavData(now);
+  if (!nav || !nav->destination) return "";
+  auto it = m_routes.find(m_nav_source);
+  if (it == m_routes.end() || now - it->second.time > 15) return "";  // a Zeus sends it every 5 s
+  for (const auto& w : it->second.info.waypoints)
+    if (w.id == *nav->destination) return w.name;
+  return "";
 }
 
 bool PilotState::AwaitsConfirmation(double now) const {

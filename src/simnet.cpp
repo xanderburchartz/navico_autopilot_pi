@@ -296,7 +296,54 @@ std::optional<NavData> ParseNavData(const std::vector<uint8_t>& d) {
   uint32_t dist = d[1] | (d[2] << 8) | (d[3] << 16) | (static_cast<uint32_t>(d[4]) << 24);
   if (dist < 0xFFFFFFFD) n.distance = dist * 0.01;
   n.bearing = Angle(U16(d, 14));  // bearing, position to destination
+  if (d.size() >= 24) {
+    uint32_t dest = d[20] | (d[21] << 8) | (d[22] << 16) | (static_cast<uint32_t>(d[23]) << 24);
+    if (dest < 0xFFFFFFFD) n.destination = dest;
+  }
   return n;
+}
+
+namespace {
+// A STRING_LAU at \p pos: length (with these two bytes), encoding (1 ASCII,
+// 0 UTF-16), then the text. Moves \p pos past it.
+std::optional<std::string> Lau(const std::vector<uint8_t>& d, size_t& pos) {
+  if (pos + 2 > d.size()) return std::nullopt;
+  size_t len = d[pos];
+  uint8_t enc = d[pos + 1];
+  if (len < 2 || pos + len > d.size()) return std::nullopt;
+  std::string s;
+  for (size_t i = pos + 2; i < pos + len; i += (enc == 0 ? 2 : 1)) {
+    uint8_t c = d[i];
+    if (c == 0) break;
+    s += static_cast<char>(c);
+  }
+  pos += len;
+  while (!s.empty() && (s.back() == ' ' || s.back() == '@')) s.pop_back();
+  return s;
+}
+}  // namespace
+
+std::optional<RouteInfo> ParseRouteInfo(const std::vector<uint8_t>& d) {
+  if (d.size() < 13) return std::nullopt;
+  RouteInfo r;
+  uint16_t items = U16(d, 2);
+  size_t pos = 9;
+  auto name = Lau(d, pos);
+  if (!name) return std::nullopt;
+  r.route_name = *name;
+  pos += 1;  // reserved
+  for (uint16_t i = 0; i < items; i++) {
+    if (pos + 2 > d.size()) return std::nullopt;
+    RouteWaypoint w;
+    w.id = U16(d, pos);
+    pos += 2;
+    auto n = Lau(d, pos);
+    if (!n || pos + 8 > d.size()) return std::nullopt;
+    w.name = *n;
+    pos += 8;  // latitude, longitude
+    r.waypoints.push_back(w);
+  }
+  return r;
 }
 
 std::optional<std::string> ParseModelId(const std::vector<uint8_t>& d) {

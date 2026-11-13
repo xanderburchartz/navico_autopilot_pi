@@ -24,6 +24,7 @@
 #include "ocpn_plugin.h"
 #include "pilot_state.h"
 #include "pilot_settings.h"
+#include "route_info.h"
 #include "simnet.h"
 
 class ApPanel;
@@ -62,6 +63,8 @@ public:
   void SetPositionFixEx(PlugIn_Position_Fix_Ex& pfix) override;
   void SetColorScheme(PI_ColorScheme cs) override;
   void SetActiveLegInfo(Plugin_Active_Leg_Info& leg_info) override;
+  /** OpenCPN's route messages (OCPN_RTE_ACTIVATED, OCPN_WPT_ARRIVED ...). */
+  void SetPluginMessage(wxString& message_id, wxString& message_body) override;
 
   // Used by the panel and the settings dialog.
   bool SendCommand(simnet::Command c);
@@ -107,6 +110,11 @@ public:
   bool UseStw() const { return m_use_stw; }
   /** Waypoint name of OpenCPN's own active leg, if OpenCPN navigates. */
   wxString ActiveWaypoint() const;
+  /** Name of the waypoint the pilot steers to: from the plotter (129285)
+   *  if it sends one, else OpenCPN's when OpenCPN navigates. */
+  wxString DestinationName() const;
+  /** "Arrived at ..." or "Route ... ended" for a short while; empty else. */
+  wxString RouteNote() const;
   PI_ColorScheme ColorScheme() const { return m_scheme; }
   double Now() const;
   const PilotState& State() const { return m_state; }
@@ -140,6 +148,7 @@ private:
 
   double m_hdt = NAN, m_hdm = NAN, m_var = NAN, m_sog = NAN;
   double m_heading_time = -1e9;
+  double m_hdm_time = -1e9;
 
   bool SendNfu(simnet::NfuSide side, bool log);
   void OnKvTimer(wxTimerEvent&);
@@ -165,6 +174,8 @@ private:
   std::set<uint8_t> m_product_asked;
   wxString m_leg_name;
   double m_leg_time = -1e9;
+  route_info::OpenCpnRoute m_ocpn_route;
+  void OnNavData(ObservedEvt& ev);
 
   wxBitmap m_bitmap;
   int m_tool_id = -1;

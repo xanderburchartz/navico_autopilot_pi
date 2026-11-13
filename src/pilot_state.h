@@ -135,6 +135,9 @@ public:
 
   /** Bearing (rad) and distance (m) to the waypoint from 129284, if valid. */
   std::optional<simnet::NavData> NavData(double now) const;
+  /** Name of the destination waypoint from the plotter that sends 129284
+   *  (129285 from the same source); empty if it sends no name. */
+  std::string DestinationName(double now) const;
 
 private:
   bool IsPilot(uint8_t source, double now) const;
@@ -175,6 +178,12 @@ private:
   double m_stw_time = -1e9;
   simnet::NavData m_nav;
   double m_nav_time = -1e9;
+  uint8_t m_nav_source = 255;
+  struct RouteSeen {
+    simnet::RouteInfo info;
+    double time = -1e9;
+  };
+  std::map<uint8_t, RouteSeen> m_routes;  // 129285 per source
   std::optional<double> m_awa;
   uint8_t m_awa_source = 255;
   double m_awa_time = -1e9;

@@ -35,6 +35,7 @@ constexpr int kPgnAlarmText = 130856;     ///< Simnet: alarm text
 constexpr int kPgnRudder = 127245;        ///< Rudder
 constexpr int kPgnWind = 130306;          ///< Wind data
 constexpr int kPgnNavData = 129284;       ///< Navigation data (to the waypoint)
+constexpr int kPgnRouteInfo = 129285;     ///< Route and waypoint information
 constexpr int kPgnSpeed = 128259;         ///< Speed (through the water)
 constexpr int kPgnKeyValue = 130845;      ///< Simnet: key value (settings)
 constexpr int kPgnKeyValueLong = 130846;  ///< Simnet: key value, longer values
@@ -164,8 +165,22 @@ std::optional<double> ParseSpeedThroughWater(const std::vector<uint8_t>& d);
 struct NavData {
   std::optional<double> bearing;
   std::optional<double> distance;
+  /** Number of the destination waypoint (bytes 20-23), as in 129285. */
+  std::optional<uint32_t> destination;
 };
 std::optional<NavData> ParseNavData(const std::vector<uint8_t>& d);
+
+/** 129285: the waypoints of the route a plotter follows (a Zeus sends it
+ *  every 5 s while it navigates; its names were empty, 13 Nov 2026). */
+struct RouteWaypoint {
+  uint16_t id = 0;
+  std::string name;
+};
+struct RouteInfo {
+  std::string route_name;
+  std::vector<RouteWaypoint> waypoints;
+};
+std::optional<RouteInfo> ParseRouteInfo(const std::vector<uint8_t>& d);
 
 /** 126996: model ID, e.g. "NAC-3 _Rudder feedback" (trimmed). */
 std::optional<std::string> ParseModelId(const std::vector<uint8_t>& d);
