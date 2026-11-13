@@ -40,6 +40,7 @@ const std::vector<Definition>& All() {
        0.0001 * kRadToDeg, {}, "Auto"},
       {{0x14, 0x1D}, Node::kPilot, "Drive", "Drive voltage", "V", 2, false, 0.01, {}},
       {{0x14, 0x02}, Node::kPilot, "Drive", "Minimum power", "%", 2, false, 1, {}},
+      {{0x14, 0x01}, Node::kPilot, "Drive", "Maximum power", "%", 2, false, 1, {}},
       {{0x18, 0x7A}, Node::kPilot, "Drive", "Rudder limit", "deg", 2, false, 0.0001 * kRadToDeg, {}},
       {{0x09, 0x01}, Node::kRudder, "Rudder", "Calibration, starboard", "deg", 2, true,
        0.0001 * kRadToDeg, {}},

@@ -343,3 +343,6 @@ msgstr "Minimum vermogen"
 
 msgid "Rudder limit"
 msgstr "Roerlimiet"
+
+msgid "Maximum power"
+msgstr "Maximum vermogen"
