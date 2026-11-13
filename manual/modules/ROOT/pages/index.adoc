@@ -81,9 +81,9 @@ STBY works whenever a pilot is selected, also without recent data. The
 other mode buttons need recent data from the pilot. The course buttons work
 in Auto, Wind and No Drift.
 
-In standby the two middle course buttons become *◀ NFU* and *NFU ▶*
-(non-follow-up): the rudder moves to port or starboard as long as you hold
-the button, and stops when you let go. The plugin repeats the command every
+In standby the course buttons work as on a Triton2: non-follow-up (NFU).
+The rudder moves as long as you hold a button, -1 and -10 to port, +1 and
++10 to starboard, and stops when you let go. The plugin repeats the command every
 half second while held and sends stop three times on release; it also stops
 when the panel closes or OpenCPN loses focus.
 

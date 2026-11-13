@@ -781,7 +781,7 @@ void ApPanel::UpdateState(double now) {
   m_display->Set(d);
 
   // Buttons. STBY whenever a pilot is selected; the rest only with fresh data.
-  // In standby -1 and +1 are non-follow-up buttons (rudder while held).
+  // In standby the course buttons are non-follow-up (rudder while held).
   Mode m = s.Mode();
   bool steering = alive && (m == Mode::kAuto || m == Mode::kWind || m == Mode::kNoDrift);
   bool nfu_buttons = alive && m == Mode::kStandby;
@@ -795,9 +795,7 @@ void ApPanel::UpdateState(double now) {
       case Command::kNav:
       case Command::kNoDrift: on = on && alive; break;
       case Command::kTack: on = on && alive && m == Mode::kWind; break;
-      case Command::kPort1:
-      case Command::kStarboard1: on = on && (steering || nfu_buttons); break;
-      default: on = on && steering; break;
+      default: on = on && (steering || nfu_buttons); break;  // course buttons, NFU in standby
     }
     if (b->IsEnabled() != on) b->Enable(on);
   }
@@ -857,22 +855,19 @@ void ApPanel::UpdateConfirmation(double now) {
 }
 
 void ApPanel::SetNfuButtons(bool nfu) {
+  // As on a Triton2: in standby the course buttons are non-follow-up, the
+  // rudder moves while one is held (-1/-10 port, +1/+10 starboard).
   m_nfu_buttons = nfu;
-  auto* port = static_cast<ApButton*>(m_buttons[Command::kPort1]);
-  auto* stbd = static_cast<ApButton*>(m_buttons[Command::kStarboard1]);
-  if (nfu) {
-    port->SetText(L"\u25C0 NFU");
-    stbd->SetText(L"NFU \u25B6");
-    port->SetHold([this] { m_plugin->StartNfu(simnet::NfuSide::kPort); },
-                  [this] { m_plugin->StopNfu(); });
-    stbd->SetHold([this] { m_plugin->StartNfu(simnet::NfuSide::kStarboard); },
-                  [this] { m_plugin->StopNfu(); });
-  } else {
-    m_plugin->StopNfu();
-    port->SetText("-1");
-    stbd->SetText("+1");
-    port->SetHold(nullptr, nullptr);
-    stbd->SetHold(nullptr, nullptr);
+  if (!nfu) m_plugin->StopNfu();
+  for (Command c : {Command::kPort1, Command::kPort10, Command::kStarboard1, Command::kStarboard10}) {
+    auto* b = static_cast<ApButton*>(m_buttons[c]);
+    if (!nfu) {
+      b->SetHold(nullptr, nullptr);
+      continue;
+    }
+    auto side = (c == Command::kPort1 || c == Command::kPort10) ? simnet::NfuSide::kPort
+                                                                : simnet::NfuSide::kStarboard;
+    b->SetHold([this, side] { m_plugin->StartNfu(side); }, [this] { m_plugin->StopNfu(); });
   }
 }
 

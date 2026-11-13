@@ -51,7 +51,7 @@ following the standard drops it. Fixed in 5.14.
 
 - The plugin sends **no heartbeat**. Each button press sends one PGN 130850;
   confirming NAV sends two (see below). The only repeated command is
-  non-follow-up: while an NFU button is held (in standby), the direction is
+  non-follow-up: while a course button is held in standby, the direction is
   repeated every 0.5 s, as the NAC-3 stops by itself about 2.5 s after the
   last one; on release, when the panel closes or OpenCPN loses focus, it sends
   stop three times, 0.1 s apart.
