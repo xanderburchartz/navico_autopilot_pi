@@ -108,25 +108,39 @@ the pilot does not change to NAV and reports "Navigation data missing".
 
 === Autopilot settings
 
-*Autopilot settings...* opens a window with the settings the pilot computer
-keeps itself: boat, sailing, drive, rudder calibration and the steering
-profiles. The plugin asks the pilot for each value when the window opens,
-one at a time; a value that stays at `...` got no answer, *Read again* asks
-once more. Not every pilot answers every request on the first try.
+The gear at the top right of the panel opens the settings the pilot computer
+keeps itself. The plugin asks the pilot for each value when the window
+opens, one at a time; a value that stays at `...` got no answer, *Read
+again* asks once more. Not every pilot answers every request on the first
+try.
 
-*Change* next to a value asks for the new value within a range, asks for
-confirmation and then sends it. The pilot answers with the value it took,
-which can be rounded to its own resolution; the window shows that answer.
-Boat type, drive voltage and the rudder calibration are shown but cannot be
-changed here: a wrong value there can harm the drive or belongs to the
-commissioning steps on the pilot controller. Drive engage (clutch or auto)
-is shown but not changed here; the control method is not in the list.
+The window first shows what a Triton2 shows under its autopilot menus:
+*Sailing* (tack angle and tack time) and the steering profiles *Low speed*
+and *High speed*, each with turn rate, rudder gain, counter rudder,
+autotrim, rudder limit, off heading limit, track response, track approach
+angle and course change confirm angle. Autotune adjusts the profile in use.
 
-The steering profiles are shown as on a Triton2: *Low speed* and *High
-speed*, each with turn rate, rudder gain, counter rudder, autotrim, rudder
-limit, off heading limit, track response, track approach angle and course
-change confirm angle. Press a value to change it for that profile. Autotune
-adjusts the profile in use.
+The installation settings (boat, drive, rudder) are hidden: press
+*Installation* three times within three seconds to show them. Boat type,
+drive voltage, drive engage and the rudder calibration are shown but cannot
+be changed here: a wrong value there can harm the drive or belongs to the
+commissioning steps on the pilot controller. The control method is not in
+the list.
+
+*Change* next to a value, or a value in the profile table, asks for the new
+value within a range, asks for confirmation and then sends it. The pilot
+answers with the value it took, which can be rounded to its own resolution;
+the window shows that answer.
+
+==== Snapshots
+
+Before the first change in the window the plugin stores the settings as
+they are, a snapshot. *Snapshots...* takes one by hand or lists the stored
+ones. Choosing one shows which values differ from now; after a confirmation
+the plugin sends those back one at a time, after first taking a snapshot of
+the current settings. Only settings the plugin may change are sent back.
+The snapshots are text files in OpenCPN's data folder, under
+`plugins/navico_autopilot_pi/snapshots`.
 
 Apart from NFU, each button press sends one command, with no heartbeat. Every
 command is written to the OpenCPN log with its bytes, on lines starting with

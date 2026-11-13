@@ -22,6 +22,7 @@
 
 #include "ocpn_plugin.h"
 #include "pilot_state.h"
+#include "pilot_settings.h"
 #include "simnet.h"
 
 class ApPanel;
@@ -80,6 +81,25 @@ public:
    *  answers with the value it took. */
   bool WritePilotSetting(uint8_t address, simnet::SettingKey key, uint32_t raw, int bytes,
                          uint8_t instance = 0xFF);
+  /** One change of a restore: the pilot takes them one at a time. */
+  struct SettingWrite {
+    uint8_t address;
+    simnet::SettingKey key;
+    uint32_t raw;
+    int bytes;
+    uint8_t instance;
+  };
+  /** Send the changes one after the other (next after the answer or 1.5 s),
+   *  then read the settings again. */
+  void WritePilotSettings(const std::vector<SettingWrite>& writes);
+  bool WritingSettings() const { return !m_kv_writes.empty() || m_kv_write_waiting.has_value(); }
+  /** The settings as last answered, for a snapshot; \p missing counts the
+   *  known settings without an answer. */
+  pilot_settings::Snapshot TakeSnapshot(const std::string& reason, int* missing) const;
+  /** Store a snapshot in OpenCPN's data folder; false if that failed. */
+  bool SaveSnapshot(const pilot_settings::Snapshot& s);
+  /** Stored snapshots, newest first. */
+  std::vector<pilot_settings::Snapshot> Snapshots() const;
   /** Address holding the rudder calibration (the chosen rudder sensor). */
   std::optional<uint8_t> RudderNode() const;
   /** Show speed through the water (128259) instead of OpenCPN's SOG. */
@@ -127,6 +147,9 @@ private:
   std::vector<KvRead> m_kv_queue;
   std::optional<KvRead> m_kv_waiting;
   std::set<KvRead> m_kv_retried;
+  std::vector<SettingWrite> m_kv_writes;
+  std::optional<SettingWrite> m_kv_write_waiting;
+  double m_kv_write_sent = 0;
   double m_kv_sent = 0;
   wxTimer m_kv_timer;
   void OnNfuTimer(wxTimerEvent&);

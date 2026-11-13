@@ -57,6 +57,27 @@ const std::vector<Profile>& Profiles();
 /** Profile name, answered in 130846 per instance ("ENGINE"). */
 constexpr simnet::SettingKey kProfileName{0x18, 0x8008};
 
+/**
+ * The pilot's settings at one moment, to go back to after a change. Raw
+ * values per node (pilot or rudder feedback), key and instance; addresses
+ * are not stored, they can change.
+ */
+struct Snapshot {
+  struct Entry {
+    Node node;
+    simnet::SettingKey key;
+    uint8_t instance;  ///< 0, or the profile; FF is not stored
+    uint32_t raw;
+  };
+  std::string time;    ///< "2026-11-13 16:30:05", local time
+  std::string reason;  ///< e.g. "Before changing Rudder deadband"
+  std::vector<Entry> entries;
+};
+std::string Serialize(const Snapshot& s);
+std::optional<Snapshot> ParseSnapshot(const std::string& text);
+/** The definition of \p key, if the plugin knows it. */
+const Definition* Find(simnet::SettingKey key);
+
 /** Text of a 130846 value, up to the first NUL. */
 std::string Text(const simnet::KeyValue& kv);
 

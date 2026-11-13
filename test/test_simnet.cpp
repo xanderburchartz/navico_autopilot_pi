@@ -369,6 +369,18 @@ static void TestKeyValue() {
   CheckEq(simnet::KeyValueSet(4, {0x1A, 0x0E}, 340, 2, 1), "41 9F 04 01 FF FF 1A 0E 00 01 54 01 FF FF",
           "set per profile");
   CHECK(pilot_settings::Profiles().size() == 2 && pilot_settings::Profiles()[1].instance == 1);
+  // Snapshot round trip.
+  pilot_settings::Snapshot snap;
+  snap.time = "2026-11-13 16:30:05";
+  snap.reason = "Before changing Rudder deadband";
+  snap.entries.push_back({pilot_settings::Node::kPilot, {0x14, 0x06}, 0, 0});
+  snap.entries.push_back({pilot_settings::Node::kPilot, {0x1A, 0x0E}, 1, 328});
+  snap.entries.push_back({pilot_settings::Node::kRudder, {0x09, 0x02}, 0, 0xEA06});
+  auto back = pilot_settings::ParseSnapshot(pilot_settings::Serialize(snap));
+  CHECK(back && back->time == snap.time && back->reason == snap.reason && back->entries.size() == 3);
+  CHECK((back->entries[1].key == SettingKey{0x1A, 0x0E}) && back->entries[1].instance == 1 &&
+        back->entries[1].raw == 328 && back->entries[2].node == pilot_settings::Node::kRudder);
+  CHECK(!pilot_settings::ParseSnapshot("hello"));
   // Profile name in 130846.
   p.Handle(Rx(130846, 4, "41 9F FF 03 FF 00 18 08 80 02 0A 42 45 41 54 00 00 00 00 00 00"), 4);
   auto name = p.Setting(4, pilot_settings::kProfileName, 3);

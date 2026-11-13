@@ -17,6 +17,8 @@
 
 #include <wx/aui/aui.h>
 #include <wx/fileconf.h>
+#include <wx/dir.h>
+#include <wx/file.h>
 #include <wx/filename.h>
 
 #include "ap_panel.h"
@@ -416,15 +418,118 @@ bool NavicoAutopilotPi::WritePilotSetting(uint8_t address, simnet::SettingKey ke
   return r == RESULT_COMM_NO_ERROR;
 }
 
+void NavicoAutopilotPi::WritePilotSettings(const std::vector<SettingWrite>& writes) {
+  m_kv_writes.insert(m_kv_writes.end(), writes.begin(), writes.end());
+  if (!m_kv_writes.empty() && !m_kv_timer.IsRunning()) m_kv_timer.Start(100);
+  wxLogMessage("navico_autopilot_pi: restoring %zu pilot settings", writes.size());
+}
+
+pilot_settings::Snapshot NavicoAutopilotPi::TakeSnapshot(const std::string& reason,
+                                                         int* missing) const {
+  pilot_settings::Snapshot snap;
+  snap.time = wxDateTime::Now().Format("%Y-%m-%d %H:%M:%S").ToStdString();
+  snap.reason = reason;
+  int lacking = 0;
+  auto pilot = m_state.Address(Now());
+  auto rudder = RudderNode();
+  for (const auto& d : pilot_settings::All()) {
+    auto a = d.node == pilot_settings::Node::kPilot ? pilot : rudder;
+    std::vector<uint8_t> instances;
+    if (d.per_profile)
+      for (const auto& p : pilot_settings::Profiles()) instances.push_back(p.instance);
+    else
+      instances.push_back(0);
+    for (uint8_t inst : instances) {
+      std::optional<simnet::KeyValue> kv;
+      if (a) kv = d.per_profile ? m_state.Setting(*a, d.key, inst) : m_state.Setting(*a, d.key);
+      std::optional<uint32_t> raw;
+      if (kv) raw = kv->Unsigned(static_cast<size_t>(d.bytes));
+      if (!raw) {
+        lacking++;
+        continue;
+      }
+      snap.entries.push_back({d.node, d.key, inst, *raw});
+    }
+  }
+  if (missing) *missing = lacking;
+  return snap;
+}
+
+static wxString SnapshotDir() {
+  wxString dir = *GetpPrivateApplicationDataLocation();
+  wxFileName fn(dir, "");
+  fn.AppendDir("plugins");
+  fn.AppendDir("navico_autopilot_pi");
+  fn.AppendDir("snapshots");
+  return fn.GetPath();
+}
+
+bool NavicoAutopilotPi::SaveSnapshot(const pilot_settings::Snapshot& s) {
+  wxString dir = SnapshotDir();
+  if (!wxFileName::DirExists(dir) && !wxFileName::Mkdir(dir, wxS_DIR_DEFAULT, wxPATH_MKDIR_FULL))
+    return false;
+  wxString name = wxString(s.time).Clone();
+  name.Replace("-", "");
+  name.Replace(":", "");
+  name.Replace(" ", "-");
+  wxFileName fn(dir, name, "txt");
+  wxFile f;
+  if (!f.Create(fn.GetFullPath(), true)) return false;
+  bool ok = f.Write(wxString::FromUTF8(pilot_settings::Serialize(s).c_str()), wxConvUTF8);
+  wxLogMessage("navico_autopilot_pi: snapshot %s (%zu values) %s", fn.GetFullPath(),
+               s.entries.size(), ok ? "saved" : "not saved");
+  return ok;
+}
+
+std::vector<pilot_settings::Snapshot> NavicoAutopilotPi::Snapshots() const {
+  std::vector<pilot_settings::Snapshot> list;
+  wxString dir = SnapshotDir();
+  if (!wxFileName::DirExists(dir)) return list;
+  wxArrayString files;
+  wxDir::GetAllFiles(dir, &files, "*.txt", wxDIR_FILES);
+  files.Sort(true);  // names are times: newest first
+  for (const auto& path : files) {
+    wxFile f(path);
+    wxString text;
+    if (!f.IsOpened() || !f.ReadAll(&text, wxConvUTF8)) continue;
+    auto s = pilot_settings::ParseSnapshot(text.ToStdString(wxConvUTF8));
+    if (s && !s->entries.empty()) list.push_back(*s);
+  }
+  return list;
+}
+
 void NavicoAutopilotPi::OnKvTimer(wxTimerEvent&) {
   auto driver = Driver();
-  if ((m_kv_queue.empty() && !m_kv_waiting) || !driver) {
+  if ((m_kv_queue.empty() && !m_kv_waiting && !WritingSettings()) || !driver) {
     m_kv_queue.clear();
     m_kv_waiting.reset();
+    m_kv_writes.clear();
+    m_kv_write_waiting.reset();
     m_kv_timer.Stop();
     return;
   }
   double now = Now();
+  // Changes first, one at a time; the pilot answers with the instance sent.
+  if (m_kv_write_waiting) {
+    const auto& w = *m_kv_write_waiting;
+    bool answered = m_state.Setting(w.address, w.key, w.instance) &&
+                    m_state.SettingTime(w.address, w.key, w.instance) >= m_kv_write_sent;
+    if (!answered && now - m_kv_write_sent < 1.5) return;
+    m_kv_write_waiting.reset();
+  }
+  if (!m_kv_writes.empty()) {
+    SettingWrite w = m_kv_writes.front();
+    m_kv_writes.erase(m_kv_writes.begin());
+    m_kv_write_waiting = w;
+    m_kv_write_sent = now;
+    WritePilotSetting(w.address, w.key, w.raw, w.bytes, w.instance);
+    if (m_kv_writes.empty()) ReadPilotSettings();  // to show what the pilot took
+    return;
+  }
+  if (m_kv_queue.empty() && !m_kv_waiting) {
+    m_kv_timer.Stop();
+    return;
+  }
   if (m_kv_waiting) {
     auto [wa, wk, wi] = *m_kv_waiting;
     bool answered = m_state.Setting(wa, wk, wi) && m_state.SettingTime(wa, wk, wi) >= m_kv_sent;

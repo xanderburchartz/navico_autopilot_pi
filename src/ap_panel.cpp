@@ -16,6 +16,7 @@
 #include <set>
 
 #include <wx/dcbuffer.h>
+#include <wx/choicdlg.h>
 #include <wx/textdlg.h>
 #if wxUSE_GRAPHICS_CONTEXT
 #include <wx/dcgraph.h>
@@ -132,6 +133,19 @@ public:
       Refresh();
       e.Skip();
     });
+    // The gear opens the pilot settings, as in the Triton Pilot app.
+    Bind(wxEVT_LEFT_UP, [this](wxMouseEvent& e) {
+      if (m_on_settings && m_gear.Contains(e.GetPosition())) m_on_settings();
+    });
+    Bind(wxEVT_MOTION, [this](wxMouseEvent& e) {
+      SetCursor(m_on_settings && m_gear.Contains(e.GetPosition()) ? wxCursor(wxCURSOR_HAND)
+                                                                    : wxNullCursor);
+    });
+  }
+
+  void SetOnSettings(std::function<void()> f) {
+    m_on_settings = std::move(f);
+    Refresh(false);
   }
 
   void Set(const DisplayData& d) {
@@ -174,6 +188,29 @@ private:
     DrawReadout(dc, w, h);
     DrawRudder(dc, w, h);
     DrawBadge(dc, w, h);
+    DrawGear(dc, w, h);
+  }
+
+  void DrawGear(wxDC& dc, double w, double h) {
+    if (!m_on_settings) return;
+    double r = std::max(7.0, h * 0.045);
+    double cx = w - r * 2.0, cy = r * 2.0;
+    // Touch target larger than the drawing.
+    m_gear = wxRect(static_cast<int>(cx - r * 2), 0, static_cast<int>(r * 4),
+                    static_cast<int>(cy + r * 2));
+    std::vector<wxPoint> pts;
+    const int teeth = 8;
+    for (int i = 0; i < teeth * 4; i++) {
+      double a = i * kPi * 2 / (teeth * 4);
+      double rr = (i % 4 < 2) ? r : r * 0.72;
+      pts.push_back(wxPoint(static_cast<int>(std::lround(cx + rr * std::cos(a))),
+                            static_cast<int>(std::lround(cy + rr * std::sin(a)))));
+    }
+    dc.SetPen(*wxTRANSPARENT_PEN);
+    dc.SetBrush(wxBrush(m_theme.label));
+    dc.DrawPolygon(static_cast<int>(pts.size()), pts.data());
+    dc.SetBrush(wxBrush(m_theme.back));
+    dc.DrawCircle(static_cast<int>(cx), static_cast<int>(cy), static_cast<int>(r * 0.35));
   }
 
   void DrawHeadingArc(wxDC& dc, double w, double h) {
@@ -433,6 +470,8 @@ private:
 
   DisplayData m_data;
   Theme m_theme = ThemeFor(PI_GLOBAL_COLOR_SCHEME_DAY);
+  std::function<void()> m_on_settings;
+  wxRect m_gear;
 };
 
 // ---- buttons ------------------------------------------------------------------
@@ -662,9 +701,14 @@ public:
         m_profile_defs.push_back(&d);
         continue;
       }
+      // Boat, drive and rudder are the commissioning settings (Installation
+      // on a Triton2); they stay hidden until asked for.
+      bool installation = std::string(d.section) != "Sailing";
+      size_t first = m_all_rows.size();
       if (std::string(section) != d.section) {
         section = d.section;
         auto* h = new wxStaticText(this, wxID_ANY, wxGetTranslation(section));
+        m_all_rows.push_back(h);
         wxFont f = h->GetFont();
         f.SetWeight(wxFONTWEIGHT_BOLD);
         h->SetFont(f);
@@ -685,6 +729,7 @@ public:
       grid->Add(name, 0, wxALIGN_CENTRE_VERTICAL);
       grid->Add(value, 0, wxALIGN_CENTRE_VERTICAL | wxEXPAND);
       grid->Add(unit, 0, wxALIGN_CENTRE_VERTICAL);
+      m_all_rows.insert(m_all_rows.end(), {name, value, unit});
       m_values.push_back(value);
       m_units.push_back(unit);
       if (pilot_settings::Editable(d.key)) {
@@ -694,9 +739,12 @@ public:
         const pilot_settings::Definition* def = &d;
         change->Bind(wxEVT_BUTTON, [this, def](wxCommandEvent&) { Change(*def); });
         grid->Add(change, 0, wxALIGN_CENTRE_VERTICAL);
+        m_all_rows.push_back(change);
       } else {
         grid->AddSpacer(0);
       }
+      if (installation)
+        m_installation.insert(m_installation.end(), m_all_rows.begin() + first, m_all_rows.end());
     }
     // Two columns, so the window fits on a laptop screen: the settings left,
     // the steering profiles right.
@@ -768,6 +816,19 @@ public:
     top->Add(m_note, 0, wxLEFT | wxRIGHT, 12);
 
     auto* buttons = new wxBoxSizer(wxHORIZONTAL);
+    // Installation settings behind three quick presses, as the superuser
+    // level of a Victron GX: hard to reach by accident, no password.
+    m_install_button = new ApButton(this, _("Installation"));
+    m_install_button->SetTheme(theme);
+    m_install_button->SetMinSize(wxSize(GetCharWidth() * 14, GetCharHeight() * 2 + 8));
+    m_install_button->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) { InstallationPressed(); });
+    buttons->Add(m_install_button, 0);
+    buttons->AddStretchSpacer();
+    auto* snapshots = new ApButton(this, _("Snapshots..."));
+    snapshots->SetTheme(theme);
+    snapshots->SetMinSize(wxSize(GetCharWidth() * 14, GetCharHeight() * 2 + 8));
+    snapshots->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) { ShowSnapshots(); });
+    buttons->Add(snapshots, 0, wxRIGHT, 0);
     auto* again = new ApButton(this, _("Read again"));
     auto* close = new ApButton(this, _("Close"));
     for (ApButton* b : {again, close}) {
@@ -775,7 +836,7 @@ public:
       b->SetMinSize(wxSize(GetCharWidth() * 14, GetCharHeight() * 2 + 8));
       buttons->Add(b, 0, wxLEFT, 8);
     }
-    top->Add(buttons, 0, wxALIGN_RIGHT | wxALL, 12);
+    top->Add(buttons, 0, wxEXPAND | wxALL, 12);
     again->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
       m_asked = m_plugin->Now();
       m_plugin->ReadPilotSettings();
@@ -785,6 +846,7 @@ public:
     m_refresh.SetOwner(this);
     Bind(wxEVT_TIMER, [this](wxTimerEvent&) { ShowValues(); });
     m_refresh.Start(500);
+    for (wxWindow* w : m_installation) w->Hide();
     SetSizerAndFit(top);
     m_asked = m_plugin->Now();
     m_plugin->ReadPilotSettings();
@@ -810,6 +872,105 @@ private:
     return unit.StartsWith(L"\u00B0") ? Shown(d, v) + unit : Shown(d, v) + " " + unit;
   }
 
+  /** Value of a raw setting as text, with unit and profile, for a list. */
+  static wxString Describe(const pilot_settings::Definition& d, uint32_t raw) {
+    simnet::KeyValue kv;
+    for (int i = 0; i < 4; i++) kv.value.push_back(static_cast<uint8_t>((raw >> (8 * i)) & 0xFF));
+    auto v = pilot_settings::Decode(d, kv);
+    if (!v) return "NA";
+    if (!d.choices.empty())
+      return *v >= 0 && *v < d.choices.size() ? wxGetTranslation(d.choices[static_cast<size_t>(*v)])
+                                              : wxString::Format("%.0f", *v);
+    return WithUnit(d, *v);
+  }
+
+  /** Take a snapshot now, or go back to an earlier one. */
+  void ShowSnapshots() {
+    auto list = m_plugin->Snapshots();
+    wxArrayString choices;
+    choices.Add(_("Take a snapshot now"));
+    for (const auto& snap : list)
+      choices.Add(wxString::Format(_("%s, %s (%zu values)"), wxString::FromUTF8(snap.time.c_str()),
+                                   wxString::FromUTF8(snap.reason.c_str()),
+                                   snap.entries.size()));
+    wxSingleChoiceDialog pick(this, _("Take a snapshot of the settings now, or choose one to go back to."),
+                              _("Snapshots"), choices);
+    if (pick.ShowModal() != wxID_OK) return;
+    int missing = 0;
+    if (pick.GetSelection() == 0) {
+      auto snap = m_plugin->TakeSnapshot(_("Taken by hand").ToStdString(wxConvUTF8), &missing);
+      bool ok = m_plugin->SaveSnapshot(snap);
+      SetNote(!ok ? _("The snapshot could not be saved.")
+                  : missing ? wxString::Format(_("Snapshot saved: %zu values, %d not read. Read again "
+                                                 "and take another for a complete one."),
+                                               snap.entries.size(), missing)
+                            : wxString::Format(_("Snapshot saved: %zu values."), snap.entries.size()));
+      return;
+    }
+    const auto& snap = list[static_cast<size_t>(pick.GetSelection() - 1)];
+    // What differs from now, among the settings the plugin may change.
+    const PilotState& s = m_plugin->State();
+    auto pilot = s.Address(m_plugin->Now());
+    auto rudder = m_plugin->RudderNode();
+    std::vector<NavicoAutopilotPi::SettingWrite> writes;
+    wxString lines;
+    for (const auto& e : snap.entries) {
+      const auto* d = pilot_settings::Find(e.key);
+      if (!d || !pilot_settings::Editable(e.key)) continue;
+      auto a = e.node == pilot_settings::Node::kPilot ? pilot : rudder;
+      if (!a) continue;
+      auto kv = d->per_profile ? s.Setting(*a, e.key, e.instance) : s.Setting(*a, e.key);
+      std::optional<uint32_t> now;
+      if (kv) now = kv->Unsigned(static_cast<size_t>(d->bytes));
+      if (now && *now == e.raw) continue;
+      wxString name = wxGetTranslation(d->name);
+      for (const auto& prof : pilot_settings::Profiles())
+        if (d->per_profile && prof.instance == e.instance)
+          name += " (" + wxGetTranslation(prof.name) + ")";
+      lines += wxString::Format("%s: %s -> %s\n", name, now ? Describe(*d, *now) : wxString("?"),
+                                Describe(*d, e.raw));
+      writes.push_back({*a, e.key, e.raw, d->bytes, d->per_profile ? e.instance : uint8_t{0xFF}});
+    }
+    if (writes.empty()) {
+      SetNote(_("The settings are the same as in that snapshot."));
+      return;
+    }
+    wxString question = wxString::Format(_("Go back to the snapshot of %s?\n\n%s"),
+                                         wxString::FromUTF8(snap.time.c_str()), lines);
+    if (wxMessageBox(question, _("Snapshots"), wxYES_NO | wxICON_QUESTION, this) != wxYES) return;
+    auto before = m_plugin->TakeSnapshot(
+        wxString::Format(_("Before going back to %s"), wxString::FromUTF8(snap.time.c_str()))
+            .ToStdString(wxConvUTF8),
+        &missing);
+    if (!m_plugin->SaveSnapshot(before) &&
+        wxMessageBox(_("The snapshot of the current settings could not be saved. Change anyway?"),
+                     _("Snapshots"), wxYES_NO | wxICON_WARNING, this) != wxYES)
+      return;
+    m_snapshot_taken = true;
+    m_plugin->WritePilotSettings(writes);
+    SetNote(wxString::Format(_("Values sent: %zu. The window shows what the autopilot answers."),
+                             writes.size()));
+  }
+
+  void InstallationPressed() {
+    double now = m_plugin->Now();
+    if (now - m_install_first > 3) {
+      m_install_first = now;
+      m_install_presses = 0;
+    }
+    if (++m_install_presses < 3) {
+      SetNote(wxString::Format(_("Press %d more times to show the installation settings."),
+                               3 - m_install_presses));
+      return;
+    }
+    for (wxWindow* w : m_installation) w->Show();
+    m_install_button->Hide();
+    SetNote(_("Installation settings: boat, drive and rudder. Change them only if you know "
+              "what they do."));
+    GetSizer()->SetSizeHints(this);
+    Fit();
+  }
+
   /** Ask for a new value, confirm, send, and check the pilot's answer. */
   void Change(const pilot_settings::Definition& d, uint8_t instance = 0xFF) {
     const PilotState& s = m_plugin->State();
@@ -828,7 +989,7 @@ private:
                                       UnitText(d.unit));
     if (d.zero_label) range += " " + wxString::Format(_("0 = %s."), wxGetTranslation(d.zero_label));
     wxTextEntryDialog ask(this, range, title,
-                          current ? wxString::Format("%g", *current) : wxString());
+                          current ? Shown(d, *current) : wxString());
     if (ask.ShowModal() != wxID_OK) return;
     wxString text = ask.GetValue();
     text.Replace(",", ".");
@@ -843,6 +1004,18 @@ private:
     if (wxMessageBox(question, _("Change autopilot setting"), wxYES_NO | wxICON_QUESTION, this) !=
         wxYES)
       return;
+    // A way back: the settings as they are now, once per window, before the
+    // first change.
+    if (!m_snapshot_taken) {
+      int missing = 0;
+      auto snap = m_plugin->TakeSnapshot(
+          wxString::Format(_("Before changing %s"), title).ToStdString(wxConvUTF8), &missing);
+      if (!m_plugin->SaveSnapshot(snap) &&
+          wxMessageBox(_("The snapshot of the current settings could not be saved. Change anyway?"),
+                       _("Change autopilot setting"), wxYES_NO | wxICON_WARNING, this) != wxYES)
+        return;
+      m_snapshot_taken = true;
+    }
     uint32_t raw = pilot_settings::Encode(d, v);
     m_write_sent = m_plugin->Now();
     m_write = WriteState{*address, &d, v, instance, title};
@@ -951,6 +1124,12 @@ private:
   NavicoAutopilotPi* m_plugin;
   std::vector<wxStaticText*> m_values;
   std::vector<wxStaticText*> m_units;
+  std::vector<wxWindow*> m_all_rows;
+  std::vector<wxWindow*> m_installation;
+  ApButton* m_install_button = nullptr;
+  double m_install_first = -1e9;
+  int m_install_presses = 0;
+  bool m_snapshot_taken = false;
   std::vector<const pilot_settings::Definition*> m_profile_defs;
   std::vector<std::vector<std::function<void(const wxString&)>>> m_profile_cells;
   wxStaticText* m_note;
@@ -1060,9 +1239,7 @@ ApPanel::ApPanel(wxWindow* parent, NavicoAutopilotPi* plugin)
   AddButton(course, "+10", Command::kStarboard10);
   top->Add(course, 0, wxEXPAND | wxALL, 6);
 
-  m_settings_button = new ApButton(this, _("Autopilot settings..."));
-  m_settings_button->SetMinSize(wxSize(-1, GetCharHeight() * 2 + 4));
-  m_settings_button->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
+  m_display->SetOnSettings([this]() {
     auto* dlg = new SettingsDialog(wxGetTopLevelParent(this), m_plugin,
                                    ThemeFor(m_plugin->ColorScheme()));
     // Next to the panel, which OpenCPN keeps above other windows.
@@ -1070,7 +1247,6 @@ ApPanel::ApPanel(wxWindow* parent, NavicoAutopilotPi* plugin)
     dlg->Move(r.GetRight() + 8, r.GetTop());
     dlg->Show();
   });
-  top->Add(m_settings_button, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 6);
 
   m_message = new wxStaticText(this, wxID_ANY, "", wxDefaultPosition, wxSize(-1, -1),
                                wxST_NO_AUTORESIZE);
@@ -1262,6 +1438,5 @@ void ApPanel::ApplyColours(PI_ColorScheme cs) {
   m_message->SetForegroundColour(t.text);
   m_display->SetTheme(t);
   for (auto& [c, b] : m_buttons) static_cast<ApButton*>(b)->SetTheme(t);
-  if (m_settings_button) static_cast<ApButton*>(m_settings_button)->SetTheme(t);
   Refresh();
 }

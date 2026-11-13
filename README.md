@@ -132,6 +132,12 @@ Further keys, found by changing them on a Triton2 while listening (13 Nov
 2026): 14/63 minimum rudder (0.0001 rad), 14/61 drive engage (0 clutch,
 1 auto; the Triton2 also sets bits 5 and 6 of 14/09).
 
+**Snapshots.** Before the first change in the settings window, and before
+going back to an earlier state, the plugin stores the settings as text
+(`pilot 1B/000C 01 5236`: node, key, instance, raw value) in OpenCPN's data
+folder under `plugins/navico_autopilot_pi/snapshots`. Going back sends only
+the values that differ and that the plugin may change, one at a time.
+
 **Which device is the pilot.** A NAC-3 claims several addresses; only the
 part with function 150 (autopilot) follows 130850. The plugin takes the source
 of 65305 "Mode" reports from an AC or NAC (model byte `00` or `64`). A B&G

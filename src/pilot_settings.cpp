@@ -5,6 +5,9 @@
 
 #include "pilot_settings.h"
 
+#include <cstdio>
+#include <sstream>
+
 namespace pilot_settings {
 
 namespace {
@@ -114,6 +117,60 @@ std::string Text(const simnet::KeyValue& kv) {
   }
   while (!t.empty() && (t.back() == ' ' || t.back() == '@')) t.pop_back();
   return t;
+}
+
+const Definition* Find(simnet::SettingKey key) {
+  for (const auto& d : All())
+    if (d.key == key) return &d;
+  return nullptr;
+}
+
+std::string Serialize(const Snapshot& s) {
+  std::string out = "# navico_autopilot_pi snapshot of the pilot settings\n";
+  out += "time=" + s.time + "\n";
+  out += "reason=" + s.reason + "\n";
+  char line[64];
+  for (const auto& e : s.entries) {
+    std::snprintf(line, sizeof line, "%s %02X/%04X %02X %u\n",
+                  e.node == Node::kPilot ? "pilot" : "rudder", e.key.group, e.key.param, e.instance,
+                  e.raw);
+    out += line;
+  }
+  return out;
+}
+
+std::optional<Snapshot> ParseSnapshot(const std::string& text) {
+  Snapshot s;
+  std::istringstream in(text);
+  std::string line;
+  bool header = false;
+  while (std::getline(in, line)) {
+    if (!line.empty() && line.back() == '\r') line.pop_back();
+    if (line.rfind("# navico_autopilot_pi snapshot", 0) == 0) {
+      header = true;
+      continue;
+    }
+    if (line.rfind("time=", 0) == 0) {
+      s.time = line.substr(5);
+      continue;
+    }
+    if (line.rfind("reason=", 0) == 0) {
+      s.reason = line.substr(7);
+      continue;
+    }
+    char node[16];
+    unsigned group, param, instance, raw;
+    if (std::sscanf(line.c_str(), "%15s %x/%x %x %u", node, &group, &param, &instance, &raw) != 5)
+      continue;
+    std::string n(node);
+    if ((n != "pilot" && n != "rudder") || group > 0xFF || param > 0xFFFF || instance > 0xFF)
+      continue;
+    s.entries.push_back({n == "pilot" ? Node::kPilot : Node::kRudder,
+                         {static_cast<uint8_t>(group), static_cast<uint16_t>(param)},
+                         static_cast<uint8_t>(instance), static_cast<uint32_t>(raw)});
+  }
+  if (!header) return std::nullopt;
+  return s;
 }
 
 uint32_t Encode(const Definition& d, double shown) {

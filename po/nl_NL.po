@@ -245,9 +245,6 @@ msgstr "Snelheid door het water (log)"
 msgid "Autopilot settings"
 msgstr "Instellingen stuurautomaat"
 
-msgid "Autopilot settings..."
-msgstr "Instellingen stuurautomaat..."
-
 msgid "Read again"
 msgstr "Opnieuw lezen"
 
@@ -282,7 +279,7 @@ msgid "Transition speed"
 msgstr "Overgangssnelheid"
 
 msgid "Sailing"
-msgstr "Zeilen"
+msgstr "Varend"
 
 msgid "Tack angle"
 msgstr "Overstaghoek"
@@ -411,3 +408,57 @@ msgstr "Koppeling"
 
 msgid "Minimum rudder"
 msgstr "Minimum roer"
+
+msgid "Installation"
+msgstr "Installatie"
+
+msgid "Press %d more times to show the installation settings."
+msgstr "Druk nog %d keer om de installatie-instellingen te tonen."
+
+msgid "Installation settings: boat, drive and rudder. Change them only if you know what they do."
+msgstr "Installatie-instellingen: boot, aandrijving en roer. Wijzig ze alleen als je weet wat ze doen."
+
+msgid "Snapshots..."
+msgstr "Snapshots..."
+
+msgid "Snapshots"
+msgstr "Snapshots"
+
+msgid "Take a snapshot now"
+msgstr "Nu een snapshot maken"
+
+msgid "%s, %s (%zu values)"
+msgstr "%s, %s (%zu waarden)"
+
+msgid "Take a snapshot of the settings now, or choose one to go back to."
+msgstr "Maak nu een snapshot van de instellingen, of kies er een om naar terug te gaan."
+
+msgid "The snapshot could not be saved."
+msgstr "De snapshot kon niet worden opgeslagen."
+
+msgid "Snapshot saved: %zu values, %d not read. Read again and take another for a complete one."
+msgstr "Snapshot opgeslagen: %zu waarden, %d niet uitgelezen. Lees opnieuw en maak er nog een voor een volledige."
+
+msgid "Snapshot saved: %zu values."
+msgstr "Snapshot opgeslagen: %zu waarden."
+
+msgid "The settings are the same as in that snapshot."
+msgstr "De instellingen zijn gelijk aan die snapshot."
+
+msgid "Go back to the snapshot of %s?\n\n%s"
+msgstr "Terug naar de snapshot van %s?\n\n%s"
+
+msgid "The snapshot of the current settings could not be saved. Change anyway?"
+msgstr "De snapshot van de huidige instellingen kon niet worden opgeslagen. Toch wijzigen?"
+
+msgid "Values sent: %zu. The window shows what the autopilot answers."
+msgstr "Verstuurde waarden: %zu. Het venster toont wat de stuurautomaat antwoordt."
+
+msgid "Taken by hand"
+msgstr "Met de hand gemaakt"
+
+msgid "Before changing %s"
+msgstr "Voor wijziging van %s"
+
+msgid "Before going back to %s"
+msgstr "Voor terugzetten naar %s"

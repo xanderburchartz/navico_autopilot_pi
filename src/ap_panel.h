@@ -48,7 +48,6 @@ private:
   NavConfirmDialog* m_confirm = nullptr;
   double m_confirm_handled = -1e9;  ///< AwaitingSince() of the last shown request
   bool m_nfu_buttons = false;
-  wxWindow* m_settings_button = nullptr;
 };
 
 #endif  // NAVICO_AP_PANEL_H
