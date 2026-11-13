@@ -36,6 +36,8 @@ struct Definition {
   double scale;  ///< shown value = raw * scale
   /** For a list: names of 0, 1, 2 ...; empty for a number. */
   std::vector<const char*> choices;
+  /** If set, the raw value 0 means this (e.g. "Auto") instead of a number. */
+  const char* zero_label = nullptr;
 };
 
 const std::vector<Definition>& All();

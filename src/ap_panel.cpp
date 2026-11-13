@@ -700,6 +700,8 @@ private:
           auto v = pilot_settings::Decode(d, *kv);
           if (!v)
             text = "NA";
+          else if (d.zero_label && *v == 0)
+            text = wxGetTranslation(d.zero_label);
           else if (!d.choices.empty())
             text = *v >= 0 && *v < d.choices.size() ? wxGetTranslation(d.choices[static_cast<size_t>(*v)])
                                                     : wxString::Format("%.0f", *v);

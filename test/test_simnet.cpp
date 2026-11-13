@@ -300,7 +300,9 @@ static void TestNavAndSensors() {
 static void TestKeyValue() {
   // canboat example: read 18/0079 at address 3.
   CheckEq(KeyValueRead(3, {0x18, 0x0079}), "41 9F 03 00 FF FF 18 79 00 00 FF FF FF FF", "kv read");
-  CheckEq(KeyValueSet(4, {0x19, 0x000E}, 30), "41 9F 04 00 FF FF 19 0E 00 01 1E 00 00 00", "kv set");
+  // Recorded from a Triton2, rudder deadband manual 0.1 deg and back to Auto.
+  CheckEq(KeyValueSet(4, {0x14, 0x0006}, 17), "41 9F 04 FF FF FF 14 06 00 01 11 00 FF FF", "kv set");
+  CheckEq(KeyValueSet(4, {0x14, 0x0006}, 0), "41 9F 04 FF FF FF 14 06 00 01 00 00 FF FF", "kv set auto");
   auto kv = ParseKeyValue(Bytes("41 9F 03 00 FF FF 18 79 00 00 FF FF FF FF"), false);
   CHECK(kv && kv->address == 3 && kv->key.group == 0x18 && kv->key.param == 0x79 &&
         kv->op == KeyOp::kRead && !kv->Unsigned());

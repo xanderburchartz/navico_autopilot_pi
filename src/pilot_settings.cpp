@@ -34,6 +34,9 @@ const std::vector<Definition>& All() {
       {{0x1A, 0x0E}, Node::kPilot, "Profile High", "Autotrim", "s", 2, false, 0.1, {}},
       {{0x1A, 0x10}, Node::kPilot, "Profile High", "Turn rate", "deg/min", 4, false,
        3.125e-8 * kRadToDeg * 60.0, {}},
+      // Recorded on Penny Lane (13 Nov 2026, Triton2 set and NAC-3 reply).
+      {{0x14, 0x06}, Node::kPilot, "Drive", "Rudder deadband", "deg", 2, false,
+       0.0001 * kRadToDeg, {}, "Auto"},
       {{0x09, 0x01}, Node::kRudder, "Rudder", "Calibration, starboard", "deg", 2, true,
        0.0001 * kRadToDeg, {}},
       {{0x09, 0x02}, Node::kRudder, "Rudder", "Calibration, port", "deg", 2, true,

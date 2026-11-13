@@ -240,13 +240,14 @@ std::vector<uint8_t> KeyValueRead(uint8_t address, SettingKey key, uint8_t insta
           static_cast<uint8_t>(KeyOp::kRead), 0xFF, 0xFF, 0xFF, 0xFF};
 }
 
-std::vector<uint8_t> KeyValueSet(uint8_t address, SettingKey key, uint32_t value,
-                                 uint8_t instance) {
-  return {kHeader0, kHeader1, address, instance, 0xFF, 0xFF, key.group,
-          static_cast<uint8_t>(key.param & 0xFF), static_cast<uint8_t>(key.param >> 8),
-          static_cast<uint8_t>(KeyOp::kSet),
-          static_cast<uint8_t>(value & 0xFF), static_cast<uint8_t>((value >> 8) & 0xFF),
-          static_cast<uint8_t>((value >> 16) & 0xFF), static_cast<uint8_t>(value >> 24)};
+std::vector<uint8_t> KeyValueSet(uint8_t address, SettingKey key, uint32_t value, int bytes) {
+  std::vector<uint8_t> d = {kHeader0, kHeader1, address, 0xFF, 0xFF, 0xFF, key.group,
+                            static_cast<uint8_t>(key.param & 0xFF),
+                            static_cast<uint8_t>(key.param >> 8),
+                            static_cast<uint8_t>(KeyOp::kSet)};
+  for (int i = 0; i < 4; i++)
+    d.push_back(i < bytes ? static_cast<uint8_t>((value >> (8 * i)) & 0xFF) : 0xFF);
+  return d;
 }
 
 std::optional<uint32_t> KeyValue::Unsigned(size_t bytes) const {

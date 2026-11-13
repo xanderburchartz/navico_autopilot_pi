@@ -316,3 +316,12 @@ msgstr "Kalibratie, stuurboord"
 
 msgid "Calibration, port"
 msgstr "Kalibratie, bakboord"
+
+msgid "Drive"
+msgstr "Aandrijving"
+
+msgid "Rudder deadband"
+msgstr "Roer-dodeband"
+
+msgid "Auto"
+msgstr "Auto"

@@ -187,9 +187,13 @@ enum class KeyOp : uint8_t { kRead = 0, kSet = 1, kReply = 2 };
 
 /** 130845 asking the device at \p address for the value of \p key. */
 std::vector<uint8_t> KeyValueRead(uint8_t address, SettingKey key, uint8_t instance = 0);
-/** 130845 setting \p key at \p address to \p value (4 bytes, little-endian). */
+/**
+ * 130845 setting \p key at \p address to \p value: \p bytes bytes
+ * little-endian, padded with FF, instance FF, as a Triton2 sends it
+ * (recorded 13 Nov 2026: 41 9F 04 FF FF FF 14 06 00 01 11 00 FF FF).
+ */
 std::vector<uint8_t> KeyValueSet(uint8_t address, SettingKey key, uint32_t value,
-                                 uint8_t instance = 0);
+                                 int bytes = 2);
 
 /** A received 130845 or 130846. */
 struct KeyValue {
