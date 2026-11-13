@@ -6,6 +6,7 @@
 #ifndef NAVICO_AP_PREFS_H
 #define NAVICO_AP_PREFS_H
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
