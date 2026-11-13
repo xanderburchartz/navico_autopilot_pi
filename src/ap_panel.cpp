@@ -898,7 +898,7 @@ private:
     if (pick.ShowModal() != wxID_OK) return;
     int missing = 0;
     if (pick.GetSelection() == 0) {
-      auto snap = m_plugin->TakeSnapshot(_("Taken by hand").ToStdString(wxConvUTF8), &missing);
+      auto snap = m_plugin->TakeSnapshot(std::string(wxString(_("Taken by hand")).utf8_str()), &missing);
       bool ok = m_plugin->SaveSnapshot(snap);
       SetNote(!ok ? _("The snapshot could not be saved.")
                   : missing ? wxString::Format(_("Snapshot saved: %zu values, %d not read. Read again "
@@ -939,8 +939,9 @@ private:
                                          wxString::FromUTF8(snap.time.c_str()), lines);
     if (wxMessageBox(question, _("Snapshots"), wxYES_NO | wxICON_QUESTION, this) != wxYES) return;
     auto before = m_plugin->TakeSnapshot(
-        wxString::Format(_("Before going back to %s"), wxString::FromUTF8(snap.time.c_str()))
-            .ToStdString(wxConvUTF8),
+        std::string(wxString::Format(_("Before going back to %s"),
+                                     wxString::FromUTF8(snap.time.c_str()))
+                        .utf8_str()),
         &missing);
     if (!m_plugin->SaveSnapshot(before) &&
         wxMessageBox(_("The snapshot of the current settings could not be saved. Change anyway?"),
@@ -1009,7 +1010,7 @@ private:
     if (!m_snapshot_taken) {
       int missing = 0;
       auto snap = m_plugin->TakeSnapshot(
-          wxString::Format(_("Before changing %s"), title).ToStdString(wxConvUTF8), &missing);
+          std::string(wxString::Format(_("Before changing %s"), title).utf8_str()), &missing);
       if (!m_plugin->SaveSnapshot(snap) &&
           wxMessageBox(_("The snapshot of the current settings could not be saved. Change anyway?"),
                        _("Change autopilot setting"), wxYES_NO | wxICON_WARNING, this) != wxYES)

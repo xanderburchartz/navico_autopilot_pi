@@ -492,7 +492,7 @@ std::vector<pilot_settings::Snapshot> NavicoAutopilotPi::Snapshots() const {
     wxFile f(path);
     wxString text;
     if (!f.IsOpened() || !f.ReadAll(&text, wxConvUTF8)) continue;
-    auto s = pilot_settings::ParseSnapshot(text.ToStdString(wxConvUTF8));
+    auto s = pilot_settings::ParseSnapshot(std::string(text.utf8_str()));
     if (s && !s->entries.empty()) list.push_back(*s);
   }
   return list;
