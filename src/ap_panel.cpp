@@ -13,8 +13,10 @@
 #include <cmath>
 #include <functional>
 #include <optional>
+#include <set>
 
 #include <wx/dcbuffer.h>
+#include <wx/textdlg.h>
 #if wxUSE_GRAPHICS_CONTEXT
 #include <wx/dcgraph.h>
 #endif
@@ -545,12 +547,43 @@ private:
  * estimate assumes the pilot mirrors the set wind angle (heading turns by
  * twice that angle), ignoring the loss of speed.
  */
-class TackDialog : public wxDialog {
+/**
+ * Base of the plugin's own windows. They hang on OpenCPN's frame (or on the
+ * floating AUI frame) and would otherwise be deleted after OpenCPN unloaded
+ * the plugin library, crashing in their destructor (seen on macOS when
+ * quitting with the settings window open). The panel deletes them all when
+ * it goes, which happens in DeInit.
+ */
+class PluginDialog : public wxDialog {
+public:
+  PluginDialog(wxWindow* parent, const wxString& title, long style)
+      : wxDialog(parent, wxID_ANY, title, wxDefaultPosition, wxDefaultSize, style) {
+    Open().insert(this);
+  }
+  ~PluginDialog() override { Open().erase(this); }
+
+  static void DeleteAll() {
+    std::set<PluginDialog*> list = Open();
+    for (PluginDialog* d : list) {
+      // A dialog that closed itself waits in wxWidgets' pending delete list;
+      // take it out so it is not deleted a second time.
+      if (wxTheApp && wxTheApp->IsScheduledForDestruction(d)) wxPendingDelete.DeleteObject(d);
+      delete d;
+    }
+  }
+
+private:
+  static std::set<PluginDialog*>& Open() {
+    static std::set<PluginDialog*> open;
+    return open;
+  }
+};
+
+class TackDialog : public PluginDialog {
 public:
   TackDialog(wxWindow* parent, NavicoAutopilotPi* plugin, const Theme& theme,
              std::optional<double> heading, std::optional<double> wind, bool magnetic)
-      : wxDialog(parent, wxID_ANY, _("Tack or gybe"), wxDefaultPosition, wxDefaultSize,
-                 wxCAPTION | wxSTAY_ON_TOP),
+      : PluginDialog(parent, _("Tack or gybe"), wxCAPTION | wxSTAY_ON_TOP),
         m_plugin(plugin) {
     SetBackgroundColour(theme.back);
     bool gybe = wind && std::fabs(*wind) > 90;
@@ -610,18 +643,18 @@ private:
 
 /**
  * The pilot's own settings, read over the key value channel (130845) when
- * the window opens. Read only: changing settings comes after it has been
- * tried on a pilot with the owner present.
+ * the window opens. Change sends a new value after a confirmation and shows
+ * the value the pilot answers with.
  */
-class SettingsDialog : public wxDialog {
+class SettingsDialog : public PluginDialog {
 public:
   SettingsDialog(wxWindow* parent, NavicoAutopilotPi* plugin, const Theme& theme)
-      : wxDialog(parent, wxID_ANY, _("Autopilot settings"), wxDefaultPosition, wxDefaultSize,
-                 wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER | wxSTAY_ON_TOP),
+      : PluginDialog(parent, _("Autopilot settings"),
+                     wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER | wxSTAY_ON_TOP),
         m_plugin(plugin) {
     SetBackgroundColour(theme.back);
     auto* top = new wxBoxSizer(wxVERTICAL);
-    auto* grid = new wxFlexGridSizer(3, 4, 16);
+    auto* grid = new wxFlexGridSizer(4, 4, 16);
     grid->AddGrowableCol(0);
     const char* section = "";
     for (const auto& d : pilot_settings::All()) {
@@ -633,6 +666,7 @@ public:
         h->SetFont(f);
         h->SetForegroundColour(theme.text);
         grid->Add(h, 0, wxTOP, 8);
+        grid->AddSpacer(0);
         grid->AddSpacer(0);
         grid->AddSpacer(0);
       }
@@ -648,6 +682,17 @@ public:
       grid->Add(value, 0, wxALIGN_CENTRE_VERTICAL | wxEXPAND);
       grid->Add(unit, 0, wxALIGN_CENTRE_VERTICAL);
       m_values.push_back(value);
+      m_units.push_back(unit);
+      if (pilot_settings::Editable(d.key)) {
+        auto* change = new ApButton(this, _("Change"));
+        change->SetTheme(theme);
+        change->SetMinSize(wxSize(GetCharWidth() * 10, GetCharHeight() + 10));
+        const pilot_settings::Definition* def = &d;
+        change->Bind(wxEVT_BUTTON, [this, def](wxCommandEvent&) { Change(*def); });
+        grid->Add(change, 0, wxALIGN_CENTRE_VERTICAL);
+      } else {
+        grid->AddSpacer(0);
+      }
     }
     top->Add(grid, 1, wxEXPAND | wxALL, 12);
     m_note = new wxStaticText(this, wxID_ANY, "");
@@ -685,6 +730,62 @@ private:
     return wxString::FromUTF8(unit);
   }
 
+  static wxString Shown(const pilot_settings::Definition& d, double v) {
+    if (d.zero_label && v == 0) return wxGetTranslation(d.zero_label);
+    return wxString::Format("%.*f", d.decimals, v);
+  }
+
+  /** Value with its unit; no unit after a label such as "Auto". */
+  static wxString WithUnit(const pilot_settings::Definition& d, double v) {
+    wxString unit = UnitText(d.unit);
+    if ((d.zero_label && v == 0) || unit.empty()) return Shown(d, v);
+    return unit.StartsWith(L"\u00B0") ? Shown(d, v) + unit : Shown(d, v) + " " + unit;
+  }
+
+  /** Ask for a new value, confirm, send, and check the pilot's answer. */
+  void Change(const pilot_settings::Definition& d) {
+    const PilotState& s = m_plugin->State();
+    auto address = d.node == pilot_settings::Node::kPilot ? s.Address(m_plugin->Now())
+                                                          : m_plugin->RudderNode();
+    auto limits = pilot_settings::Editable(d.key);
+    if (!address || !limits) return;
+    std::optional<double> current;
+    if (auto kv = s.Setting(*address, d.key)) current = pilot_settings::Decode(d, *kv);
+    wxString range = wxString::Format(_("Between %g and %g %s."), limits->min, limits->max,
+                                      UnitText(d.unit));
+    if (d.zero_label) range += " " + wxString::Format(_("0 = %s."), wxGetTranslation(d.zero_label));
+    wxTextEntryDialog ask(this, range, wxGetTranslation(d.name),
+                          current ? wxString::Format("%g", *current) : wxString());
+    if (ask.ShowModal() != wxID_OK) return;
+    wxString text = ask.GetValue();
+    text.Replace(",", ".");
+    double v;
+    if (!text.ToCDouble(&v) || v < limits->min || v > limits->max) {
+      wxMessageBox(range, wxGetTranslation(d.name), wxOK | wxICON_WARNING, this);
+      return;
+    }
+    wxString question = wxString::Format(_("Change %s from %s to %s?"), wxGetTranslation(d.name),
+                                         current ? WithUnit(d, *current) : wxString("?"),
+                                         WithUnit(d, v));
+    if (wxMessageBox(question, _("Change autopilot setting"), wxYES_NO | wxICON_QUESTION, this) !=
+        wxYES)
+      return;
+    uint32_t raw = pilot_settings::Encode(d, v);
+    m_write_sent = m_plugin->Now();
+    m_write = WriteState{*address, &d, v};
+    if (!m_plugin->WritePilotSetting(*address, d.key, raw, d.bytes)) {
+      m_write.reset();
+      SetNote(_("Sending failed."));
+    }
+  }
+
+  void SetNote(const wxString& note) {
+    if (m_note->GetLabel() == note) return;
+    m_note->SetLabel(note);
+    m_note->Wrap(GetClientSize().GetWidth() - 24);
+    Layout();
+  }
+
   void ShowValues() {
     const PilotState& s = m_plugin->State();
     auto pilot = s.Address(m_plugin->Now());
@@ -694,41 +795,73 @@ private:
     for (const auto& d : pilot_settings::All()) {
       auto a = d.node == pilot_settings::Node::kPilot ? pilot : rudder;
       wxString text = "...";
+      bool show_unit = true;
       if (a) {
         if (auto kv = s.Setting(*a, d.key)) {
           answered++;
           auto v = pilot_settings::Decode(d, *kv);
           if (!v)
             text = "NA";
-          else if (d.zero_label && *v == 0)
+          else if (d.zero_label && *v == 0) {
             text = wxGetTranslation(d.zero_label);
+            show_unit = false;
+          }
           else if (!d.choices.empty())
             text = *v >= 0 && *v < d.choices.size() ? wxGetTranslation(d.choices[static_cast<size_t>(*v)])
                                                     : wxString::Format("%.0f", *v);
           else
-            text = wxString::Format(d.scale < 0.05 || d.scale > 0.9 ? "%.1f" : "%.2f", *v);
+            text = Shown(d, *v);
         }
       }
       if (m_values[i]->GetLabel() != text) m_values[i]->SetLabel(text);
+      wxString unit = show_unit ? UnitText(d.unit) : wxString();
+      if (m_units[i]->GetLabel() != unit) m_units[i]->SetLabel(unit);
       i++;
     }
-    wxString note;
-    if (!pilot)
-      note = _("No autopilot found.");
-    else if (answered == 0 && m_plugin->Now() - m_asked > 3)
-      note = _("The autopilot did not answer. It may accept settings requests only from its own displays.");
-    if (m_note->GetLabel() != note) {
-      m_note->SetLabel(note);
-      m_note->Wrap(GetClientSize().GetWidth() - 24);
-      Layout();
+    if (m_write) {
+      // Answer to a change: the pilot sends back the value it took.
+      double now = m_plugin->Now();
+      const auto& w = *m_write;
+      auto kv = s.Setting(w.address, w.def->key);
+      bool answered_now = kv && s.SettingTime(w.address, w.def->key) >= m_write_sent;
+      if (answered_now) {
+        auto v = pilot_settings::Decode(*w.def, *kv);
+        wxString name = wxGetTranslation(w.def->name);
+        wxString got = v ? WithUnit(*w.def, *v) : wxString("NA");
+        double step = std::fabs(w.def->scale) * 1.5 + 1e-9;
+        if (v && std::fabs(*v - w.value) <= std::max(step, std::fabs(w.value) * 0.02))
+          SetNote(wxString::Format(_("%s set to %s."), name, got));
+        else
+          SetNote(wxString::Format(_("%s: the autopilot answered %s."), name, got));
+        m_write.reset();
+      } else if (now - m_write_sent > 3) {
+        SetNote(_("No answer from the autopilot: the setting may not have changed. Read again to check."));
+        m_write.reset();
+      } else {
+        SetNote(_("Waiting for the autopilot..."));
+      }
+      return;
     }
+    if (!pilot)
+      SetNote(_("No autopilot found."));
+    else if (answered == 0 && !m_plugin->ReadingSettings() && m_plugin->Now() - m_asked > 3)
+      SetNote(_("The autopilot did not answer. It may accept settings requests only from its own displays."));
   }
+
+  struct WriteState {
+    uint8_t address;
+    const pilot_settings::Definition* def;
+    double value;
+  };
 
   NavicoAutopilotPi* m_plugin;
   std::vector<wxStaticText*> m_values;
+  std::vector<wxStaticText*> m_units;
   wxStaticText* m_note;
   wxTimer m_refresh;
   double m_asked = 0;
+  std::optional<WriteState> m_write;
+  double m_write_sent = 0;
 };
 
 // ---- NAV confirmation ---------------------------------------------------------
@@ -738,11 +871,10 @@ private:
  * asks for one). This window asks it inside OpenCPN; Confirm sends what a
  * Triton2 sends.
  */
-class NavConfirmDialog : public wxDialog {
+class NavConfirmDialog : public PluginDialog {
 public:
   NavConfirmDialog(wxWindow* parent, NavicoAutopilotPi* plugin, const Theme& theme)
-      : wxDialog(parent, wxID_ANY, _("Start navigation"), wxDefaultPosition, wxDefaultSize,
-                 wxCAPTION | wxSTAY_ON_TOP),
+      : PluginDialog(parent, _("Start navigation"), wxCAPTION | wxSTAY_ON_TOP),
         m_plugin(plugin) {
     SetBackgroundColour(theme.back);
     SetForegroundColour(theme.text);
@@ -855,7 +987,8 @@ ApPanel::ApPanel(wxWindow* parent, NavicoAutopilotPi* plugin)
 }
 
 ApPanel::~ApPanel() {
-  if (m_confirm) m_confirm->Destroy();
+  m_confirm = nullptr;
+  PluginDialog::DeleteAll();
 }
 
 wxWindow* ApPanel::AddButton(wxSizer* sizer, const wxString& label, Command c) {

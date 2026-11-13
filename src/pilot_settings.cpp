@@ -27,27 +27,64 @@ const std::vector<Definition>& All() {
       {{0x18, 0x0C}, Node::kPilot, "Boat", "Transition speed", "kn", 2, false, 0.01 * kMsToKn, {}},
       {{0x18, 0x57}, Node::kPilot, "Boat", "Low boat speed alarm below", "kn", 2, false,
        0.01 * kMsToKn, {}},
-      {{0x18, 0x0B}, Node::kPilot, "Sailing", "Tack angle", "deg", 2, false, 360.0 / 65536.0, {}},
+      {{0x18, 0x0B}, Node::kPilot, "Sailing", "Tack angle", "deg", 2, false, 360.0 / 65536.0, {}, nullptr, 0},
       {{0x1C, 0x08}, Node::kPilot, "Sailing", "Tack time", "s", 2, false, 0.1, {}},
       // Profile Low is not group 19 on a NAC-3 (no answer, 13 Nov 2026); key unknown.
-      {{0x1A, 0x0D}, Node::kPilot, "Profile High", "Rudder gain", "", 2, false, 0.01, {}},
-      {{0x1A, 0x0F}, Node::kPilot, "Profile High", "Counter rudder", "", 2, false, 0.01, {}},
-      {{0x1A, 0x0E}, Node::kPilot, "Profile High", "Autotrim", "s", 2, false, 0.1, {}},
+      {{0x1A, 0x0D}, Node::kPilot, "Profile High", "Rudder gain", "", 2, false, 0.01, {}, nullptr, 2},
+      {{0x1A, 0x0F}, Node::kPilot, "Profile High", "Counter rudder", "", 2, false, 0.01, {}, nullptr, 2},
+      {{0x1A, 0x0E}, Node::kPilot, "Profile High", "Autotrim", "s", 2, false, 0.1, {}, nullptr, 0},
       {{0x1A, 0x10}, Node::kPilot, "Profile High", "Turn rate", "deg/min", 4, false,
-       3.125e-8 * kRadToDeg * 60.0, {}},
+       3.125e-8 * kRadToDeg * 60.0, {}, nullptr, 0},
       // Recorded on Penny Lane (13 Nov 2026, Triton2 set and NAC-3 reply).
       {{0x14, 0x06}, Node::kPilot, "Drive", "Rudder deadband", "deg", 2, false,
        0.0001 * kRadToDeg, {}, "Auto"},
       {{0x14, 0x1D}, Node::kPilot, "Drive", "Drive voltage", "V", 2, false, 0.01, {}},
-      {{0x14, 0x02}, Node::kPilot, "Drive", "Minimum power", "%", 2, false, 1, {}},
-      {{0x14, 0x01}, Node::kPilot, "Drive", "Maximum power", "%", 2, false, 1, {}},
-      {{0x18, 0x7A}, Node::kPilot, "Drive", "Rudder limit", "deg", 2, false, 0.0001 * kRadToDeg, {}},
+      {{0x14, 0x02}, Node::kPilot, "Drive", "Minimum power", "%", 2, false, 1, {}, nullptr, 0},
+      {{0x14, 0x01}, Node::kPilot, "Drive", "Maximum power", "%", 2, false, 1, {}, nullptr, 0},
+      {{0x18, 0x7A}, Node::kPilot, "Drive", "Rudder limit", "deg", 2, false, 0.0001 * kRadToDeg, {}, nullptr, 0},
       {{0x09, 0x01}, Node::kRudder, "Rudder", "Calibration, starboard", "deg", 2, true,
        0.0001 * kRadToDeg, {}},
       {{0x09, 0x02}, Node::kRudder, "Rudder", "Calibration, port", "deg", 2, true,
        0.0001 * kRadToDeg, {}},
   };
   return list;
+}
+
+std::optional<Limits> Editable(simnet::SettingKey key) {
+  // Wide guard rails of the plugin itself; the pilot applies its own limits
+  // and rounds (the deadband 0.1 deg came back as 0.0016 rad).
+  struct Entry {
+    simnet::SettingKey key;
+    Limits limits;
+  };
+  static const Entry list[] = {
+      {{0x18, 0x56}, {3, 60}},      // boat length, m
+      {{0x18, 0x7F}, {1, 40}},      // cruising speed, kn
+      {{0x18, 0x0C}, {1, 40}},      // transition speed, kn
+      {{0x18, 0x57}, {0, 10}},      // low boat speed alarm, kn
+      {{0x18, 0x0B}, {50, 150}},    // tack angle, deg
+      {{0x1C, 0x08}, {2, 60}},      // tack time, s
+      {{0x1A, 0x0D}, {0.05, 4}},    // rudder gain
+      {{0x1A, 0x0F}, {0, 4}},       // counter rudder
+      {{0x1A, 0x0E}, {5, 400}},     // autotrim, s
+      {{0x1A, 0x10}, {30, 720}},    // turn rate, deg/min
+      {{0x14, 0x06}, {0, 5}},       // rudder deadband, deg (0 = Auto)
+      {{0x14, 0x02}, {0, 50}},      // minimum power, %
+      {{0x14, 0x01}, {50, 100}},    // maximum power, %
+      {{0x18, 0x7A}, {10, 45}},     // rudder limit, deg
+  };
+  for (const auto& e : list)
+    if (e.key == key) return e.limits;
+  return std::nullopt;
+}
+
+uint32_t Encode(const Definition& d, double shown) {
+  double raw = d.choices.empty() ? shown / d.scale : shown;
+  if (raw < 0) {
+    int32_t s = static_cast<int32_t>(raw - 0.5);
+    return static_cast<uint32_t>(s) & (d.bytes == 4 ? 0xFFFFFFFFu : d.bytes == 2 ? 0xFFFFu : 0xFFu);
+  }
+  return static_cast<uint32_t>(raw + 0.5);
 }
 
 std::optional<double> Decode(const Definition& d, const simnet::KeyValue& kv) {

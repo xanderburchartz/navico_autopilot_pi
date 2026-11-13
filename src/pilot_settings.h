@@ -13,6 +13,7 @@
 #ifndef NAVICO_AP_PILOT_SETTINGS_H
 #define NAVICO_AP_PILOT_SETTINGS_H
 
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <vector>
@@ -38,9 +39,23 @@ struct Definition {
   std::vector<const char*> choices;
   /** If set, the raw value 0 means this (e.g. "Auto") instead of a number. */
   const char* zero_label = nullptr;
+  /** Decimals to show, matching the pilot's resolution and the displays. */
+  int decimals = 1;
 };
 
 const std::vector<Definition>& All();
+
+/** Range in shown units within which the plugin lets a setting be changed;
+ *  none if the plugin does not change it (boat type: may reset the steering
+ *  profiles; drive voltage and rudder calibration: wrong values can harm the
+ *  drive or belong to the calibration procedure). */
+struct Limits {
+  double min, max;
+};
+std::optional<Limits> Editable(simnet::SettingKey key);
+
+/** Raw value to send for a shown value (rounded to the setting's resolution). */
+uint32_t Encode(const Definition& d, double shown);
 
 /** Shown value of \p kv for \p d: a number (scaled) or a choice index. */
 std::optional<double> Decode(const Definition& d, const simnet::KeyValue& kv);

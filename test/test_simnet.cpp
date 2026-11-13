@@ -333,6 +333,14 @@ static void TestKeyValue() {
   CHECK(t && std::fabs(*t - 11.99) < 0.01);
   auto c = pilot_settings::Decode(*cal, *ParseKeyValue(Bytes("41 9F 07 00 01 05 09 02 00 02 23 E8 FF FF"), false));
   CHECK(c && std::fabs(*c - -35.0) < 0.01);
+
+  // Encoding for a change: deadband 0.1 deg = 17 (as the Triton2 sent), 0 = Auto.
+  const pilot_settings::Definition* db = nullptr;
+  for (const auto& d : pilot_settings::All())
+    if (d.key == SettingKey{0x14, 0x06}) db = &d;
+  CHECK(db && pilot_settings::Encode(*db, 0.1) == 17 && pilot_settings::Encode(*db, 0) == 0);
+  CHECK(pilot_settings::Editable({0x14, 0x06}) && !pilot_settings::Editable({0x14, 0x1D}) &&
+        !pilot_settings::Editable({0x18, 0x0A}) && !pilot_settings::Editable({0x09, 0x01}));
 }
 
 int main() {

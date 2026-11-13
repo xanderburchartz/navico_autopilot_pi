@@ -346,3 +346,38 @@ msgstr "Roerlimiet"
 
 msgid "Maximum power"
 msgstr "Maximum vermogen"
+
+msgid "Change"
+msgstr "Wijzig"
+
+#, c-format
+msgid "Between %g and %g %s."
+msgstr "Tussen %g en %g %s."
+
+#, c-format
+msgid "0 = %s."
+msgstr "0 = %s."
+
+#, c-format
+msgid "Change %s from %s to %s?"
+msgstr "%s wijzigen van %s naar %s?"
+
+msgid "Change autopilot setting"
+msgstr "Instelling stuurautomaat wijzigen"
+
+msgid "Sending failed."
+msgstr "Verzenden mislukt."
+
+#, c-format
+msgid "%s set to %s."
+msgstr "%s staat nu op %s."
+
+#, c-format
+msgid "%s: the autopilot answered %s."
+msgstr "%s: de stuurautomaat antwoordde %s."
+
+msgid "No answer from the autopilot: the setting may not have changed. Read again to check."
+msgstr "Geen antwoord van de stuurautomaat: de instelling is mogelijk niet gewijzigd. Lees opnieuw om te controleren."
+
+msgid "Waiting for the autopilot..."
+msgstr "Wachten op de stuurautomaat..."

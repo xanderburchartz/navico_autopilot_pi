@@ -26,7 +26,10 @@ On Android, OpenCPN only shows Import plugin when `CatalogExpert=1` is set
 in `opencpn.conf`, which the Android app does not let you change yet. The
 Android builds will be installable from the plugin catalog later.
 
-The plugin sends one command per button press and nothing else.
+The plugin sends one command per button press (NFU repeats while the button
+is held), asks devices for their name once per connection, and reads the
+pilot settings only when the settings window opens. A setting changes only
+after you confirm it.
 
 ## Reporting
 

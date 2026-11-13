@@ -108,8 +108,12 @@ over the Simnet key value channel, PGN 130845: `41 9F <device> 00 FF FF
 <group> <param lo hi> <op> <value, 4 bytes LE>` with op 0 read, 1 set, 2
 reply. It answers reads from a Yacht Devices gateway too (measured 13 Nov
 2026). The rudder calibration (09/01, 09/02) lives on the rudder feedback
-node, not on the pilot. The plugin reads the known settings when the
-settings window opens; it does not change them yet.
+node, not on the pilot. A set uses instance `FF` and pads a 2-byte value
+with `FF`, as a Triton2 does; the pilot replies with the value it took.
+The plugin reads the known settings when the settings window opens, one
+request at a time (the next after the answer or 1.5 s, an unanswered one is
+asked once more), and changes a setting only after a confirmation. Boat
+type, drive voltage and rudder calibration are read only.
 
 **Which device is the pilot.** A NAC-3 claims several addresses; only the
 part with function 150 (autopilot) follows 130850. The plugin takes the source

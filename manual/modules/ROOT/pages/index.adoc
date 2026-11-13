@@ -106,6 +106,22 @@ The pilot follows the route or waypoint of the active navigation source on
 the bus, for example the plotter or OpenCPN. Without valid navigation data
 the pilot does not change to NAV and reports "Navigation data missing".
 
+=== Autopilot settings
+
+*Autopilot settings...* opens a window with the settings the pilot computer
+keeps itself: boat, sailing, steering profile High, drive and rudder
+calibration. The plugin asks the pilot for each value when the window opens,
+one at a time; a value that stays at `...` got no answer, *Read again* asks
+once more. Not every pilot answers every request on the first try.
+
+*Change* next to a value asks for the new value within a range, asks for
+confirmation and then sends it. The pilot answers with the value it took,
+which can be rounded to its own resolution; the window shows that answer.
+Boat type, drive voltage and the rudder calibration are shown but cannot be
+changed here: a wrong value there can harm the drive or belongs to the
+commissioning steps on the pilot controller. Profile Low, the control
+method, the clutch and the minimum rudder are not in the list yet.
+
 Apart from NFU, each button press sends one command, with no heartbeat. Every
 command is written to the OpenCPN log with its bytes, on lines starting with
 `navico_autopilot_pi:`.
@@ -125,6 +141,11 @@ The pilot echoed the command but did not follow it within 3 seconds, for
 example NAV without navigation data.
 Alarm: ...::
 An alarm the pilot reports, with its own text, as long as it is active.
+The autopilot did not answer. It may accept settings requests only from its own displays.::
+None of the settings requests got an answer. The NAC-3 answers through a
+Yacht Devices gateway; other pilots or gateways may not.
+No answer from the autopilot: the setting may not have changed. Read again to check.::
+After *Change* the pilot did not answer within 3 seconds.
 
 == How it works
 

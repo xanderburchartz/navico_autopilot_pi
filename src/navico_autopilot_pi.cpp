@@ -11,6 +11,7 @@
 #include "navico_autopilot_pi.h"
 
 #include <chrono>
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 
@@ -374,14 +375,33 @@ void NavicoAutopilotPi::ReadPilotSettings() {
   // the pilot get one at a time, as a display does when it opens a page.
   auto pilot = m_state.Address(Now());
   auto rudder = RudderNode();
+  m_kv_retried.clear();
   for (const auto& d : pilot_settings::All()) {
     auto a = d.node == pilot_settings::Node::kPilot ? pilot : rudder;
-    if (a) m_kv_queue.push_back({*a, d.key});
+    if (!a) continue;
+    std::pair<uint8_t, simnet::SettingKey> item{*a, d.key};
+    if (m_kv_waiting == item ||
+        std::find(m_kv_queue.begin(), m_kv_queue.end(), item) != m_kv_queue.end())
+      continue;
+    m_kv_queue.push_back(item);
   }
   // One request at a time: the NAC-3 answers late and bundled when asked
   // quickly (13 Nov 2026), so the next one goes out after the answer or 1.5 s.
   if (!m_kv_queue.empty() && !m_kv_timer.IsRunning()) m_kv_timer.Start(100);
   wxLogMessage("navico_autopilot_pi: reading %zu pilot settings", m_kv_queue.size());
+}
+
+bool NavicoAutopilotPi::WritePilotSetting(uint8_t address, simnet::SettingKey key,
+                                          uint32_t raw, int bytes) {
+  auto driver = Driver();
+  if (!driver) return false;
+  Register(driver->handle);
+  auto data = simnet::KeyValueSet(address, key, raw, bytes);
+  auto payload = std::make_shared<std::vector<uint8_t>>(data);
+  CommDriverResult r = WriteCommDriverN2K(driver->handle, simnet::kPgnKeyValue, 255, 3, payload);
+  wxLogMessage("navico_autopilot_pi: set %02X/%04X at %d to %u: 130845 %s (result %d)", key.group,
+               key.param, address, raw, simnet::Hex(data).c_str(), r);
+  return r == RESULT_COMM_NO_ERROR;
 }
 
 void NavicoAutopilotPi::OnKvTimer(wxTimerEvent&) {
@@ -392,16 +412,19 @@ void NavicoAutopilotPi::OnKvTimer(wxTimerEvent&) {
     m_kv_timer.Stop();
     return;
   }
-  if (m_kv_queue.empty()) {
-    m_kv_waiting.reset();
-    return;
-  }
   double now = Now();
   if (m_kv_waiting) {
     auto [wa, wk] = *m_kv_waiting;
     bool answered = m_state.Setting(wa, wk) && m_state.SettingTime(wa, wk) >= m_kv_sent;
     if (!answered && now - m_kv_sent < 1.5) return;
+    // The NAC-3 leaves some requests unanswered (more so while the bus is
+    // busy); ask those once more at the end, as a display asks again.
+    if (!answered && m_kv_retried.insert(*m_kv_waiting).second) m_kv_queue.push_back(*m_kv_waiting);
     m_kv_waiting.reset();
+  }
+  if (m_kv_queue.empty()) {
+    m_kv_timer.Stop();
+    return;
   }
   auto [address, key] = m_kv_queue.front();
   m_kv_queue.erase(m_kv_queue.begin());
