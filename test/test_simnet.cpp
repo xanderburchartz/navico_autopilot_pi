@@ -382,6 +382,8 @@ static void TestKeyValue() {
   CHECK(std::string(pilot_settings::Find({0x1B, 0x0C})->name) == "Course change confirm angle" &&
         pilot_settings::Find({0x1B, 0x0C})->zero_label);
   CHECK(std::string(pilot_settings::Find({0x1B, 0x81})->name) == "Track approach angle");
+  // Manual speed 5 kn = 257 (0.01 m/s), as the Triton2 sent.
+  CHECK(pilot_settings::Find({0x18, 0x91}) && pilot_settings::Encode(*pilot_settings::Find({0x18, 0x91}), 5) == 257);
   // Snapshot round trip.
   pilot_settings::Snapshot snap;
   snap.time = "2026-11-13 16:30:05";

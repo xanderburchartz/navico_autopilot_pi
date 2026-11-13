@@ -132,7 +132,11 @@ all instances, so the plugin keeps replies per instance.
 Further keys, found by changing them on a Triton2 while listening (13 Nov
 2026): 14/63 minimum rudder (0.0001 rad), 14/61 drive engage (0 clutch,
 1 auto; the Triton2 also sets bits 5 and 6 of 14/09). Wind mode is 1C/09: mode in bits 0-2
-(1 apparent, 2 true, 4 auto); the Triton2 writes it with 0x18 added.
+(1 apparent, 2 true, 4 auto); the Triton2 writes it with 0x18 added. Manual
+speed is 18/91 (0.01 m/s). Of all changes on 13 Nov 2026 only those in the
+drive group made the pilot report another key by itself: the deadband
+updates bit 7 of 14/09, drive engage and bits 5/6 of 14/09 follow each
+other.
 
 **Snapshots.** Before the first change in the settings window, and before
 going back to an earlier state, the plugin stores the settings as text

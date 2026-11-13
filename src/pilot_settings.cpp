@@ -36,6 +36,8 @@ const std::vector<Definition>& All() {
        {"", "Apparent", "True", "", "Auto"}, nullptr, 0, false, 0x07, 0x18},
       {{0x1C, 0x08}, Node::kPilot, "Sailing", "Tack time", "s", 2, false, 0.1, {}},
       {{0x18, 0x0B}, Node::kPilot, "Sailing", "Tack angle", "deg", 2, false, 360.0 / 65536.0, {}, nullptr, 0},
+      // Triton2 "Manual speed" (13 Nov 2026: 5 kn sent as 257).
+      {{0x18, 0x91}, Node::kPilot, "Sailing", "Manual speed", "kn", 2, false, 0.01 * kMsToKn, {}},
       // Per steering profile (instance), in the order of the Triton2 menu
       // (13 Nov 2026). The "Low" of other sources in group 19 does not
       // answer on this NAC-3. Autotune changed gain and counter rudder of
@@ -92,6 +94,7 @@ std::optional<Limits> Editable(simnet::SettingKey key) {
       {{0x18, 0x0C}, {1, 40}},      // transition speed, kn
       {{0x18, 0x57}, {0, 10}},      // low boat speed alarm, kn
       {{0x18, 0x0B}, {50, 150}},    // tack angle, deg
+      {{0x18, 0x91}, {0, 99}},      // manual speed, kn (two digits on a Triton2)
       {{0x1C, 0x08}, {2, 60}},      // tack time, s
       {{0x1A, 0x0D}, {0.05, 4}},    // rudder gain
       {{0x1A, 0x0F}, {0, 4}},       // counter rudder

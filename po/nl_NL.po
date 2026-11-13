@@ -483,3 +483,6 @@ msgstr "Midden"
 
 msgid "Off"
 msgstr "Uit"
+
+msgid "Manual speed"
+msgstr "Handmatige snelheid"

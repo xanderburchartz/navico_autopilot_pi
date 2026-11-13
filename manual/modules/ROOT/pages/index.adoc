@@ -115,7 +115,7 @@ again* asks once more. Not every pilot answers every request on the first
 try.
 
 The window first shows what a Triton2 shows under its autopilot menus:
-*Sailing* (wind mode, tack time and tack angle) and the steering profiles
+*Sailing* (wind mode, tack time, tack angle and manual speed) and the steering profiles
 *Low speed* and *High speed*, each with turn rate, rudder gain, counter
 rudder, autotrim, init rudder, rudder limit, off heading limit, track
 response, track approach angle and course change confirm angle. Off heading
