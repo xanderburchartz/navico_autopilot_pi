@@ -30,8 +30,12 @@ const std::vector<Definition>& All() {
       {{0x18, 0x0C}, Node::kPilot, "Boat", "Transition speed", "kn", 2, false, 0.01 * kMsToKn, {}},
       {{0x18, 0x57}, Node::kPilot, "Boat", "Low boat speed alarm below", "kn", 2, false,
        0.01 * kMsToKn, {}},
-      {{0x18, 0x0B}, Node::kPilot, "Sailing", "Tack angle", "deg", 2, false, 360.0 / 65536.0, {}, nullptr, 0},
+      // Changed on a Triton2 while listening (13 Nov 2026): Apparent 0x19,
+      // True 0x1A, Auto 0x1C; before that the pilot had 0x04.
+      {{0x1C, 0x09}, Node::kPilot, "Sailing", "Wind mode", "", 1, false, 1,
+       {"", "Apparent", "True", "", "Auto"}, nullptr, 0, false, 0x07, 0x18},
       {{0x1C, 0x08}, Node::kPilot, "Sailing", "Tack time", "s", 2, false, 0.1, {}},
+      {{0x18, 0x0B}, Node::kPilot, "Sailing", "Tack angle", "deg", 2, false, 360.0 / 65536.0, {}, nullptr, 0},
       // Per steering profile (instance), in the order of the Triton2 menu
       // (13 Nov 2026). The "Low" of other sources in group 19 does not
       // answer on this NAC-3. Autotune changed gain and counter rudder of
@@ -44,16 +48,19 @@ const std::vector<Definition>& All() {
        nullptr, 2, true},
       {{0x1A, 0x0E}, Node::kPilot, "Steering profiles", "Autotrim", "s", 2, false, 0.1, {},
        nullptr, 1, true},
+      {{0x18, 0x79}, Node::kPilot, "Steering profiles", "Init rudder", "", 1, false, 1,
+       {"Actual", "Midships"}, nullptr, 0, true},
       {{0x18, 0x7A}, Node::kPilot, "Steering profiles", "Rudder limit", "deg", 2, false,
        0.0001 * kRadToDeg, {}, nullptr, 0, true},
+      // A tick box on the Triton2: off sends 0, on sends the lowest value.
       {{0x18, 0x78}, Node::kPilot, "Steering profiles", "Off heading limit", "deg", 2, false,
-       0.0001 * kRadToDeg, {}, nullptr, 0, true},
+       0.0001 * kRadToDeg, {}, "Off", 0, true},
       {{0x1B, 0x11}, Node::kPilot, "Steering profiles", "Track response", "", 1, false, 1, {},
        nullptr, 0, true},
-      {{0x1B, 0x0C}, Node::kPilot, "Steering profiles", "Track approach angle", "deg", 2, false,
+      {{0x1B, 0x81}, Node::kPilot, "Steering profiles", "Track approach angle", "deg", 2, false,
        0.0001 * kRadToDeg, {}, nullptr, 0, true},
-      {{0x1B, 0x81}, Node::kPilot, "Steering profiles", "Course change confirm angle", "deg", 2,
-       false, 0.0001 * kRadToDeg, {}, nullptr, 0, true},
+      {{0x1B, 0x0C}, Node::kPilot, "Steering profiles", "Course change confirm angle", "deg", 2,
+       false, 0.0001 * kRadToDeg, {}, "Off", 0, true},
       // Recorded on Penny Lane (13 Nov 2026, Triton2 set and NAC-3 reply).
       {{0x14, 0x06}, Node::kPilot, "Drive", "Rudder deadband", "deg", 2, false,
        0.0001 * kRadToDeg, {}, "Auto"},
@@ -95,9 +102,11 @@ std::optional<Limits> Editable(simnet::SettingKey key) {
       {{0x14, 0x02}, {0, 50}},      // minimum power, %
       {{0x14, 0x01}, {50, 100}},    // maximum power, %
       {{0x18, 0x7A}, {10, 45}},     // rudder limit, deg
-      {{0x18, 0x78}, {5, 90}},      // off heading limit, deg
-      {{0x1B, 0x0C}, {5, 90}},      // track approach angle, deg
-      {{0x1B, 0x81}, {5, 90}},      // course change confirm angle, deg
+      {{0x18, 0x78}, {0, 90}},      // off heading limit, deg (0 = off)
+      {{0x1B, 0x81}, {5, 90}},      // track approach angle, deg
+      {{0x1B, 0x0C}, {0, 90}},      // course change confirm angle, deg (0 = off)
+      {{0x1C, 0x09}, {1, 4}},       // wind mode (a choice)
+      {{0x18, 0x79}, {0, 1}},       // init rudder (a choice)
   };
   for (const auto& e : list)
     if (e.key == key) return e.limits;
@@ -174,6 +183,8 @@ std::optional<Snapshot> ParseSnapshot(const std::string& text) {
 }
 
 uint32_t Encode(const Definition& d, double shown) {
+  if (d.mask != 0xFFFFFFFF)
+    return (static_cast<uint32_t>(shown + 0.5) & d.mask) | d.set_bits;
   double raw = d.choices.empty() ? shown / d.scale : shown;
   if (raw < 0) {
     int32_t s = static_cast<int32_t>(raw - 0.5);
@@ -185,6 +196,7 @@ uint32_t Encode(const Definition& d, double shown) {
 std::optional<double> Decode(const Definition& d, const simnet::KeyValue& kv) {
   auto raw = kv.Unsigned(static_cast<size_t>(d.bytes));
   if (!raw) return std::nullopt;
+  *raw &= d.mask;
   double v = *raw;
   if (d.is_signed) {
     if (d.bytes == 1) v = static_cast<int8_t>(*raw);

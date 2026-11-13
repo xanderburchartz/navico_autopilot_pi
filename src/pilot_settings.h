@@ -41,8 +41,12 @@ struct Definition {
   const char* zero_label = nullptr;
   /** Decimals to show, matching the pilot's resolution and the displays. */
   int decimals = 1;
-  /** One value per steering profile (instances 0 to kProfiles - 1). */
+  /** One value per steering profile (see Profiles()). */
   bool per_profile = false;
+  /** Bits of the raw value that hold the setting, and bits a display sets
+   *  as well when it writes (wind mode: mode in bits 0-2, Triton2 adds 0x18). */
+  uint32_t mask = 0xFFFFFFFF;
+  uint32_t set_bits = 0;
 };
 
 /** Steering profiles of a NAC-3 set to Sail, by instance (byte 3): 0 ENGINE,

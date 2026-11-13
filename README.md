@@ -120,9 +120,10 @@ Sail keeps some settings per steering profile, instances 0 to 5 (names in
 130846 under 18/8008: ENGINE, REACH, RUN, BEAT, WORK4, WORK5); instance FF
 answers with the active profile. A Triton2 shows instance 0 as "Low speed"
 and 1 as "High speed", with 1A/10 turn rate, 1A/0D rudder gain, 1A/0F
-counter rudder, 1A/0E autotrim, 18/7A rudder limit, 18/78 off heading
-limit, 1B/11 track response, 1B/0C track approach angle and 1B/81 course
-change confirm angle. It writes such a value with the instance of the
+counter rudder, 1A/0E autotrim, 18/79 init rudder (0 actual, 1 midships),
+18/7A rudder limit, 18/78 off heading limit (0 = off), 1B/11 track
+response, 1B/81 track approach angle and 1B/0C course change confirm angle
+(0 = off). It writes such a value with the instance of the
 profile (`41 9F 04 01 FF FF 1A 0E 00 01 54 01 FF FF`), and the pilot answers
 with that instance. The "Low" profile in group 19 that other sources name
 does not answer on this NAC-3. After a change the NAC-3 sends the values of
@@ -130,7 +131,8 @@ all instances, so the plugin keeps replies per instance.
 
 Further keys, found by changing them on a Triton2 while listening (13 Nov
 2026): 14/63 minimum rudder (0.0001 rad), 14/61 drive engage (0 clutch,
-1 auto; the Triton2 also sets bits 5 and 6 of 14/09).
+1 auto; the Triton2 also sets bits 5 and 6 of 14/09). Wind mode is 1C/09: mode in bits 0-2
+(1 apparent, 2 true, 4 auto); the Triton2 writes it with 0x18 added.
 
 **Snapshots.** Before the first change in the settings window, and before
 going back to an earlier state, the plugin stores the settings as text

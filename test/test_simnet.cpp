@@ -369,6 +369,19 @@ static void TestKeyValue() {
   CheckEq(simnet::KeyValueSet(4, {0x1A, 0x0E}, 340, 2, 1), "41 9F 04 01 FF FF 1A 0E 00 01 54 01 FF FF",
           "set per profile");
   CHECK(pilot_settings::Profiles().size() == 2 && pilot_settings::Profiles()[1].instance == 1);
+  // Wind mode: mode in bits 0-2, the Triton2 adds 0x18 (13 Nov 2026).
+  const auto* wind = pilot_settings::Find({0x1C, 0x09});
+  CHECK(wind && pilot_settings::Encode(*wind, 1) == 0x19 && pilot_settings::Encode(*wind, 4) == 0x1C);
+  auto wm = pilot_settings::Decode(*wind, *ParseKeyValue(Bytes("41 9F FF FF FF FF 1C 09 00 02 1A 00 00 00"), false));
+  CHECK(wm && *wm == 2 && std::string(wind->choices[2]) == "True");
+  auto old = pilot_settings::Decode(*wind, *ParseKeyValue(Bytes("41 9F FF 00 FF FF 1C 09 00 02 04 00 00 00"), false));
+  CHECK(old && *old == 4);
+  // Init rudder 0 actual, 1 midships; confirm angle is 1B/0C, approach 1B/81.
+  const auto* init = pilot_settings::Find({0x18, 0x79});
+  CHECK(init && init->per_profile && std::string(init->choices[1]) == "Midships");
+  CHECK(std::string(pilot_settings::Find({0x1B, 0x0C})->name) == "Course change confirm angle" &&
+        pilot_settings::Find({0x1B, 0x0C})->zero_label);
+  CHECK(std::string(pilot_settings::Find({0x1B, 0x81})->name) == "Track approach angle");
   // Snapshot round trip.
   pilot_settings::Snapshot snap;
   snap.time = "2026-11-13 16:30:05";

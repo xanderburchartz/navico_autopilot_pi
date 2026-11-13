@@ -7,6 +7,7 @@
 #define NAVICO_AUTOPILOT_PI_H
 
 #include <cstdint>  // ocpn_plugin.h (api-18) uses uint8_t/uint64_t without it
+#include <map>
 #include <memory>
 #include <optional>
 #include <set>
@@ -146,7 +147,7 @@ private:
   using KvRead = std::tuple<uint8_t, simnet::SettingKey, uint8_t>;
   std::vector<KvRead> m_kv_queue;
   std::optional<KvRead> m_kv_waiting;
-  std::set<KvRead> m_kv_retried;
+  std::map<KvRead, int> m_kv_retried;  // times asked again
   std::vector<SettingWrite> m_kv_writes;
   std::optional<SettingWrite> m_kv_write_waiting;
   double m_kv_write_sent = 0;

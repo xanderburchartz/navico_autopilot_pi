@@ -535,8 +535,8 @@ void NavicoAutopilotPi::OnKvTimer(wxTimerEvent&) {
     bool answered = m_state.Setting(wa, wk, wi) && m_state.SettingTime(wa, wk, wi) >= m_kv_sent;
     if (!answered && now - m_kv_sent < 1.5) return;
     // The NAC-3 leaves some requests unanswered (more so while the bus is
-    // busy); ask those once more at the end, as a display asks again.
-    if (!answered && m_kv_retried.insert(*m_kv_waiting).second) m_kv_queue.push_back(*m_kv_waiting);
+    // busy); ask those again at the end, up to twice, as a display asks again.
+    if (!answered && m_kv_retried[*m_kv_waiting]++ < 2) m_kv_queue.push_back(*m_kv_waiting);
     m_kv_waiting.reset();
   }
   if (m_kv_queue.empty()) {

@@ -861,6 +861,11 @@ private:
   }
 
   static wxString Shown(const pilot_settings::Definition& d, double v) {
+    if (!d.choices.empty()) {
+      auto i = static_cast<size_t>(v);
+      return v >= 0 && i < d.choices.size() && d.choices[i][0] ? wxGetTranslation(d.choices[i])
+                                                                : wxString::Format("%.0f", v);
+    }
     if (d.zero_label && v == 0) return wxGetTranslation(d.zero_label);
     return wxString::Format("%.*f", d.decimals, v);
   }
@@ -878,9 +883,6 @@ private:
     for (int i = 0; i < 4; i++) kv.value.push_back(static_cast<uint8_t>((raw >> (8 * i)) & 0xFF));
     auto v = pilot_settings::Decode(d, kv);
     if (!v) return "NA";
-    if (!d.choices.empty())
-      return *v >= 0 && *v < d.choices.size() ? wxGetTranslation(d.choices[static_cast<size_t>(*v)])
-                                              : wxString::Format("%.0f", *v);
     return WithUnit(d, *v);
   }
 
@@ -986,11 +988,30 @@ private:
     for (const auto& prof : pilot_settings::Profiles())
       if (d.per_profile && prof.instance == instance)
         title += " (" + wxGetTranslation(prof.name) + ")";
+    if (!d.choices.empty()) {
+      // A choice, e.g. wind mode: pick from the names.
+      wxArrayString names;
+      std::vector<int> values;
+      for (size_t i = 0; i < d.choices.size(); i++) {
+        if (!d.choices[i][0] || i < limits->min || i > limits->max) continue;
+        names.Add(wxGetTranslation(d.choices[i]));
+        values.push_back(static_cast<int>(i));
+      }
+      wxSingleChoiceDialog pick(this, title, title, names);
+      if (current)
+        for (size_t i = 0; i < values.size(); i++)
+          if (values[i] == static_cast<int>(*current)) pick.SetSelection(static_cast<int>(i));
+      if (pick.ShowModal() != wxID_OK) return;
+      Send(d, instance, title, current, values[static_cast<size_t>(pick.GetSelection())]);
+      return;
+    }
     wxString range = wxString::Format(_("Between %g and %g %s."), limits->min, limits->max,
                                       UnitText(d.unit));
     if (d.zero_label) range += " " + wxString::Format(_("0 = %s."), wxGetTranslation(d.zero_label));
     wxTextEntryDialog ask(this, range, title,
-                          current ? Shown(d, *current) : wxString());
+                          !current ? wxString()
+                          : d.zero_label && *current == 0 ? wxString("0")
+                                                          : Shown(d, *current));
     if (ask.ShowModal() != wxID_OK) return;
     wxString text = ask.GetValue();
     text.Replace(",", ".");
@@ -999,6 +1020,17 @@ private:
       wxMessageBox(range, title, wxOK | wxICON_WARNING, this);
       return;
     }
+    Send(d, instance, title, current, v);
+  }
+
+  /** Confirm, take a snapshot the first time, send and wait for the answer. */
+  void Send(const pilot_settings::Definition& d, uint8_t instance, const wxString& title,
+            std::optional<double> current, double v) {
+    const PilotState& s = m_plugin->State();
+    auto address = d.node == pilot_settings::Node::kPilot ? s.Address(m_plugin->Now())
+                                                          : m_plugin->RudderNode();
+    if (!address) return;
+    if (current && std::fabs(*current - v) < 1e-9) return;
     wxString question = wxString::Format(_("Change %s from %s to %s?"), title,
                                          current ? WithUnit(d, *current) : wxString("?"),
                                          WithUnit(d, v));
@@ -1054,9 +1086,6 @@ private:
             text = wxGetTranslation(d.zero_label);
             show_unit = false;
           }
-          else if (!d.choices.empty())
-            text = *v >= 0 && *v < d.choices.size() ? wxGetTranslation(d.choices[static_cast<size_t>(*v)])
-                                                    : wxString::Format("%.0f", *v);
           else
             text = Shown(d, *v);
         }

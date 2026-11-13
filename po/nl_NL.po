@@ -462,3 +462,24 @@ msgstr "Voor wijziging van %s"
 
 msgid "Before going back to %s"
 msgstr "Voor terugzetten naar %s"
+
+msgid "Wind mode"
+msgstr "Windmodus"
+
+msgid "Apparent"
+msgstr "Apparent"
+
+msgid "True"
+msgstr "True"
+
+msgid "Init rudder"
+msgstr "Init rudder"
+
+msgid "Actual"
+msgstr "Werkelijk"
+
+msgid "Midships"
+msgstr "Midden"
+
+msgid "Off"
+msgstr "Uit"
