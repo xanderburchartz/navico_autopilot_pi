@@ -378,19 +378,35 @@ void NavicoAutopilotPi::ReadPilotSettings() {
     auto a = d.node == pilot_settings::Node::kPilot ? pilot : rudder;
     if (a) m_kv_queue.push_back({*a, d.key});
   }
-  if (!m_kv_queue.empty() && !m_kv_timer.IsRunning()) m_kv_timer.Start(50);
+  // One request at a time: the NAC-3 answers late and bundled when asked
+  // quickly (13 Nov 2026), so the next one goes out after the answer or 1.5 s.
+  if (!m_kv_queue.empty() && !m_kv_timer.IsRunning()) m_kv_timer.Start(100);
   wxLogMessage("navico_autopilot_pi: reading %zu pilot settings", m_kv_queue.size());
 }
 
 void NavicoAutopilotPi::OnKvTimer(wxTimerEvent&) {
   auto driver = Driver();
-  if (m_kv_queue.empty() || !driver) {
+  if ((m_kv_queue.empty() && !m_kv_waiting) || !driver) {
     m_kv_queue.clear();
+    m_kv_waiting.reset();
     m_kv_timer.Stop();
     return;
   }
+  if (m_kv_queue.empty()) {
+    m_kv_waiting.reset();
+    return;
+  }
+  double now = Now();
+  if (m_kv_waiting) {
+    auto [wa, wk] = *m_kv_waiting;
+    bool answered = m_state.Setting(wa, wk) && m_state.SettingTime(wa, wk) >= m_kv_sent;
+    if (!answered && now - m_kv_sent < 1.5) return;
+    m_kv_waiting.reset();
+  }
   auto [address, key] = m_kv_queue.front();
   m_kv_queue.erase(m_kv_queue.begin());
+  m_kv_waiting = std::make_pair(address, key);
+  m_kv_sent = now;
   Register(driver->handle);
   auto data = simnet::KeyValueRead(address, key);
   auto payload = std::make_shared<std::vector<uint8_t>>(data);

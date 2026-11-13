@@ -158,6 +158,7 @@ void PilotState::Handle(const simnet::Message& m, double now) {
       if (!kv || kv->op != simnet::KeyOp::kReply) return;
       // The device puts its own address in byte 2 of the reply.
       m_settings[{m.source, kv->key}] = *kv;
+      m_setting_times[{m.source, kv->key}] = now;
       return;
     }
     case simnet::kPgnSpeed: {
@@ -197,6 +198,11 @@ std::optional<simnet::KeyValue> PilotState::Setting(uint8_t address,
   auto it = m_settings.find({address, key});
   if (it == m_settings.end()) return std::nullopt;
   return it->second;
+}
+
+double PilotState::SettingTime(uint8_t address, simnet::SettingKey key) const {
+  auto it = m_setting_times.find({address, key});
+  return it == m_setting_times.end() ? -1e9 : it->second;
 }
 
 std::optional<double> PilotState::SpeedThroughWater(double now) const {

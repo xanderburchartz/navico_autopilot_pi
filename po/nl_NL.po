@@ -325,3 +325,21 @@ msgstr "Roer-dodeband"
 
 msgid "Auto"
 msgstr "Auto"
+
+msgid "Boat length"
+msgstr "Bootlengte"
+
+msgid "Cruising speed"
+msgstr "Kruissnelheid"
+
+msgid "Low boat speed alarm below"
+msgstr "Alarm lage bootsnelheid onder"
+
+msgid "Drive voltage"
+msgstr "Aandrijfspanning"
+
+msgid "Minimum power"
+msgstr "Minimum vermogen"
+
+msgid "Rudder limit"
+msgstr "Roerlimiet"

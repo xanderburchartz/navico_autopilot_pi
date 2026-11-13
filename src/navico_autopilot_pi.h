@@ -116,6 +116,8 @@ private:
   bool SendNfu(simnet::NfuSide side, bool log);
   void OnKvTimer(wxTimerEvent&);
   std::vector<std::pair<uint8_t, simnet::SettingKey>> m_kv_queue;
+  std::optional<std::pair<uint8_t, simnet::SettingKey>> m_kv_waiting;
+  double m_kv_sent = 0;
   wxTimer m_kv_timer;
   void OnNfuTimer(wxTimerEvent&);
   void OnAppActivate(wxActivateEvent& e);

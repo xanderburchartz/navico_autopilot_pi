@@ -15,20 +15,21 @@ constexpr double kMsToKn = 3600.0 / 1852.0;
 }  // namespace
 
 const std::vector<Definition>& All() {
-  // Group 18 general, 19 profile Low, 1A profile High, 1C sailing, 09 on the
+  // Group 18 general, 1A profile High, 1C sailing, 14 drive, 09 on the
   // rudder feedback node. Confirmed by the signalk-navico-autopilot-bridge
   // author by changing them on a display and listening.
   static const std::vector<Definition> list = {
       {{0x18, 0x0A}, Node::kPilot, "Boat", "Boat type", "", 1, false, 1,
        {"Sail", "Outboard", "Displacement", "Planing"}},
+      // Measured on Penny Lane (13 Nov 2026), checked against the Triton2 menu.
+      {{0x18, 0x56}, Node::kPilot, "Boat", "Boat length", "m", 2, false, 0.1, {}},
+      {{0x18, 0x7F}, Node::kPilot, "Boat", "Cruising speed", "kn", 2, false, 0.01 * kMsToKn, {}},
       {{0x18, 0x0C}, Node::kPilot, "Boat", "Transition speed", "kn", 2, false, 0.01 * kMsToKn, {}},
+      {{0x18, 0x57}, Node::kPilot, "Boat", "Low boat speed alarm below", "kn", 2, false,
+       0.01 * kMsToKn, {}},
       {{0x18, 0x0B}, Node::kPilot, "Sailing", "Tack angle", "deg", 2, false, 360.0 / 65536.0, {}},
       {{0x1C, 0x08}, Node::kPilot, "Sailing", "Tack time", "s", 2, false, 0.1, {}},
-      {{0x19, 0x0D}, Node::kPilot, "Profile Low", "Rudder gain", "", 2, false, 0.01, {}},
-      {{0x19, 0x0F}, Node::kPilot, "Profile Low", "Counter rudder", "", 2, false, 0.01, {}},
-      {{0x19, 0x0E}, Node::kPilot, "Profile Low", "Autotrim", "s", 2, false, 0.1, {}},
-      {{0x19, 0x10}, Node::kPilot, "Profile Low", "Turn rate", "deg/min", 4, false,
-       3.125e-8 * kRadToDeg * 60.0, {}},
+      // Profile Low is not group 19 on a NAC-3 (no answer, 13 Nov 2026); key unknown.
       {{0x1A, 0x0D}, Node::kPilot, "Profile High", "Rudder gain", "", 2, false, 0.01, {}},
       {{0x1A, 0x0F}, Node::kPilot, "Profile High", "Counter rudder", "", 2, false, 0.01, {}},
       {{0x1A, 0x0E}, Node::kPilot, "Profile High", "Autotrim", "s", 2, false, 0.1, {}},
@@ -37,6 +38,9 @@ const std::vector<Definition>& All() {
       // Recorded on Penny Lane (13 Nov 2026, Triton2 set and NAC-3 reply).
       {{0x14, 0x06}, Node::kPilot, "Drive", "Rudder deadband", "deg", 2, false,
        0.0001 * kRadToDeg, {}, "Auto"},
+      {{0x14, 0x1D}, Node::kPilot, "Drive", "Drive voltage", "V", 2, false, 0.01, {}},
+      {{0x14, 0x02}, Node::kPilot, "Drive", "Minimum power", "%", 2, false, 1, {}},
+      {{0x18, 0x7A}, Node::kPilot, "Drive", "Rudder limit", "deg", 2, false, 0.0001 * kRadToDeg, {}},
       {{0x09, 0x01}, Node::kRudder, "Rudder", "Calibration, starboard", "deg", 2, true,
        0.0001 * kRadToDeg, {}},
       {{0x09, 0x02}, Node::kRudder, "Rudder", "Calibration, port", "deg", 2, true,
