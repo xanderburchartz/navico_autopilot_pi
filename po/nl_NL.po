@@ -296,8 +296,26 @@ msgstr "Profiel Laag"
 msgid "Steering profiles"
 msgstr "Stuurprofielen"
 
-msgid "The pilot keeps these per steering profile. The plugin does not change them yet."
-msgstr "De stuurautomaat bewaart deze per stuurprofiel. De plugin wijzigt ze nog niet."
+msgid "Press a value to change it."
+msgstr "Druk op een waarde om die te wijzigen."
+
+msgid "Low speed"
+msgstr "Low speed"
+
+msgid "High speed"
+msgstr "High speed"
+
+msgid "Off heading limit"
+msgstr "Uit-koers limiet"
+
+msgid "Track response"
+msgstr "Track reactie"
+
+msgid "Track approach angle"
+msgstr "Track naderingshoek"
+
+msgid "Course change confirm angle"
+msgstr "Bevestigingshoek koerswijziging"
 
 msgid "Rudder gain"
 msgstr "Roerversterking"
@@ -309,7 +327,7 @@ msgid "Autotrim"
 msgstr "Autotrim"
 
 msgid "Turn rate"
-msgstr "Draaisnelheid"
+msgstr "Wendsnelheid"
 
 msgid "Rudder"
 msgstr "Roer"
@@ -384,3 +402,12 @@ msgstr "Geen antwoord van de stuurautomaat: de instelling is mogelijk niet gewij
 
 msgid "Waiting for the autopilot..."
 msgstr "Wachten op de stuurautomaat..."
+
+msgid "Drive engage"
+msgstr "Aandrijving inschakelen"
+
+msgid "Clutch"
+msgstr "Koppeling"
+
+msgid "Minimum rudder"
+msgstr "Minimum roer"

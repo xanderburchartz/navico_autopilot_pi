@@ -240,8 +240,9 @@ std::vector<uint8_t> KeyValueRead(uint8_t address, SettingKey key, uint8_t insta
           static_cast<uint8_t>(KeyOp::kRead), 0xFF, 0xFF, 0xFF, 0xFF};
 }
 
-std::vector<uint8_t> KeyValueSet(uint8_t address, SettingKey key, uint32_t value, int bytes) {
-  std::vector<uint8_t> d = {kHeader0, kHeader1, address, 0xFF, 0xFF, 0xFF, key.group,
+std::vector<uint8_t> KeyValueSet(uint8_t address, SettingKey key, uint32_t value, int bytes,
+                                 uint8_t instance) {
+  std::vector<uint8_t> d = {kHeader0, kHeader1, address, instance, 0xFF, 0xFF, key.group,
                             static_cast<uint8_t>(key.param & 0xFF),
                             static_cast<uint8_t>(key.param >> 8),
                             static_cast<uint8_t>(KeyOp::kSet)};

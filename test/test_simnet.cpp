@@ -354,6 +354,21 @@ static void TestKeyValue() {
   p.Handle(Rx(130845, 4, "41 9F FF FF FF FF 14 06 00 02 10 00 00 00"), 3);
   p.Handle(Rx(130845, 4, "41 9F FF 00 FF FF 14 06 00 02 00 00 00 00"), 2);
   CHECK(p.Setting(4, {0x14, 0x06})->Unsigned(2) == 0x10u && p.SettingTime(4, {0x14, 0x06}) == 3);
+  // Minimum rudder and drive engage, as a Triton2 changed them (13 Nov 2026).
+  const pilot_settings::Definition* minr = nullptr;
+  const pilot_settings::Definition* engage = nullptr;
+  for (const auto& d : pilot_settings::All()) {
+    if (d.key == SettingKey{0x14, 0x63}) minr = &d;
+    if (d.key == SettingKey{0x14, 0x61}) engage = &d;
+  }
+  CHECK(minr && pilot_settings::Encode(*minr, 0.1) == 17 && pilot_settings::Editable({0x14, 0x63}));
+  CHECK(engage && !pilot_settings::Editable({0x14, 0x61}));
+  auto en = pilot_settings::Decode(*engage, *ParseKeyValue(Bytes("41 9F FF FF FF FF 14 61 00 02 01 00 00 00"), false));
+  CHECK(en && *en == 1 && std::string(engage->choices[1]) == "Auto");
+  // A profile value goes with its instance, as the Triton2 sent it.
+  CheckEq(simnet::KeyValueSet(4, {0x1A, 0x0E}, 340, 2, 1), "41 9F 04 01 FF FF 1A 0E 00 01 54 01 FF FF",
+          "set per profile");
+  CHECK(pilot_settings::Profiles().size() == 2 && pilot_settings::Profiles()[1].instance == 1);
   // Profile name in 130846.
   p.Handle(Rx(130846, 4, "41 9F FF 03 FF 00 18 08 80 02 0A 42 45 41 54 00 00 00 00 00 00"), 4);
   auto name = p.Setting(4, pilot_settings::kProfileName, 3);

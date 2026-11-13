@@ -392,12 +392,10 @@ void NavicoAutopilotPi::ReadPilotSettings() {
     else
       add(*a, d.key, 0);
   }
-  // Then the steering profiles: name and values per instance.
+  // Then the steering profiles, per instance.
   if (pilot) {
-    for (int i = 0; i < pilot_settings::kProfiles; i++) {
-      add(*pilot, pilot_settings::kProfileName, static_cast<uint8_t>(i));
-      for (const auto* d : profiles) add(*pilot, d->key, static_cast<uint8_t>(i));
-    }
+    for (const auto& prof : pilot_settings::Profiles())
+      for (const auto* d : profiles) add(*pilot, d->key, prof.instance);
   }
   // One request at a time: the NAC-3 answers late and bundled when asked
   // quickly (13 Nov 2026), so the next one goes out after the answer or 1.5 s.
@@ -406,15 +404,15 @@ void NavicoAutopilotPi::ReadPilotSettings() {
 }
 
 bool NavicoAutopilotPi::WritePilotSetting(uint8_t address, simnet::SettingKey key,
-                                          uint32_t raw, int bytes) {
+                                          uint32_t raw, int bytes, uint8_t instance) {
   auto driver = Driver();
   if (!driver) return false;
   Register(driver->handle);
-  auto data = simnet::KeyValueSet(address, key, raw, bytes);
+  auto data = simnet::KeyValueSet(address, key, raw, bytes, instance);
   auto payload = std::make_shared<std::vector<uint8_t>>(data);
   CommDriverResult r = WriteCommDriverN2K(driver->handle, simnet::kPgnKeyValue, 255, 3, payload);
-  wxLogMessage("navico_autopilot_pi: set %02X/%04X at %d to %u: 130845 %s (result %d)", key.group,
-               key.param, address, raw, simnet::Hex(data).c_str(), r);
+  wxLogMessage("navico_autopilot_pi: set %02X/%04X instance %02X at %d to %u: 130845 %s (result %d)",
+               key.group, key.param, instance, address, raw, simnet::Hex(data).c_str(), r);
   return r == RESULT_COMM_NO_ERROR;
 }
 

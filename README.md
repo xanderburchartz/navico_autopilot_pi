@@ -116,13 +116,21 @@ asked once more), and changes a setting only after a confirmation. Boat
 type, drive voltage and rudder calibration are read only.
 
 **Steering profiles.** Byte 3 of 130845 is an instance. A NAC-3 set to
-Sail keeps group 1A (rudder gain 1A/0D, autotrim 0E, counter rudder 0F,
-turn rate 10) per steering profile, instances 0 to 5; instance FF answers
-with the active profile and from 6 on the answer is FF. The names come in
-130846 under 18/8008 per instance: ENGINE, REACH, RUN, BEAT, WORK4, WORK5
-(measured 13 Nov 2026). The "Low" profile in group 19 that other sources
-name does not answer on this NAC-3. After a change the NAC-3 sends the
-values of all instances, so the plugin keeps replies per instance.
+Sail keeps some settings per steering profile, instances 0 to 5 (names in
+130846 under 18/8008: ENGINE, REACH, RUN, BEAT, WORK4, WORK5); instance FF
+answers with the active profile. A Triton2 shows instance 0 as "Low speed"
+and 1 as "High speed", with 1A/10 turn rate, 1A/0D rudder gain, 1A/0F
+counter rudder, 1A/0E autotrim, 18/7A rudder limit, 18/78 off heading
+limit, 1B/11 track response, 1B/0C track approach angle and 1B/81 course
+change confirm angle. It writes such a value with the instance of the
+profile (`41 9F 04 01 FF FF 1A 0E 00 01 54 01 FF FF`), and the pilot answers
+with that instance. The "Low" profile in group 19 that other sources name
+does not answer on this NAC-3. After a change the NAC-3 sends the values of
+all instances, so the plugin keeps replies per instance.
+
+Further keys, found by changing them on a Triton2 while listening (13 Nov
+2026): 14/63 minimum rudder (0.0001 rad), 14/61 drive engage (0 clutch,
+1 auto; the Triton2 also sets bits 5 and 6 of 14/09).
 
 **Which device is the pilot.** A NAC-3 claims several addresses; only the
 part with function 150 (autopilot) follows 130850. The plugin takes the source

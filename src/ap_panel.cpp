@@ -698,52 +698,69 @@ public:
         grid->AddSpacer(0);
       }
     }
-    top->Add(grid, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 12);
+    // Two columns, so the window fits on a laptop screen: the settings left,
+    // the steering profiles right.
+    auto* body = new wxBoxSizer(wxHORIZONTAL);
+    body->Add(grid, 0, wxLEFT | wxRIGHT | wxTOP, 12);
+    auto* right = new wxBoxSizer(wxVERTICAL);
+    body->Add(right, 0, wxLEFT | wxRIGHT, 12);
+    top->Add(body, 0, wxEXPAND);
 
-    // Steering profiles: one column per profile, names as the pilot gives them.
+    // Steering profiles: one column per profile, as the Triton2 shows them.
+    // An editable value is a button: press it to change that profile's value.
     if (!m_profile_defs.empty()) {
+      const auto& profiles = pilot_settings::Profiles();
       auto* h = new wxStaticText(this, wxID_ANY, _("Steering profiles"));
       wxFont f = h->GetFont();
       f.SetWeight(wxFONTWEIGHT_BOLD);
       h->SetFont(f);
       h->SetForegroundColour(theme.text);
-      top->Add(h, 0, wxLEFT | wxRIGHT | wxTOP, 12);
-      auto* pg = new wxFlexGridSizer(pilot_settings::kProfiles + 2, 4, 12);
+      right->Add(h, 0, wxTOP, 20);
+      auto* pg = new wxFlexGridSizer(static_cast<int>(profiles.size()) + 2, 4, 12);
       pg->AddGrowableCol(0);
       pg->AddSpacer(0);
-      for (int i = 0; i < pilot_settings::kProfiles; i++) {
-        auto* n = new wxStaticText(this, wxID_ANY, wxString::Format("%d", i + 1), wxDefaultPosition,
-                                   wxDefaultSize, wxALIGN_RIGHT | wxST_NO_AUTORESIZE);
-        n->SetMinSize(wxSize(GetCharWidth() * 8, -1));
+      for (const auto& prof : profiles) {
+        auto* n = new wxStaticText(this, wxID_ANY, wxGetTranslation(prof.name), wxDefaultPosition,
+                                   wxDefaultSize, wxALIGN_CENTRE_HORIZONTAL | wxST_NO_AUTORESIZE);
+        n->SetMinSize(wxSize(GetCharWidth() * 12, -1));
         n->SetForegroundColour(theme.label);
         pg->Add(n, 0, wxEXPAND);
-        m_profile_names.push_back(n);
       }
       pg->AddSpacer(0);
       for (const auto* d : m_profile_defs) {
         auto* name = new wxStaticText(this, wxID_ANY, wxGetTranslation(d->name));
         name->SetForegroundColour(theme.label);
         pg->Add(name, 0, wxALIGN_CENTRE_VERTICAL);
-        std::vector<wxStaticText*> row;
-        for (int i = 0; i < pilot_settings::kProfiles; i++) {
-          auto* v = new wxStaticText(this, wxID_ANY, "...", wxDefaultPosition, wxDefaultSize,
-                                     wxALIGN_RIGHT | wxST_NO_AUTORESIZE);
-          v->SetMinSize(wxSize(GetCharWidth() * 8, -1));
-          v->SetForegroundColour(theme.text);
-          pg->Add(v, 0, wxALIGN_CENTRE_VERTICAL | wxEXPAND);
-          row.push_back(v);
+        std::vector<std::function<void(const wxString&)>> row;
+        bool editable = pilot_settings::Editable(d->key).has_value();
+        for (const auto& prof : profiles) {
+          if (editable) {
+            auto* b = new ApButton(this, "...");
+            b->SetTheme(theme);
+            b->SetMinSize(wxSize(GetCharWidth() * 12, GetCharHeight() + 10));
+            uint8_t inst = prof.instance;
+            b->Bind(wxEVT_BUTTON, [this, d, inst](wxCommandEvent&) { Change(*d, inst); });
+            pg->Add(b, 0, wxEXPAND);
+            row.push_back([b](const wxString& t) { b->SetText(t); });
+          } else {
+            auto* v = new wxStaticText(this, wxID_ANY, "...", wxDefaultPosition, wxDefaultSize,
+                                       wxALIGN_CENTRE_HORIZONTAL | wxST_NO_AUTORESIZE);
+            v->SetForegroundColour(theme.text);
+            pg->Add(v, 0, wxALIGN_CENTRE_VERTICAL | wxEXPAND);
+            row.push_back([v](const wxString& t) {
+              if (v->GetLabel() != t) v->SetLabel(t);
+            });
+          }
         }
-        m_profile_values.push_back(row);
+        m_profile_cells.push_back(row);
         auto* unit = new wxStaticText(this, wxID_ANY, UnitText(d->unit));
         unit->SetForegroundColour(theme.label);
         pg->Add(unit, 0, wxALIGN_CENTRE_VERTICAL);
       }
-      top->Add(pg, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 12);
-      auto* about = new wxStaticText(this, wxID_ANY,
-                                     _("The pilot keeps these per steering profile. The plugin "
-                                       "does not change them yet."));
+      right->Add(pg, 0, wxEXPAND | wxTOP, 8);
+      auto* about = new wxStaticText(this, wxID_ANY, _("Press a value to change it."));
       about->SetForegroundColour(theme.label);
-      top->Add(about, 0, wxLEFT | wxRIGHT | wxTOP, 12);
+      right->Add(about, 0, wxTOP, 12);
     }
     top->AddSpacer(12);
     m_note = new wxStaticText(this, wxID_ANY, "");
@@ -794,28 +811,33 @@ private:
   }
 
   /** Ask for a new value, confirm, send, and check the pilot's answer. */
-  void Change(const pilot_settings::Definition& d) {
+  void Change(const pilot_settings::Definition& d, uint8_t instance = 0xFF) {
     const PilotState& s = m_plugin->State();
     auto address = d.node == pilot_settings::Node::kPilot ? s.Address(m_plugin->Now())
                                                           : m_plugin->RudderNode();
     auto limits = pilot_settings::Editable(d.key);
     if (!address || !limits) return;
     std::optional<double> current;
-    if (auto kv = s.Setting(*address, d.key)) current = pilot_settings::Decode(d, *kv);
+    auto kv_now = instance == 0xFF ? s.Setting(*address, d.key) : s.Setting(*address, d.key, instance);
+    if (kv_now) current = pilot_settings::Decode(d, *kv_now);
+    wxString title = wxGetTranslation(d.name);
+    for (const auto& prof : pilot_settings::Profiles())
+      if (d.per_profile && prof.instance == instance)
+        title += " (" + wxGetTranslation(prof.name) + ")";
     wxString range = wxString::Format(_("Between %g and %g %s."), limits->min, limits->max,
                                       UnitText(d.unit));
     if (d.zero_label) range += " " + wxString::Format(_("0 = %s."), wxGetTranslation(d.zero_label));
-    wxTextEntryDialog ask(this, range, wxGetTranslation(d.name),
+    wxTextEntryDialog ask(this, range, title,
                           current ? wxString::Format("%g", *current) : wxString());
     if (ask.ShowModal() != wxID_OK) return;
     wxString text = ask.GetValue();
     text.Replace(",", ".");
     double v;
     if (!text.ToCDouble(&v) || v < limits->min || v > limits->max) {
-      wxMessageBox(range, wxGetTranslation(d.name), wxOK | wxICON_WARNING, this);
+      wxMessageBox(range, title, wxOK | wxICON_WARNING, this);
       return;
     }
-    wxString question = wxString::Format(_("Change %s from %s to %s?"), wxGetTranslation(d.name),
+    wxString question = wxString::Format(_("Change %s from %s to %s?"), title,
                                          current ? WithUnit(d, *current) : wxString("?"),
                                          WithUnit(d, v));
     if (wxMessageBox(question, _("Change autopilot setting"), wxYES_NO | wxICON_QUESTION, this) !=
@@ -823,8 +845,8 @@ private:
       return;
     uint32_t raw = pilot_settings::Encode(d, v);
     m_write_sent = m_plugin->Now();
-    m_write = WriteState{*address, &d, v};
-    if (!m_plugin->WritePilotSetting(*address, d.key, raw, d.bytes)) {
+    m_write = WriteState{*address, &d, v, instance, title};
+    if (!m_plugin->WritePilotSetting(*address, d.key, raw, d.bytes, instance)) {
       m_write.reset();
       SetNote(_("Sending failed."));
     }
@@ -870,32 +892,33 @@ private:
       if (m_units[i]->GetLabel() != unit) m_units[i]->SetLabel(unit);
       i++;
     }
-    for (int p = 0; pilot && p < static_cast<int>(m_profile_names.size()); p++) {
-      auto inst = static_cast<uint8_t>(p);
-      if (auto kv = s.Setting(*pilot, pilot_settings::kProfileName, inst)) {
-        wxString name = wxString::FromUTF8(pilot_settings::Text(*kv));
-        if (!name.empty() && m_profile_names[p]->GetLabel() != name) m_profile_names[p]->SetLabel(name);
-      }
-      for (size_t r = 0; r < m_profile_defs.size(); r++) {
-        const auto& d = *m_profile_defs[r];
+    const auto& profiles = pilot_settings::Profiles();
+    for (size_t r = 0; pilot && r < m_profile_defs.size(); r++) {
+      const auto& d = *m_profile_defs[r];
+      for (size_t p = 0; p < profiles.size(); p++) {
         wxString text = "...";
-        if (auto kv = s.Setting(*pilot, d.key, inst)) {
+        if (auto kv = s.Setting(*pilot, d.key, profiles[p].instance)) {
           answered++;
           auto v = pilot_settings::Decode(d, *kv);
           text = v ? Shown(d, *v) : wxString("NA");
         }
-        if (m_profile_values[r][p]->GetLabel() != text) m_profile_values[r][p]->SetLabel(text);
+        m_profile_cells[r][p](text);
       }
     }
     if (m_write) {
       // Answer to a change: the pilot sends back the value it took.
       double now = m_plugin->Now();
       const auto& w = *m_write;
-      auto kv = s.Setting(w.address, w.def->key);
-      bool answered_now = kv && s.SettingTime(w.address, w.def->key) >= m_write_sent;
+      // A set with instance FF is answered with FF, one for a profile with
+      // that profile.
+      auto kv = w.instance == 0xFF ? s.Setting(w.address, w.def->key)
+                                   : s.Setting(w.address, w.def->key, w.instance);
+      double when = w.instance == 0xFF ? s.SettingTime(w.address, w.def->key)
+                                       : s.SettingTime(w.address, w.def->key, w.instance);
+      bool answered_now = kv && when >= m_write_sent;
       if (answered_now) {
         auto v = pilot_settings::Decode(*w.def, *kv);
-        wxString name = wxGetTranslation(w.def->name);
+        wxString name = w.title;
         wxString got = v ? WithUnit(*w.def, *v) : wxString("NA");
         double step = std::fabs(w.def->scale) * 1.5 + 1e-9;
         if (v && std::fabs(*v - w.value) <= std::max(step, std::fabs(w.value) * 0.02))
@@ -921,14 +944,15 @@ private:
     uint8_t address;
     const pilot_settings::Definition* def;
     double value;
+    uint8_t instance;
+    wxString title;
   };
 
   NavicoAutopilotPi* m_plugin;
   std::vector<wxStaticText*> m_values;
   std::vector<wxStaticText*> m_units;
   std::vector<const pilot_settings::Definition*> m_profile_defs;
-  std::vector<wxStaticText*> m_profile_names;
-  std::vector<std::vector<wxStaticText*>> m_profile_values;
+  std::vector<std::vector<std::function<void(const wxString&)>>> m_profile_cells;
   wxStaticText* m_note;
   wxTimer m_refresh;
   double m_asked = 0;

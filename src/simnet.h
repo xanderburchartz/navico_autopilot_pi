@@ -190,10 +190,12 @@ std::vector<uint8_t> KeyValueRead(uint8_t address, SettingKey key, uint8_t insta
 /**
  * 130845 setting \p key at \p address to \p value: \p bytes bytes
  * little-endian, padded with FF, instance FF, as a Triton2 sends it
- * (recorded 13 Nov 2026: 41 9F 04 FF FF FF 14 06 00 01 11 00 FF FF).
+ * (recorded 13 Nov 2026: 41 9F 04 FF FF FF 14 06 00 01 11 00 FF FF). A
+ * setting kept per steering profile goes with that profile as instance
+ * (Triton2, 13 Nov 2026: 41 9F 04 01 FF FF 1A 0E 00 01 54 01 FF FF).
  */
 std::vector<uint8_t> KeyValueSet(uint8_t address, SettingKey key, uint32_t value,
-                                 int bytes = 2);
+                                 int bytes = 2, uint8_t instance = 0xFF);
 
 /** A received 130845 or 130846. */
 struct KeyValue {

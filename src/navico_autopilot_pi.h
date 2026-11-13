@@ -78,7 +78,8 @@ public:
   bool ReadingSettings() const { return !m_kv_queue.empty() || m_kv_waiting.has_value(); }
   /** Change one setting (130845 set, as a Triton2 sends it); the pilot
    *  answers with the value it took. */
-  bool WritePilotSetting(uint8_t address, simnet::SettingKey key, uint32_t raw, int bytes);
+  bool WritePilotSetting(uint8_t address, simnet::SettingKey key, uint32_t raw, int bytes,
+                         uint8_t instance = 0xFF);
   /** Address holding the rudder calibration (the chosen rudder sensor). */
   std::optional<uint8_t> RudderNode() const;
   /** Show speed through the water (128259) instead of OpenCPN's SOG. */

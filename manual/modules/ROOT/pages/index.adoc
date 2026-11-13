@@ -119,14 +119,14 @@ confirmation and then sends it. The pilot answers with the value it took,
 which can be rounded to its own resolution; the window shows that answer.
 Boat type, drive voltage and the rudder calibration are shown but cannot be
 changed here: a wrong value there can harm the drive or belongs to the
-commissioning steps on the pilot controller. The control method, the clutch
-and the minimum rudder are not in the list yet.
+commissioning steps on the pilot controller. Drive engage (clutch or auto)
+is shown but not changed here; the control method is not in the list.
 
-A NAC-3 set to Sail keeps rudder gain, counter rudder, autotrim and turn
-rate per steering profile; the window shows them in a table with the names
-the pilot gives (ENGINE, REACH, RUN, BEAT, WORK4, WORK5 on a NAC-3).
-Autotune adjusts the active profile. The plugin does not change these
-values yet.
+The steering profiles are shown as on a Triton2: *Low speed* and *High
+speed*, each with turn rate, rudder gain, counter rudder, autotrim, rudder
+limit, off heading limit, track response, track approach angle and course
+change confirm angle. Press a value to change it for that profile. Autotune
+adjusts the profile in use.
 
 Apart from NFU, each button press sends one command, with no heartbeat. Every
 command is written to the OpenCPN log with its bytes, on lines starting with

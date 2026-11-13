@@ -46,9 +46,14 @@ struct Definition {
 };
 
 /** Steering profiles of a NAC-3 set to Sail, by instance (byte 3): 0 ENGINE,
- *  1 REACH, 2 RUN, 3 BEAT, 4 WORK4, 5 WORK5; instance FF answers with the
- *  active one (13 Nov 2026). Instances from 6 answer FF. */
-constexpr int kProfiles = 6;
+ *  1 REACH, 2 RUN, 3 BEAT, 4 WORK4, 5 WORK5 (names in 130846 under 18/8008);
+ *  instance FF answers with the active one. A Triton2 shows 0 as "Low
+ *  speed" and 1 as "High speed" and not the others (13 Nov 2026). */
+struct Profile {
+  uint8_t instance;
+  const char* name;  ///< untranslated
+};
+const std::vector<Profile>& Profiles();
 /** Profile name, answered in 130846 per instance ("ENGINE"). */
 constexpr simnet::SettingKey kProfileName{0x18, 0x8008};
 
