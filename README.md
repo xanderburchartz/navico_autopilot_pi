@@ -49,12 +49,16 @@ following the standard drops it. Fixed in 5.14.
 
 ### Safety
 
-- The plugin sends **nothing on its own**: no heartbeat, no requests, no
-  repeats. Each button press sends one PGN 130850.
+- The plugin sends **no heartbeat and no repeats**. Each button press sends
+  one PGN 130850; confirming NAV sends two (see below).
+- Only when you open the plugin's settings it sends requests: one ISO request
+  for address claims to all devices (one frame back from each), and a request
+  for product information to each autopilot and rudder sensor that answers,
+  not to the whole bus.
 - STBY can be pressed whenever a pilot is selected, even without recent data.
-- If more than one autopilot is found, the plugin does not pick one; choose it
-  in the settings.
-- Every command is written to the OpenCPN log with its bytes.
+- Autopilot and rudder sensor are chosen automatically (the most likely one if
+  there are several) and can be overruled in the settings.
+- Every command and request is written to the OpenCPN log with its bytes.
 
 ## Protocol
 
@@ -67,23 +71,41 @@ following the standard drops it. Fixed in 5.14.
 | No Drift | `41 9F <pilot> FF FF 0A 0C 00 FF FF FF` |
 | -1 / +1 | `41 9F <pilot> FF FF 0A 1A 00 02/03 AF 00 FF` |
 | -10 / +10 | `41 9F <pilot> FF FF 0A 1A 00 02/03 D1 06 FF` |
+| Confirm (NAV) | `41 9F <pilot> FF FF 0A 1C 00 FF FF FF`, then Nav |
 
 `41 9F` is manufacturer 1857 (Simrad), industry marine. `<pilot>` is the bus
 address of the autopilot. Byte 7 must be `00`; a NAC-3 ignores the command
 when it is `FF` (canboat calls this byte "spare"). Direction 2 is port,
 3 starboard; the angle is in 0.0001 rad.
 
-Received: 65305 (pilot mode, report `0A`; status, report `02`), 127237
-(heading to steer), 65341 (wind angle to hold), 60928 (address claims, to
-follow the pilot when its address changes). The actual heading comes from
-OpenCPN itself.
+**NAV needs a confirmation.** After Nav the pilot reports its mode with bit 7
+set (`88 00` from standby, `90 00` from auto) and waits 10 s. A Triton2 keypad
+confirms with event `0x1C` directly followed by Nav; the pilot then reports
+`40 00` (Nav). Without valid navigation data on the bus (129283/129284 all "no
+value") the pilot echoes Nav but stays where it is and raises "Navigation data
+missing". The plugin shows its own confirmation window for this (measured on a
+NAC-3, 13 Nov 2026).
+
+Received: 65305 (pilot mode, report `0A`; status, report `02`), 130851 (a
+literal echo of each command the pilot executed, 25-55 ms later), 130850 with
+byte 4 = `01` and 130856 (pilot alarms and their text), 127237 (heading to
+steer), 65341 (set wind angle), 127245 (rudder angle, bytes 4-5, positive =
+starboard), 130306 (apparent wind), 129284 (bearing and distance to the
+waypoint), 60928 and 126996 (NAME and model ID, to recognise devices). The
+actual heading and speed come from OpenCPN itself.
 
 **Which device is the pilot.** A NAC-3 claims several addresses; only the
 part with function 150 (autopilot) follows 130850. The plugin takes the source
 of 65305 "Mode" reports from an AC or NAC (model byte `00` or `64`). A B&G
 keypad also sends 65305, but as requests (report `03` and `0B`); those are
-ignored. Settings: automatic (only if exactly one pilot is found) or a fixed
-address.
+ignored. With more than one candidate the plugin prefers one with manufacturer
+Navico in its NAME (an emulated pilot claims another make), then a NAC.
+
+**Rudder sensor.** Several devices may send 127245: a NAC-3 sends both a real
+and a "virtual" rudder feedback with the same make and function, and a pilot
+also sends 127245 without a position. The plugin prefers a rudder feedback
+unit (function 155) whose model ID does not say "virtual"; the choice can be
+overruled in the settings and is stored by NAME.
 
 Sources: canboat (`docs/canboat.json`), recordings of a B&G Triton2 pilot
 keypad and a NAC-3 on a real boat, and the notes in the `autopilot` branch of

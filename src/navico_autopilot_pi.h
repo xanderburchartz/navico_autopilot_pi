@@ -57,9 +57,17 @@ public:
   void ShowPreferencesDialog(wxWindow* parent) override;
   void SetPositionFixEx(PlugIn_Position_Fix_Ex& pfix) override;
   void SetColorScheme(PI_ColorScheme cs) override;
+  void SetActiveLegInfo(Plugin_Active_Leg_Info& leg_info) override;
 
   // Used by the panel and the settings dialog.
-  void SendCommand(simnet::Command c);
+  bool SendCommand(simnet::Command c);
+  /** Confirm a pending NAV, as a Triton2 keypad does: 0x1C, then NAV. */
+  void ConfirmNav();
+  /** Ask all devices once for their NAME (ISO request for 60928). */
+  void RequestAddressClaims();
+  /** Waypoint name of OpenCPN's own active leg, if OpenCPN navigates. */
+  wxString ActiveWaypoint() const;
+  PI_ColorScheme ColorScheme() const { return m_scheme; }
   double Now() const;
   const PilotState& State() const { return m_state; }
   std::vector<N2kDriver> Drivers() const;
@@ -67,8 +75,11 @@ public:
   std::optional<N2kDriver> Driver() const;
   /** Actual heading from OpenCPN (deg), magnetic or true, NaN if unknown. */
   double Heading(bool magnetic) const;
+  /** Speed over ground (kn) from OpenCPN, NaN if unknown. */
+  double Sog() const;
   wxString LastMessage() const { return m_last_message; }
-  void ApplySettings(const std::string& driver, std::optional<uint8_t> address);
+  void ApplySettings(const std::string& driver, std::optional<uint8_t> address,
+                     uint64_t rudder_name);
   void PanelClosed();
 
 private:
@@ -77,6 +88,8 @@ private:
   void LoadConfig();
   void SaveConfig();
   void ShowPanel(bool show);
+  void Register(const std::string& handle);
+  void SendIsoRequest(int pgn, uint8_t destination);
   void RememberPilotName();
 
   PilotState m_state;
@@ -85,8 +98,13 @@ private:
   std::string m_driver;                 // from the settings, may be empty
   wxString m_last_message;
 
-  double m_hdt = NAN, m_hdm = NAN, m_var = NAN;
+  double m_hdt = NAN, m_hdm = NAN, m_var = NAN, m_sog = NAN;
   double m_heading_time = -1e9;
+
+  double m_discover_until = 0;
+  std::set<uint8_t> m_product_asked;
+  wxString m_leg_name;
+  double m_leg_time = -1e9;
 
   wxBitmap m_bitmap;
   int m_tool_id = -1;

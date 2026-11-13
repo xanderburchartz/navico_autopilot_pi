@@ -18,26 +18,33 @@
 #include "simnet.h"
 
 class NavicoAutopilotPi;
+class ApDisplay;
+class NavConfirmDialog;
 
-/** The control panel: pilot mode, headings and the buttons. */
+/**
+ * The autopilot panel: a display drawn in the style of a Navico pilot
+ * controller (heading arc, mode box, values, rudder bar), the mode and course
+ * buttons, and a line for messages and alarms.
+ */
 class ApPanel : public wxPanel {
 public:
   ApPanel(wxWindow* parent, NavicoAutopilotPi* plugin);
-  /** Update texts and which buttons can be pressed. */
+  ~ApPanel() override;
+  /** Update display, buttons, messages and the NAV confirmation window. */
   void UpdateState(double now);
   /** Colours for OpenCPN's day, dusk or night scheme. */
   void ApplyColours(PI_ColorScheme cs);
 
 private:
   wxWindow* AddButton(wxSizer* sizer, const wxString& label, simnet::Command c);
+  void UpdateConfirmation(double now);
 
   NavicoAutopilotPi* m_plugin;
-  wxStaticText* m_mode;
-  wxStaticText* m_pilot;
-  wxStaticText* m_heading;
-  wxStaticText* m_target;
+  ApDisplay* m_display;
   wxStaticText* m_message;
   std::map<simnet::Command, wxWindow*> m_buttons;
+  NavConfirmDialog* m_confirm = nullptr;
+  double m_confirm_handled = -1e9;  ///< AwaitingSince() of the last shown request
 };
 
 #endif  // NAVICO_AP_PANEL_H

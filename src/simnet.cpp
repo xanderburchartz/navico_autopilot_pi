@@ -6,6 +6,7 @@
 #include "simnet.h"
 
 #include <cmath>
+#include <algorithm>
 #include <cstdio>
 
 namespace simnet {
@@ -62,6 +63,7 @@ const char* CommandName(Command c) {
     case Command::kPort10: return "-10";
     case Command::kStarboard1: return "+1";
     case Command::kStarboard10: return "+10";
+    case Command::kConfirm: return "CONFIRM";
   }
   return "?";
 }
@@ -91,8 +93,15 @@ std::vector<uint8_t> CommandData(Command command, uint8_t address) {
     case Command::kPort10: change(false, 10); break;
     case Command::kStarboard1: change(true, 1); break;
     case Command::kStarboard10: change(true, 10); break;
+    // Recorded from a Triton2 keypad confirming NAV, followed by NAV (0x0A).
+    case Command::kConfirm: mode(0x1C); break;
   }
   return d;
+}
+
+std::vector<uint8_t> IsoRequestData(int pgn) {
+  return {static_cast<uint8_t>(pgn & 0xFF), static_cast<uint8_t>((pgn >> 8) & 0xFF),
+          static_cast<uint8_t>((pgn >> 16) & 0xFF)};
 }
 
 std::string Hex(const std::vector<uint8_t>& data) {
@@ -166,6 +175,84 @@ std::optional<ApAngle> ParseApAngle(const std::vector<uint8_t>& d) {
   a.mode = d[4];
   a.angle = Angle(U16(d, 6));
   return a;
+}
+
+bool EchoMatches(const std::vector<uint8_t>& sent, const std::vector<uint8_t>& reply) {
+  if (sent.size() < 7 || reply.size() < sent.size()) return false;
+  // The pilot pads an 11-byte command to 12 bytes; compare what was sent.
+  for (size_t i = 0; i < sent.size(); i++)
+    if (sent[i] != reply[i]) return false;
+  return true;
+}
+
+std::optional<double> ParseRudder(const std::vector<uint8_t>& d) {
+  if (d.size() < 6) return std::nullopt;
+  int16_t raw = static_cast<int16_t>(U16(d, 4));
+  if (raw == 0x7FFF || raw == -0x8000) return std::nullopt;
+  return raw * 0.0001;
+}
+
+std::optional<Wind> ParseWind(const std::vector<uint8_t>& d) {
+  if (d.size() < 6) return std::nullopt;
+  Wind w;
+  w.angle = Angle(U16(d, 3));
+  w.reference = d[5] & 0x07;
+  return w;
+}
+
+std::optional<Alarm> ParseAlarm(const std::vector<uint8_t>& d) {
+  if (d.size() < 11 || !HasSimnetHeader(d) || d[4] != 0x01) return std::nullopt;
+  Alarm a;
+  a.state = d[6];
+  a.id = U16(d, 8);
+  a.f = d[10];
+  return a;
+}
+
+std::optional<AlarmText> ParseAlarmText(const std::vector<uint8_t>& d) {
+  if (d.size() < 6 || !HasSimnetHeader(d) || d[5] != 0x01) return std::nullopt;
+  AlarmText t;
+  t.id = U16(d, 2);
+  size_t len = d[4] >= 2 ? d[4] - 2 : 0;
+  len = std::min(len, d.size() - 6);
+  t.text.assign(d.begin() + 6, d.begin() + 6 + len);
+  while (!t.text.empty() && (t.text.back() == '\0' || t.text.back() == ' '))
+    t.text.pop_back();
+  return t;
+}
+
+std::optional<NavData> ParseNavData(const std::vector<uint8_t>& d) {
+  if (d.size() < 16) return std::nullopt;
+  NavData n;
+  uint32_t dist = d[1] | (d[2] << 8) | (d[3] << 16) | (static_cast<uint32_t>(d[4]) << 24);
+  if (dist < 0xFFFFFFFD) n.distance = dist * 0.01;
+  n.bearing = Angle(U16(d, 14));  // bearing, position to destination
+  return n;
+}
+
+std::optional<std::string> ParseModelId(const std::vector<uint8_t>& d) {
+  if (d.size() < 36) return std::nullopt;
+  std::string m;
+  for (size_t i = 4; i < 36; i++) {
+    if (d[i] == 0x00 || d[i] == 0xFF || d[i] == '@') break;
+    m += static_cast<char>(d[i]);
+  }
+  while (!m.empty() && m.back() == ' ') m.pop_back();
+  return m;
+}
+
+std::string Name::ManufacturerName() const {
+  switch (manufacturer) {
+    case 275: return "Navico";
+    case 381: return "B&G";
+    case 1857: return "Simrad";
+    case 1855: return "Furuno";
+    case 717: return "Yacht Devices";
+    case 135: return "Airmar";
+    case 358: return "Victron";
+    case 1851: return "Raymarine";
+    default: return std::to_string(manufacturer);
+  }
 }
 
 bool Name::IsAutopilot() const {

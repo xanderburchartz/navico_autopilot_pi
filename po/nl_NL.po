@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 msgid ""
 msgstr ""
-"Project-Id-Version: navico_autopilot_pi 0.1.0\n"
+"Project-Id-Version: navico_autopilot_pi 0.1.1\n"
 "PO-Revision-Date: 2026-11-10 19:00+0100\n"
 "Last-Translator: navico_autopilot_pi\n"
 "Language-Team: Dutch\n"
@@ -66,9 +66,6 @@ msgstr "Geen stuurautomaat gevonden"
 msgid "Choose the NMEA 2000 connection in the plugin settings."
 msgstr "Kies de NMEA 2000-verbinding in de instellingen van de plugin."
 
-msgid "Choose the autopilot in the plugin settings."
-msgstr "Kies de stuurautomaat in de instellingen van de plugin."
-
 msgid "No confirmation from the autopilot."
 msgstr "Geen bevestiging van de stuurautomaat."
 
@@ -88,11 +85,109 @@ msgstr "NMEA 2000-verbinding"
 msgid "(no NMEA 2000 connection in OpenCPN)"
 msgstr "(geen NMEA 2000-verbinding in OpenCPN)"
 
-msgid "Automatic (only if there is exactly one)"
-msgstr "Automatisch (alleen als er precies één is)"
-
 msgid "Fixed address"
 msgstr "Vast adres"
 
 msgid "Address"
 msgstr "Adres"
+
+msgid "STANDBY"
+msgstr "STANDBY"
+
+msgid "HEADING HOLD"
+msgstr "KOERS VASTHOUDEN"
+
+msgid "NAVIGATION"
+msgstr "NAVIGATIE"
+
+msgid "NO PILOT"
+msgstr "GEEN PILOT"
+
+msgid "Apparent wind"
+msgstr "Schijnbare wind"
+
+msgid "Set angle"
+msgstr "Ingestelde hoek"
+
+msgid "Bearing WPT"
+msgstr "Peiling WPT"
+
+msgid "Distance WPT"
+msgstr "Afstand WPT"
+
+msgid "Set heading"
+msgstr "Stel koers in"
+
+msgid "Speed over ground"
+msgstr "Grondsnelheid"
+
+msgid "Start navigation"
+msgstr "Navigatie starten"
+
+msgid "Cancel"
+msgstr "Annuleren"
+
+msgid "Confirm"
+msgstr "Bevestigen"
+
+msgid "Steer to the waypoint?"
+msgstr "Naar het waypoint sturen?"
+
+#, c-format
+msgid "Steer to waypoint %s?"
+msgstr "Naar waypoint %s sturen?"
+
+#, c-format
+msgid "The autopilot will turn to %s%s."
+msgstr "De stuurautomaat draait naar %s%s."
+
+msgid "The autopilot will turn to the waypoint."
+msgstr "De stuurautomaat draait naar het waypoint."
+
+#, c-format
+msgid "%d s left to confirm"
+msgstr "Nog %d s om te bevestigen"
+
+msgid "No data from the autopilot."
+msgstr "Geen gegevens van de stuurautomaat."
+
+msgid "No reply from the autopilot."
+msgstr "Geen antwoord van de stuurautomaat."
+
+msgid "The autopilot did not change mode."
+msgstr "De stuurautomaat wisselde niet van stand."
+
+#, c-format
+msgid "Alarm: %s"
+msgstr "Alarm: %s"
+
+msgid "Rudder angle from"
+msgstr "Roerhoek van"
+
+msgid "The chosen sensor (not seen now)"
+msgstr "De gekozen sensor (nu niet gezien)"
+
+#, c-format
+msgid "%s, address %d"
+msgstr "%s, adres %d"
+
+#, c-format
+msgid "%s, unique number %u"
+msgstr "%s, uniek nummer %u"
+
+msgid "Unknown device"
+msgstr "Onbekend apparaat"
+
+#, c-format
+msgid "%s, address %d: %.1f deg"
+msgstr "%s, adres %d: %.1f graden"
+
+msgid "Automatic: no autopilot found yet"
+msgstr "Automatisch: nog geen stuurautomaat gevonden"
+
+#, c-format
+msgid "%s (automatic)"
+msgstr "%s (automatisch)"
+
+msgid "Automatic: no rudder sensor found yet"
+msgstr "Automatisch: nog geen roersensor gevonden"

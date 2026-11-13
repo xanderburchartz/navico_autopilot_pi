@@ -27,6 +27,14 @@ constexpr int kPgnDeviceStatus = 65305;   ///< Simnet: device status / pilot mod
 constexpr int kPgnApAngle = 65341;        ///< Simnet: autopilot angle
 constexpr int kPgnHeadingControl = 127237;  ///< Heading/Track control
 constexpr int kPgnAddressClaim = 60928;   ///< ISO address claim
+constexpr int kPgnIsoRequest = 59904;     ///< ISO request
+constexpr int kPgnProductInfo = 126996;   ///< Product information (model ID)
+constexpr uint8_t kFunctionRudder = 155;
+constexpr int kPgnCommandReply = 130851;  ///< Simnet: echo of an executed command
+constexpr int kPgnAlarmText = 130856;     ///< Simnet: alarm text
+constexpr int kPgnRudder = 127245;        ///< Rudder
+constexpr int kPgnWind = 130306;          ///< Wind data
+constexpr int kPgnNavData = 129284;       ///< Navigation data (to the waypoint)
 constexpr int kCommandPriority = 2;       ///< as the keypad and the B&G app
 constexpr uint16_t kManufacturerSimrad = 1857;
 constexpr uint16_t kManufacturerNavico = 275;
@@ -42,7 +50,8 @@ enum class Command {
   kPort1,
   kPort10,
   kStarboard1,
-  kStarboard10
+  kStarboard10,
+  kConfirm   ///< confirm a pending mode change (NAV: course to waypoint)
 };
 
 /** Pilot mode as reported in PGN 65305, report "Mode". */
@@ -53,6 +62,9 @@ const char* CommandName(Command c);
 
 /** Data bytes of PGN 130850 for \p command to the pilot at \p address. */
 std::vector<uint8_t> CommandData(Command command, uint8_t address);
+
+/** Data of an ISO request (59904) for \p pgn. */
+std::vector<uint8_t> IsoRequestData(int pgn);
 
 /** Hex dump like "41 9F 04 FF". */
 std::string Hex(const std::vector<uint8_t>& data);
@@ -79,6 +91,9 @@ struct PilotMode {
   uint8_t model = 0;
   Mode mode = Mode::kUnknown;
   uint16_t bits = 0;
+  /** Bit 7: the pilot waits for a confirmation (seen after NAV: 0x88 in
+   *  standby, back to 0x08 after 10 s without one). */
+  bool AwaitsConfirmation() const { return bits & 0x80; }
 };
 
 /** 65305 with report 0x0A ("Mode") from an AC or NAC. Nothing for requests. */
@@ -101,6 +116,47 @@ struct ApAngle {
 };
 std::optional<ApAngle> ParseApAngle(const std::vector<uint8_t>& d);
 
+/**
+ * 130851 from the pilot is a literal copy of the 130850 it executed (padded
+ * to 12 bytes), 25 to 55 ms later. True if \p reply echoes \p sent.
+ */
+bool EchoMatches(const std::vector<uint8_t>& sent, const std::vector<uint8_t>& reply);
+
+/** 127245: rudder position (rad, positive = starboard), none if not available. */
+std::optional<double> ParseRudder(const std::vector<uint8_t>& d);
+
+/** 130306: wind angle (rad, 0..2pi) and reference (2 = apparent). */
+struct Wind {
+  std::optional<double> angle;
+  uint8_t reference = 0xFF;
+};
+std::optional<Wind> ParseWind(const std::vector<uint8_t>& d);
+
+/** Alarm variant of 130850 (byte 4 = 0x01), sent by the pilot. */
+struct Alarm {
+  uint16_t id = 0;
+  uint8_t state = 0;  ///< 0x39 active, 0x3A cleared, 0x38 acknowledged
+  uint8_t f = 0;      ///< meaning unknown, 1..4 seen
+};
+std::optional<Alarm> ParseAlarm(const std::vector<uint8_t>& d);
+
+/** 130856: text of an alarm. */
+struct AlarmText {
+  uint16_t id = 0;
+  std::string text;
+};
+std::optional<AlarmText> ParseAlarmText(const std::vector<uint8_t>& d);
+
+/** 129284: bearing (rad, 0..2pi) and distance (m) from position to waypoint. */
+struct NavData {
+  std::optional<double> bearing;
+  std::optional<double> distance;
+};
+std::optional<NavData> ParseNavData(const std::vector<uint8_t>& d);
+
+/** 126996: model ID, e.g. "NAC-3 _Rudder feedback" (trimmed). */
+std::optional<std::string> ParseModelId(const std::vector<uint8_t>& d);
+
 /** The parts of an ISO NAME (PGN 60928) used to recognise a pilot. */
 struct Name {
   uint64_t raw = 0;
@@ -109,6 +165,8 @@ struct Name {
   uint8_t function = 0;
   uint8_t device_class = 0;
   bool IsAutopilot() const;
+  /** "Navico", "B&G", ... or the manufacturer code. */
+  std::string ManufacturerName() const;
 };
 std::optional<Name> ParseAddressClaim(const std::vector<uint8_t>& d);
 

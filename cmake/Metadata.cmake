@@ -160,6 +160,12 @@ string(CONCAT pkg_tarball_url
   "/names/${pkg_displayname}-tarball/versions/${pkg_semver}"
   "/${pkg_tarname}.tar.gz"
 )
+# navico_autopilot_pi: tarballs are hosted as GitHub release assets. For a
+# tagged build the metadata points there (Plugin.cmake: PKG_GITHUB_RELEASES).
+if (DEFINED PKG_GITHUB_RELEASES AND NOT "${_git_tag}" STREQUAL "")
+  set(pkg_tarball_url
+    "${PKG_GITHUB_RELEASES}/${_git_tag}/${pkg_tarname}.tar.gz")
+endif ()
 
 # pkg_python: python command
 find_program(PY_WRAPPER py) # (at least) appveyor build machines

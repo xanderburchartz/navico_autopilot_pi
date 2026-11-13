@@ -14,10 +14,11 @@
 #include <wx/wx.h>
 #endif
 #include <wx/spinctrl.h>
+#include <wx/timer.h>
 
 class NavicoAutopilotPi;
 
-/** Settings: N2K connection, which autopilot, control on/off. */
+/** Settings: N2K connection, which autopilot, which rudder sensor. */
 class ApPrefs : public wxDialog {
 public:
   ApPrefs(wxWindow* parent, NavicoAutopilotPi* plugin);
@@ -25,13 +26,21 @@ public:
 private:
   void OnPilotChoice(wxCommandEvent&);
   void OnOk(wxCommandEvent&);
+  void FillPilotList();
+  void FillRudderList();
 
   NavicoAutopilotPi* m_plugin;
   wxChoice* m_connection;
   std::vector<std::string> m_handles;
   wxChoice* m_pilot;
   std::vector<int> m_pilot_addresses;  // -1 automatic, -2 fixed (spin)
+  int m_pilot_choice = -1;
   wxSpinCtrl* m_address;
+  wxChoice* m_rudder;
+  std::vector<uint64_t> m_rudder_names;  // 0 = automatic
+  uint64_t m_rudder_choice = 0;
+  wxTimer m_refresh;
+  int m_refreshes = 0;
 };
 
 #endif  // NAVICO_AP_PREFS_H

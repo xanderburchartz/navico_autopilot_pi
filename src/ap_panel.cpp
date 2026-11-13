@@ -1,11 +1,17 @@
 /***************************************************************************
  *   navico_autopilot_pi: Navico (B&G, Simrad) autopilot control for OpenCPN
  *   SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ *   The display is drawn in the style of a Navico pilot controller: heading
+ *   arc at the top with the set heading as a triangle, a mode box on the
+ *   left, two values on the right and the rudder angle at the bottom. Layout
+ *   proportions follow the Triton Pilot app (photos of a Triton2 display).
  ***************************************************************************/
 
 #include "ap_panel.h"
 
 #include <cmath>
+#include <optional>
 
 #include <wx/dcbuffer.h>
 #if wxUSE_GRAPHICS_CONTEXT
@@ -19,20 +25,401 @@ using simnet::Mode;
 
 namespace {
 
-constexpr double kRadToDeg = 180.0 / 3.14159265358979323846;
-
-wxString Degrees(double deg, bool magnetic) {
-  if (std::isnan(deg)) return "---";
-  int d = static_cast<int>(std::lround(deg)) % 360;
-  if (d < 0) d += 360;
-  return wxString::Format(L"%03d\u00B0%s", d, magnetic ? "M" : "T");
-}
+constexpr double kPi = 3.14159265358979323846;
+constexpr double kRadToDeg = 180.0 / kPi;
 
 /** Mix of two colours, f = 0 gives a, f = 1 gives b. */
 wxColour Mix(const wxColour& a, const wxColour& b, double f) {
   auto m = [f](int x, int y) { return static_cast<unsigned char>(std::lround(x + (y - x) * f)); };
   return wxColour(m(a.Red(), b.Red()), m(a.Green(), b.Green()), m(a.Blue(), b.Blue()));
 }
+
+/** Colours of display and buttons for one colour scheme. */
+struct Theme {
+  wxColour back, text, label, band, gap, edge;
+  wxColour mode_fill, mode_caption, mode_text;
+  wxColour port, starboard, box_fill, box_text;
+  wxColour button_face, button_border, button_text;
+};
+
+Theme ThemeFor(PI_ColorScheme cs) {
+  Theme t;
+  switch (cs) {
+    case PI_GLOBAL_COLOR_SCHEME_DUSK:
+      t = {wxColour(12, 12, 12),   wxColour(160, 160, 160), wxColour(110, 110, 110),
+           wxColour(42, 42, 42),   wxColour(120, 120, 120), wxColour(40, 95, 82),
+           wxColour(30, 76, 73),   wxColour(45, 102, 98),   wxColour(175, 175, 175),
+           wxColour(160, 40, 36),  wxColour(40, 130, 55),   wxColour(36, 36, 36),
+           wxColour(180, 180, 180), wxColour(34, 34, 34),   wxColour(72, 72, 72),
+           wxColour(160, 160, 160)};
+      break;
+    case PI_GLOBAL_COLOR_SCHEME_NIGHT:
+      // Red only, dim: keeps night vision, like a pilot display at night.
+      t = {wxColour(0, 0, 0),      wxColour(150, 20, 14),   wxColour(100, 13, 9),
+           wxColour(32, 4, 3),     wxColour(115, 15, 10),   wxColour(75, 9, 6),
+           wxColour(62, 8, 5),     wxColour(85, 11, 7),     wxColour(170, 24, 16),
+           wxColour(150, 20, 14),  wxColour(150, 20, 14),   wxColour(48, 6, 4),
+           wxColour(170, 24, 16),  wxColour(26, 3, 2),      wxColour(64, 8, 6),
+           wxColour(150, 20, 14)};
+      break;
+    default:  // day and RGB
+      t = {wxColour(247, 247, 247), wxColour(20, 20, 20),   wxColour(77, 77, 77),
+           wxColour(15, 15, 15),    wxColour(255, 255, 255), wxColour(51, 140, 115),
+           wxColour(61, 153, 148),  wxColour(107, 186, 181), wxColour(255, 255, 255),
+           wxColour(219, 31, 31),   wxColour(41, 158, 61),  wxColour(20, 20, 20),
+           wxColour(255, 255, 255), wxColour(232, 232, 232), wxColour(170, 170, 170),
+           wxColour(20, 20, 20)};
+      break;
+  }
+  return t;
+}
+
+wxFont PixelFont(int px, bool bold = false) {
+  wxFontInfo info(wxSize(0, std::max(px, 6)));
+  info.Family(wxFONTFAMILY_SWISS);
+  if (bold) info.Bold();
+  return wxFont(info);
+}
+
+std::optional<double> Deg(std::optional<double> rad) {
+  if (!rad) return std::nullopt;
+  return *rad * kRadToDeg;
+}
+
+/** -180..180 */
+double Signed(double deg) {
+  deg = std::fmod(deg, 360.0);
+  if (deg > 180) deg -= 360;
+  if (deg < -180) deg += 360;
+  return deg;
+}
+
+wxString Three(std::optional<double> deg) {
+  if (!deg || std::isnan(*deg)) return "---";
+  int d = static_cast<int>(std::lround(*deg)) % 360;
+  if (d < 0) d += 360;
+  return wxString::Format("%03d", d);
+}
+
+}  // namespace
+
+// ---- display ----------------------------------------------------------------
+
+/** What the display shows; filled by ApPanel::UpdateState(). */
+struct DisplayData {
+  bool alive = false;
+  Mode mode = Mode::kUnknown;
+  bool magnetic = false;
+  std::optional<double> heading, target, wpt_bearing, dtw_nm, sog;
+  std::optional<double> awa, set_wind, rudder;  // signed, negative = port
+  wxString badge;  // "NAC 4"
+};
+
+class ApDisplay : public wxWindow {
+public:
+  explicit ApDisplay(wxWindow* parent)
+      : wxWindow(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE) {
+    SetBackgroundStyle(wxBG_STYLE_PAINT);
+    SetMinSize(wxSize(300, 210));
+    Bind(wxEVT_PAINT, &ApDisplay::OnPaint, this);
+    Bind(wxEVT_SIZE, [this](wxSizeEvent& e) {
+      Refresh();
+      e.Skip();
+    });
+  }
+
+  void Set(const DisplayData& d) {
+    m_data = d;
+    Refresh(false);
+  }
+  void SetTheme(const Theme& t) {
+    m_theme = t;
+    Refresh(false);
+  }
+
+private:
+  static constexpr double kHalfSpan = 40;  // degrees of the arc each side
+
+  // Arc geometry, as in the Triton Pilot app: a large circle of which only
+  // the top shows, so 80 degrees of heading fit the width.
+  struct Arc {
+    double w, h, radius, cx, cy, band, k;  // k: radians on screen per degree
+    wxPoint At(double offset_deg, double r) const {
+      double a = offset_deg * k;
+      return wxPoint(static_cast<int>(std::lround(cx + r * std::sin(a))),
+                     static_cast<int>(std::lround(cy - r * std::cos(a))));
+    }
+  };
+
+  void OnPaint(wxPaintEvent&) {
+    wxAutoBufferedPaintDC pdc(this);
+    pdc.SetBackground(wxBrush(m_theme.back));
+    pdc.Clear();
+#if wxUSE_GRAPHICS_CONTEXT
+    wxGCDC gdc(pdc);
+    wxDC& dc = gdc;
+#else
+    wxDC& dc = pdc;  // Android (wxQt) has no graphics context
+#endif
+    wxSize sz = GetClientSize();
+    double w = sz.x, h = sz.y;
+    DrawHeadingArc(dc, w, h * 0.36);
+    DrawModeBox(dc, wxRect(wxPoint(w * 0.05, h * 0.42), wxSize(w * 0.27, h * 0.40)));
+    DrawReadout(dc, w, h);
+    DrawRudder(dc, w, h);
+    DrawBadge(dc, w, h);
+  }
+
+  void DrawHeadingArc(wxDC& dc, double w, double h) {
+    Arc g;
+    g.w = w;
+    g.h = h;
+    g.radius = w * 1.05;
+    g.cx = w / 2;
+    g.cy = h * 0.30 + g.radius;
+    g.band = h * 0.17;
+    double phys_half = std::asin(std::min(1.0, (w / 2) / g.radius));
+    g.k = phys_half / kHalfSpan;
+
+    // Band and edge as polylines: works with and without a graphics context.
+    auto arc_points = [&](double r) {
+      std::vector<wxPoint> pts;
+      for (double off = -kHalfSpan * 1.15; off <= kHalfSpan * 1.15; off += 1.0)
+        pts.push_back(g.At(off, r));
+      return pts;
+    };
+    auto band = arc_points(g.radius);
+    dc.SetPen(wxPen(m_theme.band, std::max(2, static_cast<int>(g.band))));
+    dc.DrawLines(static_cast<int>(band.size()), band.data());
+    auto edge = arc_points(g.radius + g.band * 0.62);
+    dc.SetPen(wxPen(m_theme.edge, 2));
+    dc.DrawLines(static_cast<int>(edge.size()), edge.data());
+
+    auto heading = m_data.heading;
+    if (heading) {
+      // A gap every 10 degrees, a number every 30.
+      dc.SetFont(PixelFont(static_cast<int>(h * 0.13), true));
+      dc.SetTextForeground(m_theme.text);
+      int first = static_cast<int>(std::floor((*heading - kHalfSpan - 10) / 10)) * 10;
+      for (int deg = first; deg <= *heading + kHalfSpan + 10; deg += 10) {
+        double off = deg - *heading;
+        if (std::fabs(off) > kHalfSpan * 1.15) continue;
+        dc.SetPen(wxPen(m_theme.gap, 2));
+        dc.DrawLine(g.At(off, g.radius + g.band / 2), g.At(off, g.radius - g.band / 2));
+        if (deg % 30 != 0) continue;
+        wxPoint at = g.At(off, g.radius - g.band * 1.35);
+        if (at.x < w * 0.08 || at.x > w * 0.92) continue;
+        wxString label = Three(static_cast<double>(deg));
+        DrawRotatedCentred(dc, label, at, -off * g.k * kRadToDeg);
+      }
+      // Set heading (or bearing to the waypoint), and the wind in WIND mode.
+      auto target = ArcTarget();
+      if (target) {
+        double off = std::max(-kHalfSpan, std::min(kHalfSpan, Signed(*target - *heading)));
+        DrawTriangle(dc, g, off, off < 0 ? m_theme.port : m_theme.starboard);
+      }
+      if (m_data.mode == Mode::kWind && m_data.awa) {
+        double off = std::max(-kHalfSpan, std::min(kHalfSpan, *m_data.awa));
+        DrawTriangle(dc, g, off, *m_data.awa < 0 ? m_theme.port : m_theme.starboard);
+      }
+    }
+
+    // Heading in a box at the top.
+    wxString text = Three(heading);
+    dc.SetFont(PixelFont(static_cast<int>(h * 0.24), true));
+    wxSize t = dc.GetTextExtent(text);
+    wxRect box(wxPoint(static_cast<int>(w / 2 - t.x / 2 - h * 0.05), static_cast<int>(h * 0.02)),
+               wxSize(static_cast<int>(t.x + h * 0.1), static_cast<int>(t.y + h * 0.02)));
+    dc.SetBrush(wxBrush(m_theme.box_fill));
+    dc.SetPen(wxPen(m_theme.back));
+    dc.DrawRoundedRectangle(box, 4);
+    dc.SetTextForeground(m_theme.box_text);
+    dc.DrawText(text, box.x + (box.width - t.x) / 2, box.y + (box.height - t.y) / 2);
+  }
+
+  std::optional<double> ArcTarget() const {
+    switch (m_data.mode) {
+      case Mode::kAuto:
+      case Mode::kNoDrift: return m_data.target;
+      case Mode::kNav: return m_data.wpt_bearing ? m_data.wpt_bearing : m_data.target;
+      default: return std::nullopt;
+    }
+  }
+
+  void DrawTriangle(wxDC& dc, const Arc& g, double off, const wxColour& colour) {
+    double s = g.band * 0.9;
+    double a = off * g.k;
+    wxPoint c = g.At(off, g.radius - g.band / 2 - s * 0.6);
+    // Pointing outwards (up on screen when off = 0), rotated with the arc.
+    double pts[3][2] = {{0, -s * 0.5}, {s * 0.6, s * 0.5}, {-s * 0.6, s * 0.5}};
+    wxPoint poly[3];
+    for (int i = 0; i < 3; i++) {
+      double x = pts[i][0], y = pts[i][1];
+      poly[i] = wxPoint(static_cast<int>(std::lround(c.x + x * std::cos(a) - y * std::sin(a))),
+                        static_cast<int>(std::lround(c.y + x * std::sin(a) + y * std::cos(a))));
+    }
+    dc.SetBrush(wxBrush(colour));
+    dc.SetPen(wxPen(colour));
+    dc.DrawPolygon(3, poly);
+  }
+
+  static void DrawRotatedCentred(wxDC& dc, const wxString& text, wxPoint centre, double angle_deg) {
+    // DrawRotatedText turns around the top left corner; shift so the middle
+    // of the text lands on centre.
+    wxSize t = dc.GetTextExtent(text);
+    double a = angle_deg / kRadToDeg;
+    double dx = t.x / 2.0, dy = t.y / 2.0;
+    double ox = dx * std::cos(a) + dy * std::sin(a);
+    double oy = -dx * std::sin(a) + dy * std::cos(a);
+    dc.DrawRotatedText(text, static_cast<int>(std::lround(centre.x - ox)),
+                       static_cast<int>(std::lround(centre.y - oy)), angle_deg);
+  }
+
+  void DrawModeBox(wxDC& dc, const wxRect& r) {
+    bool engaged = m_data.alive && m_data.mode != Mode::kStandby && m_data.mode != Mode::kUnknown;
+    wxString caption, letter;
+    switch (m_data.alive ? m_data.mode : Mode::kUnknown) {
+      case Mode::kStandby: caption = _("STANDBY"); letter = "S"; break;
+      case Mode::kAuto: caption = _("HEADING HOLD"); letter = "A"; break;
+      case Mode::kWind: caption = _("WIND"); letter = "W"; break;
+      case Mode::kNav: caption = _("NAVIGATION"); letter = "N"; break;
+      case Mode::kNoDrift: caption = _("NO DRIFT"); letter = "ND"; break;
+      default: caption = _("NO PILOT"); letter = "--"; break;
+    }
+    int radius = std::max(3, r.width / 25);
+    dc.SetPen(wxPen(engaged ? m_theme.mode_fill : m_theme.label, 2));
+    dc.SetBrush(wxBrush(engaged ? m_theme.mode_fill : m_theme.back));
+    dc.DrawRoundedRectangle(r, radius);
+    wxRect strip(r.x, r.y, r.width, static_cast<int>(r.height * 0.27));
+    if (engaged) {
+      dc.SetPen(wxPen(m_theme.mode_caption));
+      dc.SetBrush(wxBrush(m_theme.mode_caption));
+      dc.DrawRoundedRectangle(strip, radius);
+    }
+    wxColour fg = engaged ? m_theme.mode_text : m_theme.label;
+    dc.SetTextForeground(fg);
+    // Caption: shrink until it fits the width.
+    int px = static_cast<int>(strip.height * 0.42);
+    dc.SetFont(PixelFont(px, true));
+    while (px > 7 && dc.GetTextExtent(caption).x > r.width * 0.92) dc.SetFont(PixelFont(--px, true));
+    wxSize t = dc.GetTextExtent(caption);
+    dc.DrawText(caption, r.x + (r.width - t.x) / 2, strip.y + (strip.height - t.y) / 2);
+    int lp = static_cast<int>(r.height * (letter.length() > 1 ? 0.42 : 0.55));
+    dc.SetFont(PixelFont(lp, true));
+    t = dc.GetTextExtent(letter);
+    int body_y = strip.GetBottom();
+    dc.DrawText(letter, r.x + (r.width - t.x) / 2, body_y + (r.GetBottom() - body_y - t.y) / 2);
+  }
+
+  void DrawRow(wxDC& dc, const wxRect& r, const wxString& label, const wxString& value,
+               const wxString& unit, std::optional<double> side) {
+    dc.SetTextForeground(m_theme.label);
+    dc.SetFont(PixelFont(static_cast<int>(r.height * 0.24)));
+    dc.DrawText(label, r.x + r.width * 0.02, r.y);
+    int vy = r.y + static_cast<int>(r.height * 0.24);
+    dc.SetFont(PixelFont(static_cast<int>(r.height * 0.70), true));
+    wxSize t = dc.GetTextExtent(value);
+    int right = r.x + static_cast<int>(r.width * 0.74);
+    dc.SetTextForeground(m_theme.text);
+    dc.DrawText(value, right - t.x, vy);
+    if (side) {
+      // Small triangle before the value: port red pointing left, starboard green right.
+      int s = static_cast<int>(r.height * 0.22);
+      int cx = right - t.x - s, cy = vy + t.y / 2;
+      bool port = *side < 0;
+      wxPoint p[3] = {wxPoint(cx + (port ? -s / 2 : s / 2), cy), wxPoint(cx - (port ? -s / 2 : s / 2), cy - s / 2),
+                      wxPoint(cx - (port ? -s / 2 : s / 2), cy + s / 2)};
+      wxColour c = port ? m_theme.port : m_theme.starboard;
+      dc.SetBrush(wxBrush(c));
+      dc.SetPen(wxPen(c));
+      dc.DrawPolygon(3, p);
+    }
+    dc.SetTextForeground(m_theme.label);
+    dc.SetFont(PixelFont(static_cast<int>(r.height * 0.24)));
+    dc.DrawText(unit, right + r.width * 0.03, vy + r.height * 0.08);
+  }
+
+  void DrawReadout(wxDC& dc, double w, double h) {
+    int x = static_cast<int>(w * 0.35);
+    int rw = static_cast<int>(w * 0.63);
+    int rh = static_cast<int>(h * 0.21);
+    wxRect r1(x, static_cast<int>(h * 0.39), rw, rh);
+    wxRect r2(x, static_cast<int>(h * 0.62), rw, rh);
+    wxString unit = m_data.magnetic ? L"°M" : L"°T";
+    auto abs_deg = [](std::optional<double> v) {
+      return v ? wxString::Format("%.0f", std::fabs(*v)) : wxString("---");
+    };
+    auto sog = [&]() {
+      return m_data.sog ? wxString::Format("%.1f", *m_data.sog) : wxString("-.-");
+    };
+    switch (m_data.alive ? m_data.mode : Mode::kUnknown) {
+      case Mode::kWind:
+        DrawRow(dc, r1, _("Apparent wind"), abs_deg(m_data.awa), L"°", m_data.awa);
+        DrawRow(dc, r2, _("Set angle"), abs_deg(m_data.set_wind), L"°", m_data.set_wind);
+        break;
+      case Mode::kNav:
+        DrawRow(dc, r1, _("Bearing WPT"), Three(m_data.wpt_bearing ? m_data.wpt_bearing : m_data.target),
+                unit, std::nullopt);
+        DrawRow(dc, r2, _("Distance WPT"),
+                m_data.dtw_nm ? wxString::Format("%.2f", *m_data.dtw_nm) : wxString("-.--"), "NM",
+                std::nullopt);
+        break;
+      case Mode::kAuto:
+      case Mode::kNoDrift:
+        DrawRow(dc, r1, _("Set heading"), Three(m_data.target), unit, std::nullopt);
+        DrawRow(dc, r2, _("Speed over ground"), sog(), "kn", std::nullopt);
+        break;
+      default:
+        DrawRow(dc, r1, _("Heading"), Three(m_data.heading), unit, std::nullopt);
+        DrawRow(dc, r2, _("Speed over ground"), sog(), "kn", std::nullopt);
+        break;
+    }
+  }
+
+  void DrawRudder(wxDC& dc, double w, double h) {
+    double y = h * 0.92;
+    double box_w = w * 0.10;
+    double max_len = w * 0.38 - box_w / 2;
+    dc.SetPen(wxPen(m_theme.edge, 2));
+    dc.DrawLine(static_cast<int>(w * 0.12), static_cast<int>(y), static_cast<int>(w * 0.88),
+                static_cast<int>(y));
+    auto rudder = m_data.rudder;
+    if (rudder) {
+      constexpr double kFullScale = 35;
+      double len = std::min(std::fabs(*rudder), kFullScale) / kFullScale * max_len;
+      if (std::fabs(*rudder) >= 0.5) len = std::max(len, 3.0);
+      wxColour c = *rudder < 0 ? m_theme.port : m_theme.starboard;
+      dc.SetBrush(wxBrush(c));
+      dc.SetPen(wxPen(c));
+      int bh = std::max(3, static_cast<int>(h * 0.035));
+      int x0 = *rudder < 0 ? static_cast<int>(w / 2 - box_w / 2 - 2 - len)
+                           : static_cast<int>(w / 2 + box_w / 2 + 2);
+      dc.DrawRectangle(x0, static_cast<int>(y - bh / 2), static_cast<int>(len), bh);
+    }
+    wxString text = rudder ? wxString::Format("%02.0f", std::fabs(std::round(*rudder))) : wxString("--");
+    dc.SetFont(PixelFont(static_cast<int>(h * 0.07), true));
+    wxSize t = dc.GetTextExtent(text);
+    wxRect box(static_cast<int>(w / 2 - box_w / 2), static_cast<int>(y - t.y / 2 - 1),
+               static_cast<int>(box_w), t.y + 2);
+    dc.SetBrush(wxBrush(m_theme.box_fill));
+    dc.SetPen(wxPen(m_theme.box_fill));
+    dc.DrawRoundedRectangle(box, 3);
+    dc.SetTextForeground(m_theme.box_text);
+    dc.DrawText(text, box.x + (box.width - t.x) / 2, box.y + 1);
+  }
+
+  void DrawBadge(wxDC& dc, double w, double h) {
+    if (m_data.badge.empty()) return;
+    dc.SetFont(PixelFont(static_cast<int>(h * 0.045), true));
+    dc.SetTextForeground(m_data.alive ? m_theme.label : m_theme.port);
+    dc.DrawText(m_data.badge, static_cast<int>(w * 0.015), static_cast<int>(h * 0.01));
+  }
+
+  DisplayData m_data;
+  Theme m_theme = ThemeFor(PI_GLOBAL_COLOR_SCHEME_DAY);
+};
+
+// ---- buttons ------------------------------------------------------------------
 
 /**
  * A push button drawn by the plugin itself. Native buttons (macOS above all)
@@ -68,13 +455,8 @@ public:
     });
   }
 
-  /** face: button colour, border and text: as the names say. */
-  void SetColours(const wxColour& face, const wxColour& border, const wxColour& text,
-                  const wxColour& disabled_text) {
-    m_face = face;
-    m_border = border;
-    m_text = text;
-    m_disabled_text = disabled_text;
+  void SetTheme(const Theme& t) {
+    m_theme = t;
     Refresh();
   }
 
@@ -93,7 +475,7 @@ protected:
 private:
   void OnPaint(wxPaintEvent&) {
     wxAutoBufferedPaintDC pdc(this);
-    pdc.SetBackground(wxBrush(GetParent()->GetBackgroundColour()));
+    pdc.SetBackground(wxBrush(m_theme.back));
     pdc.Clear();
 #if wxUSE_GRAPHICS_CONTEXT
     wxGCDC gdc(pdc);  // anti-aliased rounded corners
@@ -102,58 +484,108 @@ private:
     wxDC& dc = pdc;  // Android (wxQt) has no graphics context
 #endif
     wxRect r = GetClientRect().Deflate(1);
-    wxColour face = m_pressed ? Mix(m_face, m_text, 0.25) : m_face;
-    if (!IsEnabled()) face = Mix(m_face, GetParent()->GetBackgroundColour(), 0.5);
+    wxColour face = m_pressed ? Mix(m_theme.button_face, m_theme.button_text, 0.25)
+                              : m_theme.button_face;
+    if (!IsEnabled()) face = Mix(m_theme.button_face, m_theme.back, 0.5);
     dc.SetBrush(wxBrush(face));
-    dc.SetPen(wxPen(IsEnabled() ? m_border : face));
+    dc.SetPen(wxPen(IsEnabled() ? m_theme.button_border : face));
     dc.DrawRoundedRectangle(r, 5);
     dc.SetFont(GetFont());
-    dc.SetTextForeground(IsEnabled() ? m_text : m_disabled_text);
+    dc.SetTextForeground(IsEnabled() ? m_theme.button_text
+                                     : Mix(face, m_theme.button_text, 0.4));
     wxSize t = dc.GetTextExtent(m_label);
     dc.DrawText(m_label, r.x + (r.width - t.x) / 2, r.y + (r.height - t.y) / 2);
   }
 
   wxString m_label;
   bool m_pressed = false;
-  wxColour m_face = *wxLIGHT_GREY, m_border = *wxBLACK, m_text = *wxBLACK,
-           m_disabled_text = *wxLIGHT_GREY;
+  Theme m_theme = ThemeFor(PI_GLOBAL_COLOR_SCHEME_DAY);
 };
 
-}  // namespace
+// ---- NAV confirmation ---------------------------------------------------------
+
+/**
+ * After NAV the pilot waits 10 s for a confirmation (as a Triton2 or an MFD
+ * asks for one). This window asks it inside OpenCPN; Confirm sends what a
+ * Triton2 sends.
+ */
+class NavConfirmDialog : public wxDialog {
+public:
+  NavConfirmDialog(wxWindow* parent, NavicoAutopilotPi* plugin, const Theme& theme)
+      : wxDialog(parent, wxID_ANY, _("Start navigation"), wxDefaultPosition, wxDefaultSize,
+                 wxCAPTION | wxSTAY_ON_TOP),
+        m_plugin(plugin) {
+    SetBackgroundColour(theme.back);
+    SetForegroundColour(theme.text);
+    auto* top = new wxBoxSizer(wxVERTICAL);
+    m_question = new wxStaticText(this, wxID_ANY, "");
+    wxFont f = m_question->GetFont();
+    f.SetPointSize(f.GetPointSize() * 5 / 4);
+    f.SetWeight(wxFONTWEIGHT_BOLD);
+    m_question->SetFont(f);
+    m_question->SetForegroundColour(theme.text);
+    top->Add(m_question, 0, wxALL, 12);
+    m_detail = new wxStaticText(this, wxID_ANY, "");
+    m_detail->SetForegroundColour(theme.text);
+    top->Add(m_detail, 0, wxLEFT | wxRIGHT, 12);
+    m_countdown = new wxStaticText(this, wxID_ANY, "");
+    m_countdown->SetForegroundColour(theme.label);
+    top->Add(m_countdown, 0, wxALL, 12);
+
+    auto* buttons = new wxBoxSizer(wxHORIZONTAL);
+    auto* cancel = new ApButton(this, _("Cancel"));
+    auto* confirm = new ApButton(this, _("Confirm"));
+    for (ApButton* b : {cancel, confirm}) {
+      b->SetTheme(theme);
+      b->SetMinSize(wxSize(GetCharWidth() * 14, GetCharHeight() * 3));
+      buttons->Add(b, 0, wxLEFT, 8);
+    }
+    top->Add(buttons, 0, wxALIGN_RIGHT | wxALL, 12);
+    confirm->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
+      m_plugin->ConfirmNav();
+      m_done = true;
+      Hide();
+    });
+    cancel->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
+      m_done = true;
+      Hide();
+    });
+    SetSizerAndFit(top);
+  }
+
+  /** Update texts; seconds_left counts down the pilot's 10 s. */
+  void SetInfo(const wxString& waypoint, std::optional<double> bearing, bool magnetic,
+              int seconds_left) {
+    wxString q = waypoint.empty() ? wxString(_("Steer to the waypoint?"))
+                                  : wxString::Format(_("Steer to waypoint %s?"), waypoint);
+    wxString d = bearing ? wxString::Format(_("The autopilot will turn to %s%s."), Three(bearing),
+                                            magnetic ? L"°M" : L"°T")
+                         : wxString(_("The autopilot will turn to the waypoint."));
+    wxString c = wxString::Format(_("%d s left to confirm"), std::max(0, seconds_left));
+    bool resize = false;
+    if (m_question->GetLabel() != q) { m_question->SetLabel(q); resize = true; }
+    if (m_detail->GetLabel() != d) { m_detail->SetLabel(d); resize = true; }
+    if (m_countdown->GetLabel() != c) m_countdown->SetLabel(c);
+    if (resize) Fit();
+  }
+
+  bool Done() const { return m_done; }
+
+private:
+  NavicoAutopilotPi* m_plugin;
+  wxStaticText* m_question;
+  wxStaticText* m_detail;
+  wxStaticText* m_countdown;
+  bool m_done = false;
+};
+
+// ---- panel ----------------------------------------------------------------------
 
 ApPanel::ApPanel(wxWindow* parent, NavicoAutopilotPi* plugin)
     : wxPanel(parent, wxID_ANY), m_plugin(plugin) {
-  // The chart canvas parent has a black background; set our own colours
-  // before creating the children so they inherit them. ApplyColours() sets
-  // them again for the current colour scheme.
-  SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
-  SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
   auto* top = new wxBoxSizer(wxVERTICAL);
-
-  m_mode = new wxStaticText(this, wxID_ANY, "----", wxDefaultPosition,
-                            wxDefaultSize, wxALIGN_CENTRE_HORIZONTAL | wxST_NO_AUTORESIZE);
-  wxFont big = m_mode->GetFont();
-  big.SetPointSize(big.GetPointSize() * 2);
-  big.SetWeight(wxFONTWEIGHT_BOLD);
-  m_mode->SetFont(big);
-  top->Add(m_mode, 0, wxEXPAND | wxALL, 6);
-
-  m_pilot = new wxStaticText(this, wxID_ANY, "", wxDefaultPosition,
-                             wxDefaultSize, wxALIGN_CENTRE_HORIZONTAL | wxST_NO_AUTORESIZE);
-  top->Add(m_pilot, 0, wxEXPAND | wxLEFT | wxRIGHT, 6);
-
-  auto* headings = new wxFlexGridSizer(2, 2, 2, 12);
-  headings->Add(new wxStaticText(this, wxID_ANY, _("Heading")));
-  m_heading = new wxStaticText(this, wxID_ANY, "---");
-  headings->Add(m_heading);
-  headings->Add(new wxStaticText(this, wxID_ANY, _("Target")));
-  m_target = new wxStaticText(this, wxID_ANY, "---");
-  headings->Add(m_target);
-  wxFont mid = m_heading->GetFont();
-  mid.SetPointSize(mid.GetPointSize() * 3 / 2);
-  m_heading->SetFont(mid);
-  m_target->SetFont(mid);
-  top->Add(headings, 0, wxALIGN_CENTRE_HORIZONTAL | wxALL, 6);
+  m_display = new ApDisplay(this);
+  top->Add(m_display, 1, wxEXPAND | wxALL, 4);
 
   auto* modes = new wxGridSizer(2, 3, 4, 4);
   AddButton(modes, _("STBY"), Command::kStandby);
@@ -162,22 +594,27 @@ ApPanel::ApPanel(wxWindow* parent, NavicoAutopilotPi* plugin)
   AddButton(modes, _("NAV"), Command::kNav);
   AddButton(modes, _("NO DRIFT"), Command::kNoDrift);
   modes->AddStretchSpacer();
-  top->Add(modes, 0, wxEXPAND | wxALL, 6);
+  top->Add(modes, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 6);
 
   auto* course = new wxGridSizer(1, 4, 4, 4);
   AddButton(course, "-10", Command::kPort10);
   AddButton(course, "-1", Command::kPort1);
   AddButton(course, "+1", Command::kStarboard1);
   AddButton(course, "+10", Command::kStarboard10);
-  top->Add(course, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 6);
+  top->Add(course, 0, wxEXPAND | wxALL, 6);
 
-  m_message = new wxStaticText(this, wxID_ANY, "", wxDefaultPosition,
-                               wxSize(-1, -1), wxST_NO_AUTORESIZE);
+  m_message = new wxStaticText(this, wxID_ANY, "", wxDefaultPosition, wxSize(-1, -1),
+                               wxST_NO_AUTORESIZE);
   m_message->SetMinSize(wxSize(GetCharWidth() * 34, GetCharHeight() * 2));
-  top->Add(m_message, 0, wxEXPAND | wxALL, 6);
+  top->Add(m_message, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 6);
 
   SetSizerAndFit(top);
+  ApplyColours(m_plugin->ColorScheme());
   UpdateState(m_plugin->Now());
+}
+
+ApPanel::~ApPanel() {
+  if (m_confirm) m_confirm->Destroy();
 }
 
 wxWindow* ApPanel::AddButton(wxSizer* sizer, const wxString& label, Command c) {
@@ -199,36 +636,29 @@ void ApPanel::UpdateState(double now) {
   bool alive = s.Alive(now);
   bool control = m_plugin->Driver().has_value();
 
-  // Mode and pilot.
-  wxString mode = alive ? wxString(simnet::ModeName(s.Mode())) : wxString("----");
-  if (m_mode->GetLabel() != mode) m_mode->SetLabel(mode);
-  wxString pilot;
-  if (s.NeedsChoice(now))
-    pilot = _("More than one autopilot found");
-  else if (!address)
-    pilot = _("No autopilot found");
-  else {
-    wxString model;
+  DisplayData d;
+  d.alive = alive;
+  d.mode = s.Mode();
+  d.magnetic = s.TargetMagnetic();
+  double hdg = m_plugin->Heading(d.magnetic);
+  if (!std::isnan(hdg)) d.heading = hdg;
+  if (alive) d.target = Deg(s.TargetHeading());
+  if (auto nav = s.NavData(now)) {
+    d.wpt_bearing = Deg(nav->bearing);
+    if (nav->distance) d.dtw_nm = *nav->distance / 1852.0;
+  }
+  double sog = m_plugin->Sog();
+  if (!std::isnan(sog)) d.sog = sog;
+  d.awa = Deg(s.ApparentWind(now));
+  if (alive) d.set_wind = Deg(s.TargetWindAngle());
+  d.rudder = Deg(s.Rudder(now));
+  if (address) {
+    wxString model = "AP";
     for (const auto& c : s.Candidates(now))
       if (c.address == *address) model = c.model == 0x64 ? "NAC" : "AC";
-    pilot = wxString::Format(_("%s at address %d"), model.empty() ? wxString(_("Pilot")) : model,
-                             *address);
-    if (!alive) pilot += " - " + wxString(_("no data"));
+    d.badge = wxString::Format("%s %d", model, *address);
   }
-  if (m_pilot->GetLabel() != pilot) m_pilot->SetLabel(pilot);
-
-  // Headings, in the reference the pilot uses.
-  bool magnetic = s.TargetMagnetic();
-  m_heading->SetLabel(Degrees(m_plugin->Heading(magnetic), magnetic));
-  wxString target = "---";
-  if (alive && s.Mode() == Mode::kWind && s.TargetWindAngle()) {
-    double w = *s.TargetWindAngle() * kRadToDeg;
-    target = wxString::Format(L"%d\u00B0 %s", static_cast<int>(std::lround(std::fabs(w))),
-                              w < 0 ? _("port") : _("stbd"));
-  } else if (alive && s.TargetHeading()) {
-    target = Degrees(*s.TargetHeading() * kRadToDeg, magnetic);
-  }
-  m_target->SetLabel(target);
+  m_display->Set(d);
 
   // Buttons. STBY whenever a pilot is selected; the rest only with fresh data.
   Mode m = s.Mode();
@@ -246,45 +676,65 @@ void ApPanel::UpdateState(double now) {
     if (b->IsEnabled() != on) b->Enable(on);
   }
 
-  // One line of explanation, most important first.
+  // One line of explanation, most important first; then the pilot's alarms.
   wxString msg = m_plugin->LastMessage();
   if (msg.empty()) {
     if (!m_plugin->Driver())
       msg = _("Choose the NMEA 2000 connection in the plugin settings.");
-    else if (s.NeedsChoice(now))
-      msg = _("Choose the autopilot in the plugin settings.");
+    else if (!address)
+      msg = _("No autopilot found");
+    else if (!alive)
+      msg = _("No data from the autopilot.");
     else if (s.Unconfirmed(now))
-      msg = _("No confirmation from the autopilot.");
+      msg = _("No reply from the autopilot.");
+    else if (s.NotFollowed(now))
+      msg = _("The autopilot did not change mode.");
+  }
+  for (const auto& a : s.Alarms(now)) {
+    if (a.text.empty()) continue;
+    if (!msg.empty()) msg += "\n";
+    msg += wxString::Format(_("Alarm: %s"), wxString::FromUTF8(a.text.c_str()));
   }
   if (m_message->GetLabel() != msg) {
     m_message->SetLabel(msg);
     m_message->Wrap(m_message->GetSize().GetWidth());
   }
+
+  UpdateConfirmation(now);
+}
+
+void ApPanel::UpdateConfirmation(double now) {
+  const PilotState& s = m_plugin->State();
+  bool awaiting = s.AwaitsConfirmation(now);
+  if (!awaiting || (m_confirm && m_confirm->Done())) {
+    if (m_confirm) {
+      m_confirm->Destroy();
+      m_confirm = nullptr;
+    }
+    if (!awaiting) return;
+  }
+  if (!m_confirm) {
+    if (m_confirm_handled == s.AwaitingSince()) return;  // confirmed or cancelled
+    m_confirm_handled = s.AwaitingSince();
+    m_confirm = new NavConfirmDialog(wxGetTopLevelParent(this), m_plugin,
+                                     ThemeFor(m_plugin->ColorScheme()));
+    m_confirm->CentreOnParent();
+    m_confirm->Show();
+    m_confirm->Raise();
+  }
+  auto nav = s.NavData(now);
+  std::optional<double> bearing = nav ? Deg(nav->bearing) : std::nullopt;
+  int left = static_cast<int>(std::ceil(PilotState::kNavConfirmWindow - (now - s.AwaitingSince())));
+  m_confirm->SetInfo(m_plugin->ActiveWaypoint(), bearing, s.TargetMagnetic(), left);
 }
 
 void ApPanel::ApplyColours(PI_ColorScheme cs) {
-  // Day: the platform's own colours. Dusk and night: OpenCPN's colours for
-  // that scheme (dark background, dialog text colour), so the panel is as dim
-  // as the chart.
-  wxColour back = wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW);
-  wxColour text = wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT);
-  wxColour face = wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE);
-  wxColour border = wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW);
-  wxColour button_text = wxSystemSettings::GetColour(wxSYS_COLOUR_BTNTEXT);
-  if (cs == PI_GLOBAL_COLOR_SCHEME_DUSK || cs == PI_GLOBAL_COLOR_SCHEME_NIGHT) {
-    GetGlobalColor("UIBCK", &back);
-    GetGlobalColor("DILG3", &text);
-    face = Mix(back, text, 0.2);
-    border = Mix(back, text, 0.45);
-    button_text = text;
-  }
-  SetBackgroundColour(back);
-  SetForegroundColour(text);
-  for (wxWindow* child : GetChildren()) {
-    child->SetBackgroundColour(back);
-    child->SetForegroundColour(text);
-  }
-  for (auto& [c, b] : m_buttons)
-    static_cast<ApButton*>(b)->SetColours(face, border, button_text, Mix(face, button_text, 0.4));
+  Theme t = ThemeFor(cs);
+  SetBackgroundColour(t.back);
+  SetForegroundColour(t.text);
+  m_message->SetBackgroundColour(t.back);
+  m_message->SetForegroundColour(t.text);
+  m_display->SetTheme(t);
+  for (auto& [c, b] : m_buttons) static_cast<ApButton*>(b)->SetTheme(t);
   Refresh();
 }

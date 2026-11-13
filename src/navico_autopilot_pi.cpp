@@ -42,6 +42,13 @@ wxDEFINE_EVENT(EVT_NAVICO_AP_65305, ObservedEvt);
 wxDEFINE_EVENT(EVT_NAVICO_AP_65341, ObservedEvt);
 wxDEFINE_EVENT(EVT_NAVICO_AP_127237, ObservedEvt);
 wxDEFINE_EVENT(EVT_NAVICO_AP_60928, ObservedEvt);
+wxDEFINE_EVENT(EVT_NAVICO_AP_130850, ObservedEvt);
+wxDEFINE_EVENT(EVT_NAVICO_AP_130851, ObservedEvt);
+wxDEFINE_EVENT(EVT_NAVICO_AP_130856, ObservedEvt);
+wxDEFINE_EVENT(EVT_NAVICO_AP_127245, ObservedEvt);
+wxDEFINE_EVENT(EVT_NAVICO_AP_130306, ObservedEvt);
+wxDEFINE_EVENT(EVT_NAVICO_AP_129284, ObservedEvt);
+wxDEFINE_EVENT(EVT_NAVICO_AP_126996, ObservedEvt);
 
 extern "C" DECL_EXP opencpn_plugin* create_pi(void* ppimgr) {
   return new NavicoAutopilotPi(ppimgr);
@@ -73,6 +80,13 @@ int NavicoAutopilotPi::Init() {
   listen(simnet::kPgnApAngle, EVT_NAVICO_AP_65341);
   listen(simnet::kPgnHeadingControl, EVT_NAVICO_AP_127237);
   listen(simnet::kPgnAddressClaim, EVT_NAVICO_AP_60928);
+  listen(simnet::kPgnCommand, EVT_NAVICO_AP_130850);       // alarms from the pilot
+  listen(simnet::kPgnCommandReply, EVT_NAVICO_AP_130851);  // echo of a command
+  listen(simnet::kPgnAlarmText, EVT_NAVICO_AP_130856);
+  listen(simnet::kPgnRudder, EVT_NAVICO_AP_127245);
+  listen(simnet::kPgnWind, EVT_NAVICO_AP_130306);
+  listen(simnet::kPgnNavData, EVT_NAVICO_AP_129284);
+  listen(simnet::kPgnProductInfo, EVT_NAVICO_AP_126996);
 
   Bind(wxEVT_TIMER, &NavicoAutopilotPi::OnTimer, this);
   m_timer.Start(500);
@@ -134,7 +148,19 @@ void NavicoAutopilotPi::OnN2k(int pgn, ObservedEvt& ev) {
   simnet::Mode before = m_state.Mode();
   auto target_before = m_state.TargetHeading();
   auto wind_before = m_state.TargetWindAngle();
-  m_state.Handle(*msg, Now());
+  double now = Now();
+  m_state.Handle(*msg, now);
+  // While the settings are open: ask pilots and rudder sensors (only those)
+  // for their model ID, to tell a NAC-3's rudder feedback from its virtual one.
+  if (pgn == simnet::kPgnAddressClaim && now < m_discover_until) {
+    auto name = simnet::ParseAddressClaim(msg->data);
+    if (name && (name->function == simnet::kFunctionAutopilot ||
+                 name->function == simnet::kFunctionRudder) &&
+        !m_product_asked.count(msg->source)) {
+      m_product_asked.insert(msg->source);
+      SendIsoRequest(simnet::kPgnProductInfo, msg->source);
+    }
+  }
   if (m_state.Mode() != before)
     wxLogMessage("navico_autopilot_pi: pilot mode %s -> %s",
                  simnet::ModeName(before), simnet::ModeName(m_state.Mode()));
@@ -191,25 +217,19 @@ std::optional<N2kDriver> NavicoAutopilotPi::Driver() const {
   return std::nullopt;
 }
 
-void NavicoAutopilotPi::SendCommand(simnet::Command c) {
+bool NavicoAutopilotPi::SendCommand(simnet::Command c) {
   double now = Now();
   auto driver = Driver();
   if (!driver) {
     m_last_message = _("No NMEA 2000 connection chosen.");
-    return;
+    return false;
   }
   auto address = m_state.Address(now);
   if (!address) {
     m_last_message = _("No autopilot selected.");
-    return;
+    return false;
   }
-  if (!m_registered.count(driver->handle)) {
-    std::vector<int> pgns = {simnet::kPgnCommand};
-    CommDriverResult r = RegisterTXPGNs(driver->handle, pgns);
-    if (r != RESULT_COMM_NO_ERROR)
-      wxLogWarning("navico_autopilot_pi: RegisterTXPGNs failed (%d)", r);
-    m_registered.insert(driver->handle);
-  }
+  Register(driver->handle);
   auto data = simnet::CommandData(c, *address);
   auto payload = std::make_shared<std::vector<uint8_t>>(data);
   CommDriverResult r = WriteCommDriverN2K(driver->handle, simnet::kPgnCommand,
@@ -219,10 +239,58 @@ void NavicoAutopilotPi::SendCommand(simnet::Command c) {
                simnet::Hex(data).c_str(), r);
   if (r != RESULT_COMM_NO_ERROR) {
     m_last_message = wxString::Format(_("Sending failed (error %d)."), r);
-    return;
+    return false;
   }
-  m_state.CommandSent(c, now);
+  m_state.CommandSent(c, data, now);
   m_last_message.clear();
+  return true;
+}
+
+void NavicoAutopilotPi::Register(const std::string& handle) {
+  if (m_registered.count(handle)) return;
+  std::vector<int> pgns = {simnet::kPgnCommand, simnet::kPgnIsoRequest};
+  CommDriverResult r = RegisterTXPGNs(handle, pgns);
+  if (r != RESULT_COMM_NO_ERROR)
+    wxLogWarning("navico_autopilot_pi: RegisterTXPGNs failed (%d)", r);
+  m_registered.insert(handle);
+}
+
+void NavicoAutopilotPi::SendIsoRequest(int pgn, uint8_t destination) {
+  auto driver = Driver();
+  if (!driver) return;
+  Register(driver->handle);
+  auto data = simnet::IsoRequestData(pgn);
+  auto payload = std::make_shared<std::vector<uint8_t>>(data);
+  CommDriverResult r =
+      WriteCommDriverN2K(driver->handle, simnet::kPgnIsoRequest, destination, 6, payload);
+  wxLogMessage("navico_autopilot_pi: request %d to %d via %s: 59904 %s (result %d)", pgn,
+               destination, driver->label.c_str(), simnet::Hex(data).c_str(), r);
+}
+
+void NavicoAutopilotPi::RequestAddressClaims() {
+  // Devices send their NAME (60928) only at start-up or when asked. The
+  // settings need them to tell devices apart, so opening the settings asks
+  // once: one request, one frame back from each device. Pilots and rudder
+  // sensors that answer are then asked for their model ID (see OnN2k).
+  m_discover_until = Now() + 3;
+  m_product_asked.clear();
+  SendIsoRequest(simnet::kPgnAddressClaim, 255);
+}
+
+void NavicoAutopilotPi::ConfirmNav() {
+  // Recorded from a Triton2 confirming the course to the waypoint: 0x1C,
+  // directly followed by NAV; the NAC-3 echoed both and went to NAV.
+  if (SendCommand(simnet::Command::kConfirm)) SendCommand(simnet::Command::kNav);
+}
+
+void NavicoAutopilotPi::SetActiveLegInfo(Plugin_Active_Leg_Info& leg_info) {
+  m_leg_name = leg_info.wp_name;
+  m_leg_time = Now();
+}
+
+wxString NavicoAutopilotPi::ActiveWaypoint() const {
+  // OpenCPN calls SetActiveLegInfo about once a second while it navigates.
+  return Now() - m_leg_time < 5 ? m_leg_name : wxString();
 }
 
 // ---- heading from OpenCPN ---------------------------------------------------
@@ -231,7 +299,12 @@ void NavicoAutopilotPi::SetPositionFixEx(PlugIn_Position_Fix_Ex& pfix) {
   m_hdt = pfix.Hdt;
   m_hdm = pfix.Hdm;
   m_var = pfix.Var;
+  m_sog = pfix.Sog;
   m_heading_time = Now();
+}
+
+double NavicoAutopilotPi::Sog() const {
+  return Now() - m_heading_time > 5 ? NAN : m_sog;
 }
 
 double NavicoAutopilotPi::Heading(bool magnetic) const {
@@ -317,10 +390,12 @@ void NavicoAutopilotPi::ShowPreferencesDialog(wxWindow* parent) {
 }
 
 void NavicoAutopilotPi::ApplySettings(const std::string& driver,
-                                      std::optional<uint8_t> address) {
+                                      std::optional<uint8_t> address,
+                                      uint64_t rudder_name) {
   if (address != m_state.FixedAddress()) m_state.SetPilotName(0);
   m_driver = driver;
   m_state.SetFixedAddress(address);
+  m_state.SetRudderName(rudder_name);
   m_last_message.clear();
   SaveConfig();
   wxLogMessage("navico_autopilot_pi: settings: connection '%s', pilot %s",
@@ -343,6 +418,10 @@ void NavicoAutopilotPi::LoadConfig() {
   conf->Read("PilotName", &name, "");
   unsigned long long raw = 0;
   if (name.ToULongLong(&raw, 16)) m_state.SetPilotName(raw);
+  wxString rudder;
+  conf->Read("RudderName", &rudder, "");
+  raw = 0;
+  if (rudder.ToULongLong(&raw, 16)) m_state.SetRudderName(raw);
 }
 
 void NavicoAutopilotPi::SaveConfig() {
@@ -354,6 +433,9 @@ void NavicoAutopilotPi::SaveConfig() {
   conf->Write("PilotAddress", fixed ? static_cast<long>(*fixed) : -1L);
   conf->Write("PilotName", m_state.PilotName()
                                ? wxString::Format("%llx", static_cast<unsigned long long>(m_state.PilotName()))
+                               : wxString());
+  conf->Write("RudderName", m_state.RudderName()
+                               ? wxString::Format("%llx", static_cast<unsigned long long>(m_state.RudderName()))
                                : wxString());
   conf->DeleteEntry("ControlEnabled", false);  // setting of 0.1.0 alpha, gone
   conf->Flush();

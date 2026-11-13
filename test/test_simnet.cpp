@@ -132,37 +132,38 @@ static void TestPilotState() {
   CHECK(!s.Address(t));
   s.Handle(Rx(65305, 4, "41 9F 64 0A 08 00 00 00"), t);
   CHECK(s.Address(t) == 4 && s.Alive(t) && s.Mode() == Mode::kStandby);
-  CHECK(!s.NeedsChoice(t));
 
   // AUTO confirmed by the next report.
-  s.CommandSent(Command::kAuto, t);
+  s.CommandSent(Command::kAuto, CommandData(Command::kAuto, 4), t);
   s.Handle(Rx(65305, 4, "41 9F 64 0A 10 00 00 00"), t + 0.03);
   CHECK(s.Mode() == Mode::kAuto && !s.Unconfirmed(t + 2));
 
   // +10 confirmed by a new target in 127237.
   s.Handle(Rx(127237, 4, "00 3F FF FF 7F 00 50 FF FF FF FF FF FF FF FF FF FF FF FF FF FF"), t + 0.1);
-  s.CommandSent(Command::kStarboard10, t + 0.2);
+  s.CommandSent(Command::kStarboard10, CommandData(Command::kStarboard10, 4), t + 0.2);
   CHECK(!s.Unconfirmed(t + 0.5));
   s.Handle(Rx(127237, 4, "00 3F FF FF 7F D1 56 FF FF FF FF FF FF FF FF FF FF FF FF FF FF"), t + 0.3);
   CHECK(!s.Unconfirmed(t + 3));
 
   // No answer: unconfirmed after the timeout.
-  s.CommandSent(Command::kWind, t + 4);
+  s.CommandSent(Command::kWind, CommandData(Command::kWind, 4), t + 4);
   CHECK(!s.Unconfirmed(t + 4.5));
   CHECK(s.Unconfirmed(t + 6));
 
   // Silence: not alive after kAliveTimeout (10 s).
   CHECK(s.Alive(t + 9) && !s.Alive(t + 11));
 
-  // Second pilot (e.g. an emulated AC12): automatic choice stops.
+  // Second pilot (e.g. an emulated AC12): the most likely one is used (NAC
+  // before AC); the user can choose another.
   double u = 200;
   s.Handle(Rx(65305, 4, "41 9F 64 0A 08 00 00 00"), u);
   s.Handle(Rx(65305, 6, "41 9F 00 0A 08 00 00 00"), u);
-  CHECK(s.NeedsChoice(u) && !s.Address(u));
-  // Messages from either are then ignored for the state.
-  s.Handle(Rx(65305, 4, "41 9F 64 0A 10 00 00 00"), u + 0.1);
-  CHECK(!s.Alive(u + 0.1));
-  // The user picks 4.
+  CHECK(s.Address(u) == 4);
+  s.Handle(Rx(65305, 6, "41 9F 00 0A 10 00 00 00"), u + 0.1);
+  CHECK(s.Mode() == Mode::kStandby);  // reports of 6 do not count
+  s.SetFixedAddress(6);
+  s.Handle(Rx(65305, 6, "41 9F 00 0A 10 00 00 00"), u + 0.2);
+  CHECK(s.Address(u) == 6 && s.Mode() == Mode::kAuto);
   s.SetFixedAddress(4);
   s.Handle(Rx(65305, 4, "41 9F 64 0A 10 00 00 00"), u + 0.2);
   CHECK(s.Address(u) == 4 && s.Alive(u + 0.2) && s.Mode() == Mode::kAuto);
@@ -184,10 +185,114 @@ static void TestPilotState() {
   CHECK(!o.Address(1));
 }
 
+// Frames recorded on Penny Lane, 13 Nov 2026 (NAC-3 at 4, Triton2 at 18).
+static void TestNavAndSensors() {
+  CheckEq(CommandData(Command::kConfirm, 4), "41 9F 04 FF FF 0A 1C 00 FF FF FF", "confirm");
+
+  // Echo: an 11-byte command comes back padded to 12 bytes.
+  CHECK(EchoMatches(CommandData(Command::kNav, 4), Bytes("41 9f 04 ff ff 0a 0a 00 ff ff ff a3")));
+  CHECK(EchoMatches(CommandData(Command::kNav, 4), Bytes("41 9f 04 ff ff 0a 0a 00 ff ff ff 00")));
+  CHECK(!EchoMatches(CommandData(Command::kNav, 4), Bytes("41 9f 04 ff ff 0a 09 00 ff ff ff a3")));
+
+  // Rudder from the NAC-3 rudder feedback; the pilot's own 127245 has none.
+  auto r = ParseRudder(Bytes("FF 07 FF 7F EF FF FF FF"));
+  CHECK(r && std::fabs(*r - -0.0017) < 1e-9);
+  CHECK(!ParseRudder(Bytes("FF 00 10 00 FF 7F FF FF")));
+
+  // Alarm and its text.
+  auto a = ParseAlarm(Bytes("41 9f ff ff 01 ff 39 00 4d 00 04 00"));
+  CHECK(a && a->id == 0x4D && a->state == 0x39 && a->f == 4);
+  CHECK(!ParseAlarm(CommandData(Command::kNav, 4)));
+  auto t = ParseAlarmText(Bytes("41 9f 4d 00 18 01 44 72 69 76 65 20 63 6f 6d 70 75 74 65 72 20 6d 69 73 73 69 6e 67"));
+  CHECK(t && t->id == 0x4D && t->text == "Drive computer missing");
+
+  PilotState s;
+  double t0 = 1000;
+  s.Handle(Rx(65305, 4, "41 9F 64 0A 08 00 00 00"), t0);
+  CHECK(s.Mode() == Mode::kStandby && !s.AwaitsConfirmation(t0));
+
+  // NAV: echo, then "waiting for confirmation" (0x88), not an error.
+  s.CommandSent(Command::kNav, CommandData(Command::kNav, 4), t0 + 1);
+  s.Handle(Rx(130851, 4, "41 9f 04 ff ff 0a 0a 00 ff ff ff a3"), t0 + 1.3);
+  s.Handle(Rx(65305, 4, "41 9F 64 0A 88 00 00 00"), t0 + 1.4);
+  CHECK(s.AwaitsConfirmation(t0 + 2) && s.Mode() == Mode::kStandby);
+  CHECK(!s.Unconfirmed(t0 + 5) && !s.NotFollowed(t0 + 5));
+  // Confirm + NAV, pilot goes to NAV (40 00 00 40).
+  s.CommandSent(Command::kNav, CommandData(Command::kNav, 4), t0 + 4);
+  s.Handle(Rx(65305, 4, "41 9F 64 0A 40 00 00 40"), t0 + 4.1);
+  CHECK(s.Mode() == Mode::kNav && !s.AwaitsConfirmation(t0 + 4.2) && !s.Unconfirmed(t0 + 9));
+
+  // Waiting expires: back to standby without bit 7.
+  s.Handle(Rx(65305, 4, "41 9F 64 0A 88 00 00 00"), t0 + 20);
+  CHECK(s.AwaitsConfirmation(t0 + 21));
+  s.Handle(Rx(65305, 4, "41 9F 64 0A 08 00 00 40"), t0 + 30);
+  CHECK(!s.AwaitsConfirmation(t0 + 30));
+
+  // NAV without navigation data: echoed but not followed.
+  s.CommandSent(Command::kNav, CommandData(Command::kNav, 4), t0 + 40);
+  s.Handle(Rx(130851, 4, "41 9f 04 ff ff 0a 0a 00 ff ff ff a3"), t0 + 40.3);
+  s.Handle(Rx(65305, 4, "41 9F 64 0A 08 00 00 40"), t0 + 41);
+  CHECK(s.NotFollowed(t0 + 42) && !s.Unconfirmed(t0 + 42));
+  // No echo at all: unconfirmed.
+  s.CommandSent(Command::kAuto, CommandData(Command::kAuto, 4), t0 + 50);
+  CHECK(s.Unconfirmed(t0 + 52) && !s.NotFollowed(t0 + 52));
+
+  // Alarms from the pilot only.
+  s.Handle(Rx(130850, 4, "41 9f ff ff 01 ff 39 00 4d 00 04 00"), t0 + 60);
+  s.Handle(Rx(130856, 4, "41 9f 4d 00 18 01 44 72 69 76 65 20 63 6f 6d 70 75 74 65 72 20 6d 69 73 73 69 6e 67"), t0 + 60);
+  s.Handle(Rx(130850, 2, "41 9f ff ff 01 ff 39 00 22 00 01 00"), t0 + 60);
+  auto al = s.Alarms(t0 + 61);
+  CHECK(al.size() == 1 && al[0].id == 0x4D && al[0].text == "Drive computer missing");
+  s.Handle(Rx(130850, 4, "41 9f ff ff 01 ff 3a 00 4d 00 04 00"), t0 + 62);
+  CHECK(s.Alarms(t0 + 63).empty());
+
+  // Rudder sources: automatic only with exactly one.
+  s.Handle(Rx(127245, 7, "FF 07 FF 7F EF FF FF FF"), t0 + 70);
+  CHECK(s.Rudder(t0 + 70) && std::fabs(*s.Rudder(t0 + 70) - -0.0017) < 1e-9);
+  s.Handle(Rx(127245, 8, "FF 07 FF 7F 00 00 FF FF"), t0 + 70);
+  s.Handle(Rx(127245, 4, "FF 00 10 00 FF 7F FF FF"), t0 + 70);
+  CHECK(s.RudderSources(t0 + 70).size() == 2);
+  auto name_hex = [](uint64_t raw) {
+    std::string hex;
+    char b[4];
+    for (int i = 0; i < 8; i++) { std::snprintf(b, sizeof b, "%02X ", static_cast<unsigned>((raw >> (8 * i)) & 0xFF)); hex += b; }
+    return hex;
+  };
+  uint64_t raw7 = 1087805ull | (275ull << 21) | (155ull << 40) | (40ull << 49);
+  uint64_t raw8 = 1104189ull | (275ull << 21) | (155ull << 40) | (40ull << 49);
+  s.Handle(Rx(60928, 7, name_hex(raw7)), t0 + 70);
+  s.Handle(Rx(60928, 8, name_hex(raw8)), t0 + 70);
+  // Same make and function: 126996 tells the virtual one apart.
+  auto product = [](const std::string& model) {
+    std::string hex = "35 08 B8 63 ";
+    char b[4];
+    for (size_t i = 0; i < 32; i++) { std::snprintf(b, sizeof b, "%02X ", i < model.size() ? static_cast<unsigned char>(model[i]) : 0xFF); hex += b; }
+    for (int i = 0; i < 98; i++) hex += "FF ";
+    return hex;
+  };
+  s.Handle(Rx(126996, 8, product("NAC-3 _Virtual rudder feedback")), t0 + 70);
+  s.Handle(Rx(126996, 7, product("NAC-3 _Rudder feedback")), t0 + 70);
+  CHECK(s.AutoRudder(t0 + 70) == 7);
+  CHECK(s.Rudder(t0 + 71) && std::fabs(*s.Rudder(t0 + 71) - -0.0017) < 1e-9);
+  s.SetRudderName(raw8);  // the user overrules
+  CHECK(s.Rudder(t0 + 71) && *s.Rudder(t0 + 71) == 0);
+  s.SetRudderName(raw7);
+  CHECK(!s.Rudder(t0 + 80));  // stale
+
+  // Apparent wind, port = negative; a second source is ignored while the first talks.
+  s.Handle(Rx(130306, 13, "01 F4 01 9F B3 02 FF FF"), t0 + 90);   // 4.5983 rad = -96.5 deg
+  s.Handle(Rx(130306, 40, "01 F4 01 10 27 02 FF FF"), t0 + 90.1); // 1.0 rad
+  auto w = s.ApparentWind(t0 + 90.2);
+  CHECK(w && *w < 0 && std::fabs(*w - (4.5983 - 2 * 3.14159265358979)) < 1e-3);
+  s.Handle(Rx(130306, 13, "01 F4 01 10 27 03 FF FF"), t0 + 91);   // true wind: ignored
+  CHECK(s.ApparentWind(t0 + 91) && *s.ApparentWind(t0 + 91) < 0);
+}
+
 int main() {
   TestCommands();
   TestParse();
   TestPilotState();
+  TestNavAndSensors();
   if (failures) {
     std::printf("%d failure(s)\n", failures);
     return 1;

@@ -49,7 +49,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: flatpak-${{ matrix.arch }}
-          path: /build-flatpak/*.tar.gz
+          path: |
+            /build-flatpak/*.tar.gz
+            /build-flatpak/*.xml
       - name: Upload tarball
         if: env.CLOUDSMITH_API_KEY != ''
         run: cd /build-flatpak; /bin/bash < upload.sh
@@ -80,7 +82,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: debian-${{ matrix.dist }}-${{ matrix.arch }}
-          path: build-debian/*.tar.gz
+          path: |
+            build-debian/*.tar.gz
+            build-debian/*.xml
       - name: Upload tarball
         if: env.CLOUDSMITH_API_KEY != ''
         run: cd build-debian; /bin/bash < upload.sh
@@ -106,7 +110,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: macos-universal
-          path: build-osx/*.tar.gz
+          path: |
+            build-osx/*.tar.gz
+            build-osx/*.xml
       - name: Upload tarball
         if: env.CLOUDSMITH_API_KEY != ''
         run: cd build-osx; /bin/bash < upload.sh
@@ -149,7 +155,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: android-${{ matrix.abi }}
-          path: build-${{ matrix.target }}/*.tar.gz
+          path: |
+            build-${{ matrix.target }}/*.tar.gz
+            build-${{ matrix.target }}/*.xml
       - name: Upload tarball and metadata
         if: env.CLOUDSMITH_API_KEY != ''
         run: |
@@ -185,11 +193,14 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: windows-${{ matrix.platform }}
-          path: build/*.tar.gz
+          path: |
+            build/*.tar.gz
+            build/*.xml
 
-  # On a tag (for example v0.1.0-alpha): a GitHub release with every tarball,
-  # so testers can install one with "Import plugin" in OpenCPN's plugin
-  # manager. Tags with a hyphen (alpha, beta) become a pre-release.
+  # On a tag (for example v0.1.0-alpha): a GitHub release with every tarball
+  # and its catalog metadata (.xml, tarball-url pointing at this release), so
+  # testers can use "Import plugin" and the catalog PR can use the .xml files.
+  # Tags with a hyphen (alpha, beta) become a pre-release.
   release:
     if: startsWith(github.ref, 'refs/tags/')
     needs: [flatpak, debian, macos, android, msvc]
@@ -210,6 +221,6 @@ jobs:
           ls -l dist
           prerelease=""
           case "$TAG" in *-*) prerelease="--prerelease" ;; esac
-          gh release create "$TAG" dist/*.tar.gz $prerelease \
+          gh release create "$TAG" dist/*.tar.gz dist/*.xml $prerelease \
             --title "Navico Autopilot $TAG" \
             --notes-file .github/release-notes.md
