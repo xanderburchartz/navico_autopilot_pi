@@ -103,6 +103,14 @@ waypoint), 128259 (speed through the water, if chosen instead of SOG),
 60928 and 126996 (NAME and model ID, to recognise devices). The
 actual heading and speed come from OpenCPN itself.
 
+**Pilot settings.** The NAC-3 keeps its settings itself and answers reads
+over the Simnet key value channel, PGN 130845: `41 9F <device> 00 FF FF
+<group> <param lo hi> <op> <value, 4 bytes LE>` with op 0 read, 1 set, 2
+reply. It answers reads from a Yacht Devices gateway too (measured 13 Nov
+2026). The rudder calibration (09/01, 09/02) lives on the rudder feedback
+node, not on the pilot. The plugin reads the known settings when the
+settings window opens; it does not change them yet.
+
 **Which device is the pilot.** A NAC-3 claims several addresses; only the
 part with function 150 (autopilot) follows 130850. The plugin takes the source
 of 65305 "Mode" reports from an AC or NAC (model byte `00` or `64`). A B&G

@@ -241,3 +241,78 @@ msgstr "Grondsnelheid (uit OpenCPN)"
 
 msgid "Speed through water (log)"
 msgstr "Snelheid door het water (log)"
+
+msgid "Autopilot settings"
+msgstr "Instellingen stuurautomaat"
+
+msgid "Autopilot settings..."
+msgstr "Instellingen stuurautomaat..."
+
+msgid "Read again"
+msgstr "Opnieuw lezen"
+
+msgid "Close"
+msgstr "Sluiten"
+
+msgid "No autopilot found."
+msgstr "Geen stuurautomaat gevonden."
+
+msgid "The autopilot did not answer. It may accept settings requests only from its own displays."
+msgstr "De stuurautomaat antwoordde niet. Mogelijk accepteert hij verzoeken alleen van zijn eigen displays."
+
+msgid "Boat"
+msgstr "Boot"
+
+msgid "Boat type"
+msgstr "Boottype"
+
+msgid "Sail"
+msgstr "Zeil"
+
+msgid "Outboard"
+msgstr "Buitenboord"
+
+msgid "Displacement"
+msgstr "Verdringer"
+
+msgid "Planing"
+msgstr "Planerend"
+
+msgid "Transition speed"
+msgstr "Overgangssnelheid"
+
+msgid "Sailing"
+msgstr "Zeilen"
+
+msgid "Tack angle"
+msgstr "Overstaghoek"
+
+msgid "Tack time"
+msgstr "Overstagtijd"
+
+msgid "Profile Low"
+msgstr "Profiel Laag"
+
+msgid "Profile High"
+msgstr "Profiel Hoog"
+
+msgid "Rudder gain"
+msgstr "Roerversterking"
+
+msgid "Counter rudder"
+msgstr "Tegenroer"
+
+msgid "Autotrim"
+msgstr "Autotrim"
+
+msgid "Turn rate"
+msgstr "Draaisnelheid"
+
+msgid "Rudder"
+msgstr "Roer"
+
+msgid "Calibration, starboard"
+msgstr "Kalibratie, stuurboord"
+
+msgid "Calibration, port"
+msgstr "Kalibratie, bakboord"

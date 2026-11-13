@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 
+#include "pilot_settings.h"
 #include "pilot_state.h"
 #include "simnet.h"
 
@@ -296,11 +297,48 @@ static void TestNavAndSensors() {
   CHECK(s.ApparentWind(t0 + 91) && *s.ApparentWind(t0 + 91) < 0);
 }
 
+static void TestKeyValue() {
+  // canboat example: read 18/0079 at address 3.
+  CheckEq(KeyValueRead(3, {0x18, 0x0079}), "41 9F 03 00 FF FF 18 79 00 00 FF FF FF FF", "kv read");
+  CheckEq(KeyValueSet(4, {0x19, 0x000E}, 30), "41 9F 04 00 FF FF 19 0E 00 01 1E 00 00 00", "kv set");
+  auto kv = ParseKeyValue(Bytes("41 9F 03 00 FF FF 18 79 00 00 FF FF FF FF"), false);
+  CHECK(kv && kv->address == 3 && kv->key.group == 0x18 && kv->key.param == 0x79 &&
+        kv->op == KeyOp::kRead && !kv->Unsigned());
+  auto r = ParseKeyValue(Bytes("41 9F 04 00 01 05 18 0A 00 02 00 FF FF FF"), false);
+  CHECK(r && r->op == KeyOp::kReply && r->Unsigned(1) == 0u);
+  // 130846 from a Triton2: "Alert bits" (80 15) set to the whole bus, 8 bytes.
+  auto l = ParseKeyValue(Bytes("41 9F FF FF 01 FF FF 15 80 01 08 55 55 55 55 45 55 55 01"), true);
+  CHECK(l && l->address == 0xFF && l->key.group == 0xFF && l->key.param == 0x8015 &&
+        l->op == KeyOp::kSet && l->value.size() == 8);
+
+  // Replies are kept per device; reads and sets are not.
+  PilotState s;
+  s.Handle(Rx(130845, 4, "41 9F 04 00 01 05 18 0A 00 02 00 FF FF FF"), 1);
+  s.Handle(Rx(130845, 4, "41 9F 04 00 FF FF 18 0B 00 00 FF FF FF FF"), 1);
+  auto v = s.Setting(4, {0x18, 0x0A});
+  CHECK(v && v->Unsigned(1) == 0u);
+  CHECK(!s.Setting(4, {0x18, 0x0B}) && !s.Setting(7, {0x18, 0x0A}));
+
+  // Decoding: transition speed 617 (0.01 m/s) = 12.0 kn; rudder calibration -6109 = -35 deg.
+  const pilot_settings::Definition* ts = nullptr;
+  const pilot_settings::Definition* cal = nullptr;
+  for (const auto& d : pilot_settings::All()) {
+    if (d.key == SettingKey{0x18, 0x0C}) ts = &d;
+    if (d.key == SettingKey{0x09, 0x02}) cal = &d;
+  }
+  CHECK(ts && cal);
+  auto t = pilot_settings::Decode(*ts, *ParseKeyValue(Bytes("41 9F 04 00 01 05 18 0C 00 02 69 02 FF FF"), false));
+  CHECK(t && std::fabs(*t - 11.99) < 0.01);
+  auto c = pilot_settings::Decode(*cal, *ParseKeyValue(Bytes("41 9F 07 00 01 05 09 02 00 02 23 E8 FF FF"), false));
+  CHECK(c && std::fabs(*c - -35.0) < 0.01);
+}
+
 int main() {
   TestCommands();
   TestParse();
   TestPilotState();
   TestNavAndSensors();
+  TestKeyValue();
   if (failures) {
     std::printf("%d failure(s)\n", failures);
     return 1;

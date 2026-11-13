@@ -36,6 +36,8 @@ constexpr int kPgnRudder = 127245;        ///< Rudder
 constexpr int kPgnWind = 130306;          ///< Wind data
 constexpr int kPgnNavData = 129284;       ///< Navigation data (to the waypoint)
 constexpr int kPgnSpeed = 128259;         ///< Speed (through the water)
+constexpr int kPgnKeyValue = 130845;      ///< Simnet: key value (settings)
+constexpr int kPgnKeyValueLong = 130846;  ///< Simnet: key value, longer values
 constexpr int kCommandPriority = 2;       ///< as the keypad and the B&G app
 constexpr uint16_t kManufacturerSimrad = 1857;
 constexpr uint16_t kManufacturerNavico = 275;
@@ -167,6 +169,39 @@ std::optional<NavData> ParseNavData(const std::vector<uint8_t>& d);
 
 /** 126996: model ID, e.g. "NAC-3 _Rudder feedback" (trimmed). */
 std::optional<std::string> ParseModelId(const std::vector<uint8_t>& d);
+
+/**
+ * A setting key of the Simnet key value channel (130845): byte 6 is the
+ * group of the setting, bytes 7-8 the parameter. Written as "18/0A".
+ */
+struct SettingKey {
+  uint8_t group = 0;
+  uint16_t param = 0;
+  bool operator<(const SettingKey& o) const {
+    return group != o.group ? group < o.group : param < o.param;
+  }
+  bool operator==(const SettingKey& o) const { return group == o.group && param == o.param; }
+};
+
+enum class KeyOp : uint8_t { kRead = 0, kSet = 1, kReply = 2 };
+
+/** 130845 asking the device at \p address for the value of \p key. */
+std::vector<uint8_t> KeyValueRead(uint8_t address, SettingKey key, uint8_t instance = 0);
+/** 130845 setting \p key at \p address to \p value (4 bytes, little-endian). */
+std::vector<uint8_t> KeyValueSet(uint8_t address, SettingKey key, uint32_t value,
+                                 uint8_t instance = 0);
+
+/** A received 130845 or 130846. */
+struct KeyValue {
+  uint8_t address = 0;   ///< byte 2: the device with the setting, FF = whole bus
+  uint8_t instance = 0;  ///< byte 3
+  SettingKey key;
+  KeyOp op = KeyOp::kRead;
+  std::vector<uint8_t> value;  ///< raw value bytes (4 in 130845)
+  /** Value as unsigned little-endian of \p bytes bytes; none if all FF. */
+  std::optional<uint32_t> Unsigned(size_t bytes = 4) const;
+};
+std::optional<KeyValue> ParseKeyValue(const std::vector<uint8_t>& d, bool long_form);
 
 /** The parts of an ISO NAME (PGN 60928) used to recognise a pilot. */
 struct Name {

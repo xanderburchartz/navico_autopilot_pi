@@ -71,6 +71,10 @@ public:
   void StartNfu(simnet::NfuSide side);
   void StopNfu();
   bool NfuActive() const { return m_nfu != simnet::NfuSide::kStop; }
+  /** Read all known pilot settings (130845), one request every 50 ms. */
+  void ReadPilotSettings();
+  /** Address holding the rudder calibration (the chosen rudder sensor). */
+  std::optional<uint8_t> RudderNode() const;
   /** Show speed through the water (128259) instead of OpenCPN's SOG. */
   bool UseStw() const { return m_use_stw; }
   /** Waypoint name of OpenCPN's own active leg, if OpenCPN navigates. */
@@ -110,6 +114,9 @@ private:
   double m_heading_time = -1e9;
 
   bool SendNfu(simnet::NfuSide side, bool log);
+  void OnKvTimer(wxTimerEvent&);
+  std::vector<std::pair<uint8_t, simnet::SettingKey>> m_kv_queue;
+  wxTimer m_kv_timer;
   void OnNfuTimer(wxTimerEvent&);
   void OnAppActivate(wxActivateEvent& e);
 

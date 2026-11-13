@@ -21,6 +21,7 @@
 #include "ap_panel.h"
 #include "ap_prefs.h"
 #include "config.h"
+#include "pilot_settings.h"
 
 namespace {
 
@@ -50,6 +51,8 @@ wxDEFINE_EVENT(EVT_NAVICO_AP_130306, ObservedEvt);
 wxDEFINE_EVENT(EVT_NAVICO_AP_129284, ObservedEvt);
 wxDEFINE_EVENT(EVT_NAVICO_AP_126996, ObservedEvt);
 wxDEFINE_EVENT(EVT_NAVICO_AP_128259, ObservedEvt);
+wxDEFINE_EVENT(EVT_NAVICO_AP_130845, ObservedEvt);
+wxDEFINE_EVENT(EVT_NAVICO_AP_130846, ObservedEvt);
 
 extern "C" DECL_EXP opencpn_plugin* create_pi(void* ppimgr) {
   return new NavicoAutopilotPi(ppimgr);
@@ -58,7 +61,7 @@ extern "C" DECL_EXP opencpn_plugin* create_pi(void* ppimgr) {
 extern "C" DECL_EXP void destroy_pi(opencpn_plugin* p) { delete p; }
 
 NavicoAutopilotPi::NavicoAutopilotPi(void* ppimgr)
-    : opencpn_plugin_118(ppimgr), m_nfu_timer(this), m_timer(this) {}
+    : opencpn_plugin_118(ppimgr), m_kv_timer(this), m_nfu_timer(this), m_timer(this) {}
 
 NavicoAutopilotPi::~NavicoAutopilotPi() = default;
 
@@ -89,9 +92,12 @@ int NavicoAutopilotPi::Init() {
   listen(simnet::kPgnNavData, EVT_NAVICO_AP_129284);
   listen(simnet::kPgnProductInfo, EVT_NAVICO_AP_126996);
   listen(simnet::kPgnSpeed, EVT_NAVICO_AP_128259);
+  listen(simnet::kPgnKeyValue, EVT_NAVICO_AP_130845);
+  listen(simnet::kPgnKeyValueLong, EVT_NAVICO_AP_130846);
 
   Bind(wxEVT_TIMER, &NavicoAutopilotPi::OnTimer, this, m_timer.GetId());
   Bind(wxEVT_TIMER, &NavicoAutopilotPi::OnNfuTimer, this, m_nfu_timer.GetId());
+  Bind(wxEVT_TIMER, &NavicoAutopilotPi::OnKvTimer, this, m_kv_timer.GetId());
   m_timer.Start(500);
   // Safety net for NFU: stop when OpenCPN loses focus.
   if (wxTheApp) wxTheApp->Bind(wxEVT_ACTIVATE_APP, &NavicoAutopilotPi::OnAppActivate, this);
@@ -106,6 +112,7 @@ bool NavicoAutopilotPi::DeInit() {
   if (wxTheApp) wxTheApp->Unbind(wxEVT_ACTIVATE_APP, &NavicoAutopilotPi::OnAppActivate, this);
   m_timer.Stop();
   m_nfu_timer.Stop();
+  m_kv_timer.Stop();
   m_listeners.clear();
   SaveConfig();
   if (m_panel) {
@@ -266,7 +273,7 @@ bool NavicoAutopilotPi::SendCommand(simnet::Command c) {
 
 void NavicoAutopilotPi::Register(const std::string& handle) {
   if (m_registered.count(handle)) return;
-  std::vector<int> pgns = {simnet::kPgnCommand, simnet::kPgnIsoRequest};
+  std::vector<int> pgns = {simnet::kPgnCommand, simnet::kPgnIsoRequest, simnet::kPgnKeyValue};
   CommDriverResult r = RegisterTXPGNs(handle, pgns);
   if (r != RESULT_COMM_NO_ERROR)
     wxLogWarning("navico_autopilot_pi: RegisterTXPGNs failed (%d)", r);
@@ -351,6 +358,44 @@ void NavicoAutopilotPi::OnNfuTimer(wxTimerEvent&) {
 void NavicoAutopilotPi::OnAppActivate(wxActivateEvent& e) {
   if (!e.GetActive()) StopNfu();
   e.Skip();
+}
+
+std::optional<uint8_t> NavicoAutopilotPi::RudderNode() const {
+  double now = Now();
+  if (m_state.RudderName()) {
+    for (const auto& r : m_state.RudderSources(now))
+      if (r.name && r.name->raw == m_state.RudderName()) return r.address;
+  }
+  return m_state.AutoRudder(now);
+}
+
+void NavicoAutopilotPi::ReadPilotSettings() {
+  // Reading changes nothing on the pilot. Spread the requests so the bus and
+  // the pilot get one at a time, as a display does when it opens a page.
+  auto pilot = m_state.Address(Now());
+  auto rudder = RudderNode();
+  for (const auto& d : pilot_settings::All()) {
+    auto a = d.node == pilot_settings::Node::kPilot ? pilot : rudder;
+    if (a) m_kv_queue.push_back({*a, d.key});
+  }
+  if (!m_kv_queue.empty() && !m_kv_timer.IsRunning()) m_kv_timer.Start(50);
+  wxLogMessage("navico_autopilot_pi: reading %zu pilot settings", m_kv_queue.size());
+}
+
+void NavicoAutopilotPi::OnKvTimer(wxTimerEvent&) {
+  auto driver = Driver();
+  if (m_kv_queue.empty() || !driver) {
+    m_kv_queue.clear();
+    m_kv_timer.Stop();
+    return;
+  }
+  auto [address, key] = m_kv_queue.front();
+  m_kv_queue.erase(m_kv_queue.begin());
+  Register(driver->handle);
+  auto data = simnet::KeyValueRead(address, key);
+  auto payload = std::make_shared<std::vector<uint8_t>>(data);
+  // 130845 is a PDU2 PGN: the device address is in the data (byte 2).
+  WriteCommDriverN2K(driver->handle, simnet::kPgnKeyValue, 255, 3, payload);
 }
 
 void NavicoAutopilotPi::ConfirmNav() {

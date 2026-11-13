@@ -17,6 +17,7 @@
 #include <map>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "simnet.h"
@@ -118,6 +119,9 @@ public:
 
   std::vector<ActiveAlarm> Alarms(double now) const;
 
+  /** Latest value of a setting from a 130845/130846 reply by \p address. */
+  std::optional<simnet::KeyValue> Setting(uint8_t address, simnet::SettingKey key) const;
+
   /** Speed through the water (m/s) from 128259. */
   std::optional<double> SpeedThroughWater(double now) const;
 
@@ -153,6 +157,7 @@ private:
 
   uint64_t m_rudder_name = 0;
   std::map<uint8_t, RudderSource> m_rudder;
+  std::map<std::pair<uint8_t, simnet::SettingKey>, simnet::KeyValue> m_settings;
   std::optional<double> m_stw;
   uint8_t m_stw_source = 255;
   double m_stw_time = -1e9;

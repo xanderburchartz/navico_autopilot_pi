@@ -20,6 +20,7 @@
 #endif
 
 #include "navico_autopilot_pi.h"
+#include "pilot_settings.h"
 
 using simnet::Command;
 using simnet::Mode;
@@ -605,6 +606,129 @@ private:
   wxTimer m_timeout;
 };
 
+// ---- pilot settings -------------------------------------------------------------
+
+/**
+ * The pilot's own settings, read over the key value channel (130845) when
+ * the window opens. Read only: changing settings comes after it has been
+ * tried on a pilot with the owner present.
+ */
+class SettingsDialog : public wxDialog {
+public:
+  SettingsDialog(wxWindow* parent, NavicoAutopilotPi* plugin, const Theme& theme)
+      : wxDialog(parent, wxID_ANY, _("Autopilot settings"), wxDefaultPosition, wxDefaultSize,
+                 wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER | wxSTAY_ON_TOP),
+        m_plugin(plugin) {
+    SetBackgroundColour(theme.back);
+    auto* top = new wxBoxSizer(wxVERTICAL);
+    auto* grid = new wxFlexGridSizer(3, 4, 16);
+    grid->AddGrowableCol(0);
+    const char* section = "";
+    for (const auto& d : pilot_settings::All()) {
+      if (std::string(section) != d.section) {
+        section = d.section;
+        auto* h = new wxStaticText(this, wxID_ANY, wxGetTranslation(section));
+        wxFont f = h->GetFont();
+        f.SetWeight(wxFONTWEIGHT_BOLD);
+        h->SetFont(f);
+        h->SetForegroundColour(theme.text);
+        grid->Add(h, 0, wxTOP, 8);
+        grid->AddSpacer(0);
+        grid->AddSpacer(0);
+      }
+      auto* name = new wxStaticText(this, wxID_ANY, wxGetTranslation(d.name));
+      name->SetForegroundColour(theme.label);
+      auto* value = new wxStaticText(this, wxID_ANY, "...", wxDefaultPosition, wxDefaultSize,
+                                     wxALIGN_RIGHT | wxST_NO_AUTORESIZE);
+      value->SetMinSize(wxSize(GetCharWidth() * 12, -1));
+      value->SetForegroundColour(theme.text);
+      auto* unit = new wxStaticText(this, wxID_ANY, UnitText(d.unit));
+      unit->SetForegroundColour(theme.label);
+      grid->Add(name, 0, wxALIGN_CENTRE_VERTICAL);
+      grid->Add(value, 0, wxALIGN_CENTRE_VERTICAL | wxEXPAND);
+      grid->Add(unit, 0, wxALIGN_CENTRE_VERTICAL);
+      m_values.push_back(value);
+    }
+    top->Add(grid, 1, wxEXPAND | wxALL, 12);
+    m_note = new wxStaticText(this, wxID_ANY, "");
+    m_note->SetForegroundColour(theme.label);
+    top->Add(m_note, 0, wxLEFT | wxRIGHT, 12);
+
+    auto* buttons = new wxBoxSizer(wxHORIZONTAL);
+    auto* again = new ApButton(this, _("Read again"));
+    auto* close = new ApButton(this, _("Close"));
+    for (ApButton* b : {again, close}) {
+      b->SetTheme(theme);
+      b->SetMinSize(wxSize(GetCharWidth() * 14, GetCharHeight() * 2 + 8));
+      buttons->Add(b, 0, wxLEFT, 8);
+    }
+    top->Add(buttons, 0, wxALIGN_RIGHT | wxALL, 12);
+    again->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
+      m_asked = m_plugin->Now();
+      m_plugin->ReadPilotSettings();
+    });
+    close->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) { Close(); });
+    Bind(wxEVT_CLOSE_WINDOW, [this](wxCloseEvent&) { Destroy(); });
+    m_refresh.SetOwner(this);
+    Bind(wxEVT_TIMER, [this](wxTimerEvent&) { ShowValues(); });
+    m_refresh.Start(500);
+    SetSizerAndFit(top);
+    m_asked = m_plugin->Now();
+    m_plugin->ReadPilotSettings();
+  }
+
+private:
+  static wxString UnitText(const char* unit) {
+    std::string u(unit);
+    if (u == "deg") return L"\u00B0";
+    if (u == "deg/min") return L"\u00B0/min";
+    return wxString::FromUTF8(unit);
+  }
+
+  void ShowValues() {
+    const PilotState& s = m_plugin->State();
+    auto pilot = s.Address(m_plugin->Now());
+    auto rudder = m_plugin->RudderNode();
+    int answered = 0;
+    size_t i = 0;
+    for (const auto& d : pilot_settings::All()) {
+      auto a = d.node == pilot_settings::Node::kPilot ? pilot : rudder;
+      wxString text = "...";
+      if (a) {
+        if (auto kv = s.Setting(*a, d.key)) {
+          answered++;
+          auto v = pilot_settings::Decode(d, *kv);
+          if (!v)
+            text = "NA";
+          else if (!d.choices.empty())
+            text = *v >= 0 && *v < d.choices.size() ? wxGetTranslation(d.choices[static_cast<size_t>(*v)])
+                                                    : wxString::Format("%.0f", *v);
+          else
+            text = wxString::Format(d.scale < 0.05 || d.scale > 0.9 ? "%.1f" : "%.2f", *v);
+        }
+      }
+      if (m_values[i]->GetLabel() != text) m_values[i]->SetLabel(text);
+      i++;
+    }
+    wxString note;
+    if (!pilot)
+      note = _("No autopilot found.");
+    else if (answered == 0 && m_plugin->Now() - m_asked > 3)
+      note = _("The autopilot did not answer. It may accept settings requests only from its own displays.");
+    if (m_note->GetLabel() != note) {
+      m_note->SetLabel(note);
+      m_note->Wrap(GetClientSize().GetWidth() - 24);
+      Layout();
+    }
+  }
+
+  NavicoAutopilotPi* m_plugin;
+  std::vector<wxStaticText*> m_values;
+  wxStaticText* m_note;
+  wxTimer m_refresh;
+  double m_asked = 0;
+};
+
 // ---- NAV confirmation ---------------------------------------------------------
 
 /**
@@ -705,6 +829,18 @@ ApPanel::ApPanel(wxWindow* parent, NavicoAutopilotPi* plugin)
   AddButton(course, "+1", Command::kStarboard1);
   AddButton(course, "+10", Command::kStarboard10);
   top->Add(course, 0, wxEXPAND | wxALL, 6);
+
+  m_settings_button = new ApButton(this, _("Autopilot settings..."));
+  m_settings_button->SetMinSize(wxSize(-1, GetCharHeight() * 2 + 4));
+  m_settings_button->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
+    auto* dlg = new SettingsDialog(wxGetTopLevelParent(this), m_plugin,
+                                   ThemeFor(m_plugin->ColorScheme()));
+    // Next to the panel, which OpenCPN keeps above other windows.
+    wxRect r = GetScreenRect();
+    dlg->Move(r.GetRight() + 8, r.GetTop());
+    dlg->Show();
+  });
+  top->Add(m_settings_button, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 6);
 
   m_message = new wxStaticText(this, wxID_ANY, "", wxDefaultPosition, wxSize(-1, -1),
                                wxST_NO_AUTORESIZE);
@@ -895,5 +1031,6 @@ void ApPanel::ApplyColours(PI_ColorScheme cs) {
   m_message->SetForegroundColour(t.text);
   m_display->SetTheme(t);
   for (auto& [c, b] : m_buttons) static_cast<ApButton*>(b)->SetTheme(t);
+  if (m_settings_button) static_cast<ApButton*>(m_settings_button)->SetTheme(t);
   Refresh();
 }

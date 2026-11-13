@@ -232,6 +232,55 @@ std::optional<AlarmText> ParseAlarmText(const std::vector<uint8_t>& d) {
   return t;
 }
 
+std::vector<uint8_t> KeyValueRead(uint8_t address, SettingKey key, uint8_t instance) {
+  // Layout from canboat (130845 Simnet Key Value); example there:
+  // 41 9F 03 00 FF FF 18 79 00 00 FF FF FF FF = read 18/0079 at address 3.
+  return {kHeader0, kHeader1, address, instance, 0xFF, 0xFF, key.group,
+          static_cast<uint8_t>(key.param & 0xFF), static_cast<uint8_t>(key.param >> 8),
+          static_cast<uint8_t>(KeyOp::kRead), 0xFF, 0xFF, 0xFF, 0xFF};
+}
+
+std::vector<uint8_t> KeyValueSet(uint8_t address, SettingKey key, uint32_t value,
+                                 uint8_t instance) {
+  return {kHeader0, kHeader1, address, instance, 0xFF, 0xFF, key.group,
+          static_cast<uint8_t>(key.param & 0xFF), static_cast<uint8_t>(key.param >> 8),
+          static_cast<uint8_t>(KeyOp::kSet),
+          static_cast<uint8_t>(value & 0xFF), static_cast<uint8_t>((value >> 8) & 0xFF),
+          static_cast<uint8_t>((value >> 16) & 0xFF), static_cast<uint8_t>(value >> 24)};
+}
+
+std::optional<uint32_t> KeyValue::Unsigned(size_t bytes) const {
+  if (value.size() < bytes || bytes == 0 || bytes > 4) return std::nullopt;
+  uint32_t v = 0;
+  bool all_ff = true;
+  for (size_t i = 0; i < bytes; i++) {
+    v |= static_cast<uint32_t>(value[i]) << (8 * i);
+    if (value[i] != 0xFF) all_ff = false;
+  }
+  if (all_ff) return std::nullopt;
+  return v;
+}
+
+std::optional<KeyValue> ParseKeyValue(const std::vector<uint8_t>& d, bool long_form) {
+  if (d.size() < 10 || !HasSimnetHeader(d)) return std::nullopt;
+  KeyValue kv;
+  kv.address = d[2];
+  kv.instance = d[3];
+  kv.key.group = d[6];
+  kv.key.param = U16(d, 7);
+  if (d[9] > 2) return std::nullopt;
+  kv.op = static_cast<KeyOp>(d[9]);
+  if (long_form) {
+    // 130846: a length byte, then the value.
+    if (d.size() < 11) return std::nullopt;
+    size_t len = std::min<size_t>(d[10], d.size() - 11);
+    kv.value.assign(d.begin() + 11, d.begin() + 11 + len);
+  } else {
+    kv.value.assign(d.begin() + 10, d.end());
+  }
+  return kv;
+}
+
 std::optional<double> ParseSpeedThroughWater(const std::vector<uint8_t>& d) {
   if (d.size() < 3) return std::nullopt;
   uint16_t raw = U16(d, 1);

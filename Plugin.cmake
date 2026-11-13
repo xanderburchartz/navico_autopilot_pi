@@ -68,6 +68,8 @@ set(SRC
     src/simnet.cpp
     src/pilot_state.h
     src/pilot_state.cpp
+    src/pilot_settings.h
+    src/pilot_settings.cpp
 )
 
 set(PKG_API_LIB api-18)  #  A dir in opencpn-libs/ e. g., api-17 or api-16
@@ -88,7 +90,7 @@ macro(late_init)
   if (NOT CMAKE_CROSSCOMPILING)
     enable_testing()
     add_executable(test_simnet EXCLUDE_FROM_ALL
-      test/test_simnet.cpp src/simnet.cpp src/pilot_state.cpp)
+      test/test_simnet.cpp src/simnet.cpp src/pilot_state.cpp src/pilot_settings.cpp)
     target_include_directories(test_simnet PRIVATE ${CMAKE_SOURCE_DIR}/src)
     target_compile_features(test_simnet PRIVATE cxx_std_17)
     add_test(NAME simnet COMMAND test_simnet)
