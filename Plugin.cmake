@@ -74,7 +74,13 @@ set(SRC
     src/route_info.cpp
 )
 
-set(PKG_API_LIB api-20)  #  A dir in opencpn-libs/; api-20 (OpenCPN 5.12) for notifications
+# A dir in opencpn-libs/. api-20 (OpenCPN 5.12) for notifications; the
+# Android OpenCPN library still has API 1.18 only (link fails with api-20).
+if (QT_ANDROID)
+  set(PKG_API_LIB api-18)
+else ()
+  set(PKG_API_LIB api-20)
+endif ()
 
 # Minimum version which should be loaded. Ignored if api < 22.
 # Allows plugins using functions from 1.22+ API to be loaded by

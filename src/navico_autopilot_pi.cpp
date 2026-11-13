@@ -66,7 +66,7 @@ extern "C" DECL_EXP opencpn_plugin* create_pi(void* ppimgr) {
 extern "C" DECL_EXP void destroy_pi(opencpn_plugin* p) { delete p; }
 
 NavicoAutopilotPi::NavicoAutopilotPi(void* ppimgr)
-    : opencpn_plugin_120(ppimgr), m_kv_timer(this), m_nfu_timer(this), m_timer(this) {}
+    : NavicoPluginBase(ppimgr), m_kv_timer(this), m_nfu_timer(this), m_timer(this) {}
 
 NavicoAutopilotPi::~NavicoAutopilotPi() = default;
 
@@ -696,6 +696,7 @@ void NavicoAutopilotPi::OnTimer(wxTimerEvent&) {
 }
 
 void NavicoAutopilotPi::NotifyAlarms() {
+#ifdef NAVICO_AP_NOTIFICATIONS
   // Each alarm of the pilot once as an OpenCPN notification (the bell on the
   // chart), taken back when the pilot clears it. Acknowledging it in OpenCPN
   // does not acknowledge it on the pilot.
@@ -717,6 +718,7 @@ void NavicoAutopilotPi::NotifyAlarms() {
     AcknowledgeNotification(it->second);
     it = m_notifications.erase(it);
   }
+#endif
 }
 
 void NavicoAutopilotPi::RememberPilotName() {

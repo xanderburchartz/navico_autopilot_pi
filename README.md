@@ -47,7 +47,8 @@ Actisense RAW ASCII). In OpenCPN 5.12 the network N2K driver numbers its
 fast-packet frames wrongly, so every second command is lost: a receiver
 following the standard drops it. Fixed in 5.14. The plugin is built against plugin API
 1.20 (OpenCPN 5.12) for notifications, so OpenCPN 5.10 and older do not load
-it.
+it. The Android build stays on API 1.18, as the Android OpenCPN library has
+no 1.20; there the alarms show in the panel only.
 
 ### Safety
 

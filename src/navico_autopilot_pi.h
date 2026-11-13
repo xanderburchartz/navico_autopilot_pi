@@ -36,7 +36,15 @@ struct N2kDriver {
   bool network = false;  ///< TCP/UDP gateway (OpenCPN keeps 126996 to itself)
 };
 
-class NavicoAutopilotPi : public wxEvtHandler, public opencpn_plugin_120 {
+// API 1.20 (OpenCPN 5.12) has notifications; the Android build stays on 1.18.
+#if API_VERSION_MINOR >= 20
+#define NAVICO_AP_NOTIFICATIONS 1
+using NavicoPluginBase = opencpn_plugin_120;
+#else
+using NavicoPluginBase = opencpn_plugin_118;
+#endif
+
+class NavicoAutopilotPi : public wxEvtHandler, public NavicoPluginBase {
 public:
   explicit NavicoAutopilotPi(void* ppimgr);
   ~NavicoAutopilotPi() override;
