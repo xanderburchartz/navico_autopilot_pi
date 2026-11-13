@@ -773,6 +773,7 @@ void ApPanel::UpdateState(double now) {
       if (!c.model_id.empty()) {
         // "NAC-3 _Autopilot" -> "NAC-3"
         std::string m = c.model_id.substr(0, c.model_id.find(" _"));
+        while (!m.empty() && m.back() == ' ') m.pop_back();
         model = wxString::FromUTF8(m.c_str());
       }
     }

@@ -29,6 +29,7 @@ class ApPanel;
 struct N2kDriver {
   DriverHandle handle;
   std::string label;  ///< address/port or device, plus user comment
+  bool network = false;  ///< TCP/UDP gateway (OpenCPN keeps 126996 to itself)
 };
 
 class NavicoAutopilotPi : public wxEvtHandler, public opencpn_plugin_118 {

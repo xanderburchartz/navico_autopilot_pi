@@ -164,9 +164,13 @@ void NavicoAutopilotPi::OnN2k(int pgn, ObservedEvt& ev) {
     m_claims_driver = d->handle;
     RequestAddressClaims();
   }
-  // While the settings are open: ask pilots and rudder sensors (only those)
-  // for their model ID, to tell a NAC-3's rudder feedback from its virtual one.
-  if (pgn == simnet::kPgnAddressClaim && now < m_discover_until) {
+  // Shortly after the address claim request: ask pilots and rudder sensors
+  // (only those) for their model ID, to tell a NAC-3's rudder feedback from
+  // its virtual one. Not on network connections: OpenCPN's network driver
+  // keeps 126996 to itself (HandleMgntMsg in comm_drv_n2k_net.cpp), so the
+  // answers would never reach the plugin.
+  auto drv = Driver();
+  if (pgn == simnet::kPgnAddressClaim && now < m_discover_until && drv && !drv->network) {
     auto name = simnet::ParseAddressClaim(msg->data);
     if (name && (name->function == simnet::kFunctionAutopilot ||
                  name->function == simnet::kFunctionRudder) &&
@@ -216,7 +220,7 @@ std::vector<N2kDriver> NavicoAutopilotPi::Drivers() const {
     }
     if (attr.count("userComment") && !attr["userComment"].empty())
       label += " (" + attr["userComment"] + ")";
-    out.push_back({handle, label});
+    out.push_back({handle, label, attr.count("netAddress") > 0});
   }
   return out;
 }

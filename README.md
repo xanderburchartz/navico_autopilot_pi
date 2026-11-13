@@ -56,9 +56,11 @@ following the standard drops it. Fixed in 5.14.
   last one; on release, when the panel closes or OpenCPN loses focus, it sends
   stop three times, 0.1 s apart.
 - Requests: once per connection (and when you open the settings) one ISO
-  request for address claims to all devices (one frame back from each), then
-  a request for product information to each autopilot and rudder sensor that
-  answers, not to the whole bus.
+  request for address claims to all devices (one frame back from each). On
+  serial and SocketCAN connections also a request for product information to
+  each autopilot and rudder sensor that answers, not to the whole bus. Not on
+  network gateways: OpenCPN's network driver keeps 126996 to itself, so the
+  answer would not reach the plugin.
 - STBY can be pressed whenever a pilot is selected, even without recent data.
 - Autopilot and rudder sensor are chosen automatically (the most likely one if
   there are several) and can be overruled in the settings.
@@ -111,8 +113,9 @@ Navico in its NAME (an emulated pilot claims another make), then a NAC.
 **Rudder sensor.** Several devices may send 127245: a NAC-3 sends both a real
 and a "virtual" rudder feedback with the same make and function, and a pilot
 also sends 127245 without a position. The plugin prefers a rudder feedback
-unit (function 155) whose model ID does not say "virtual"; the choice can be
-overruled in the settings and is stored by NAME.
+unit (function 155) of the pilot's make whose model ID does not say
+"virtual"; without model IDs (network gateways, see above) the lowest address.
+The choice can be overruled in the settings and is stored by NAME.
 
 Sources: canboat (`docs/canboat.json`), recordings of a B&G Triton2 pilot
 keypad and a NAC-3 on a real boat, and the notes in the `autopilot` branch of

@@ -214,7 +214,9 @@ std::vector<PilotState::RudderSource> PilotState::RudderSources(double now) cons
 
 std::optional<uint8_t> PilotState::AutoRudder(double now) const {
   // Prefer a rudder feedback unit (function 155, steering class 40) of the
-  // pilot's make, and not a "virtual" one (a NAC-3 has both).
+  // pilot's make, and not a "virtual" one (a NAC-3 has both; only the model
+  // ID from 126996 tells them apart, which OpenCPN does not pass on from
+  // network gateways). Equal: the lowest address.
   std::optional<simnet::Name> pilot;
   if (auto a = Address(now)) {
     auto n = m_names.find(*a);
