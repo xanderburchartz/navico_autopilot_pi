@@ -498,3 +498,6 @@ msgstr "OpenCPN: aangekomen bij %s."
 
 msgid "OpenCPN: arrived at %s, next %s."
 msgstr "OpenCPN: aangekomen bij %s, volgende %s."
+
+msgid "Autopilot: %s"
+msgstr "Stuurautomaat: %s"

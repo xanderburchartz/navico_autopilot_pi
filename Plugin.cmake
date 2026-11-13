@@ -74,7 +74,7 @@ set(SRC
     src/route_info.cpp
 )
 
-set(PKG_API_LIB api-18)  #  A dir in opencpn-libs/ e. g., api-17 or api-16
+set(PKG_API_LIB api-20)  #  A dir in opencpn-libs/; api-20 (OpenCPN 5.12) for notifications
 
 # Minimum version which should be loaded. Ignored if api < 22.
 # Allows plugins using functions from 1.22+ API to be loaded by

@@ -6,7 +6,7 @@
 #ifndef NAVICO_AUTOPILOT_PI_H
 #define NAVICO_AUTOPILOT_PI_H
 
-#include <cstdint>  // ocpn_plugin.h (api-18) uses uint8_t/uint64_t without it
+#include <cstdint>  // ocpn_plugin.h uses uint8_t/uint64_t without it
 #include <map>
 #include <memory>
 #include <optional>
@@ -36,7 +36,7 @@ struct N2kDriver {
   bool network = false;  ///< TCP/UDP gateway (OpenCPN keeps 126996 to itself)
 };
 
-class NavicoAutopilotPi : public wxEvtHandler, public opencpn_plugin_118 {
+class NavicoAutopilotPi : public wxEvtHandler, public opencpn_plugin_120 {
 public:
   explicit NavicoAutopilotPi(void* ppimgr);
   ~NavicoAutopilotPi() override;
@@ -176,6 +176,8 @@ private:
   double m_leg_time = -1e9;
   route_info::OpenCpnRoute m_ocpn_route;
   void OnNavData(ObservedEvt& ev);
+  void NotifyAlarms();
+  std::map<uint16_t, std::string> m_notifications;  // alarm id -> notification guid
 
   wxBitmap m_bitmap;
   int m_tool_id = -1;

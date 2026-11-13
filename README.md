@@ -45,7 +45,9 @@ network, an Actisense NGT-1, or SocketCAN on Linux.
 **Requires OpenCPN 5.14 or later** for network gateways (Yacht Devices RAW,
 Actisense RAW ASCII). In OpenCPN 5.12 the network N2K driver numbers its
 fast-packet frames wrongly, so every second command is lost: a receiver
-following the standard drops it. Fixed in 5.14.
+following the standard drops it. Fixed in 5.14. The plugin is built against plugin API
+1.20 (OpenCPN 5.12) for notifications, so OpenCPN 5.10 and older do not load
+it.
 
 ### Safety
 

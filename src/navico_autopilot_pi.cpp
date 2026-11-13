@@ -66,7 +66,7 @@ extern "C" DECL_EXP opencpn_plugin* create_pi(void* ppimgr) {
 extern "C" DECL_EXP void destroy_pi(opencpn_plugin* p) { delete p; }
 
 NavicoAutopilotPi::NavicoAutopilotPi(void* ppimgr)
-    : opencpn_plugin_118(ppimgr), m_kv_timer(this), m_nfu_timer(this), m_timer(this) {}
+    : opencpn_plugin_120(ppimgr), m_kv_timer(this), m_nfu_timer(this), m_timer(this) {}
 
 NavicoAutopilotPi::~NavicoAutopilotPi() = default;
 
@@ -692,6 +692,31 @@ void NavicoAutopilotPi::OnTimer(wxTimerEvent&) {
     if (m_panel_shown) m_panel->UpdateState(Now());
   }
   RememberPilotName();
+  NotifyAlarms();
+}
+
+void NavicoAutopilotPi::NotifyAlarms() {
+  // Each alarm of the pilot once as an OpenCPN notification (the bell on the
+  // chart), taken back when the pilot clears it. Acknowledging it in OpenCPN
+  // does not acknowledge it on the pilot.
+  std::set<uint16_t> active;
+  for (const auto& a : m_state.Alarms(Now())) {
+    if (a.text.empty()) continue;  // wait for the text (130856)
+    active.insert(a.id);
+    if (m_notifications.count(a.id)) continue;
+    wxString text = wxString::Format(_("Autopilot: %s"), wxString::FromUTF8(a.text.c_str()));
+    m_notifications[a.id] =
+        RaiseNotification(PI_NotificationSeverity::PI_kWarning, std::string(text.utf8_str()));
+    wxLogMessage("navico_autopilot_pi: notification for alarm %d: %s", a.id, a.text.c_str());
+  }
+  for (auto it = m_notifications.begin(); it != m_notifications.end();) {
+    if (active.count(it->first)) {
+      ++it;
+      continue;
+    }
+    AcknowledgeNotification(it->second);
+    it = m_notifications.erase(it);
+  }
 }
 
 void NavicoAutopilotPi::RememberPilotName() {
