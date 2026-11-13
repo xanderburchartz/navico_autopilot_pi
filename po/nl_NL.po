@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 msgid ""
 msgstr ""
-"Project-Id-Version: navico_autopilot_pi 0.1.1\n"
+"Project-Id-Version: navico_autopilot_pi 0.1.0\n"
 "PO-Revision-Date: 2026-11-10 19:00+0100\n"
 "Last-Translator: navico_autopilot_pi\n"
 "Language-Team: Dutch\n"
