@@ -115,6 +115,15 @@ request at a time (the next after the answer or 1.5 s, an unanswered one is
 asked once more), and changes a setting only after a confirmation. Boat
 type, drive voltage and rudder calibration are read only.
 
+**Steering profiles.** Byte 3 of 130845 is an instance. A NAC-3 set to
+Sail keeps group 1A (rudder gain 1A/0D, autotrim 0E, counter rudder 0F,
+turn rate 10) per steering profile, instances 0 to 5; instance FF answers
+with the active profile and from 6 on the answer is FF. The names come in
+130846 under 18/8008 per instance: ENGINE, REACH, RUN, BEAT, WORK4, WORK5
+(measured 13 Nov 2026). The "Low" profile in group 19 that other sources
+name does not answer on this NAC-3. After a change the NAC-3 sends the
+values of all instances, so the plugin keeps replies per instance.
+
 **Which device is the pilot.** A NAC-3 claims several addresses; only the
 part with function 150 (autopilot) follows 130850. The plugin takes the source
 of 65305 "Mode" reports from an AC or NAC (model byte `00` or `64`). A B&G

@@ -341,6 +341,23 @@ static void TestKeyValue() {
   CHECK(db && pilot_settings::Encode(*db, 0.1) == 17 && pilot_settings::Encode(*db, 0) == 0);
   CHECK(pilot_settings::Editable({0x14, 0x06}) && !pilot_settings::Editable({0x14, 0x1D}) &&
         !pilot_settings::Editable({0x18, 0x0A}) && !pilot_settings::Editable({0x09, 0x01}));
+
+  // Steering profiles (NAC-3, 13 Nov 2026): rudder gain per instance. A
+  // broadcast of profile 1 must not replace profile 0; a set reply (FF)
+  // counts for the plain lookup.
+  PilotState p;
+  p.Handle(Rx(130845, 4, "41 9F FF 00 FF FF 1A 0D 00 02 34 00 00 00"), 1);
+  p.Handle(Rx(130845, 4, "41 9F FF 01 FF FF 1A 0D 00 02 32 00 00 00"), 2);
+  CHECK(p.Setting(4, {0x1A, 0x0D})->Unsigned(2) == 0x34u);
+  CHECK(p.Setting(4, {0x1A, 0x0D}, 1)->Unsigned(2) == 0x32u);
+  CHECK(!p.Setting(4, {0x1A, 0x0D}, 2));
+  p.Handle(Rx(130845, 4, "41 9F FF FF FF FF 14 06 00 02 10 00 00 00"), 3);
+  p.Handle(Rx(130845, 4, "41 9F FF 00 FF FF 14 06 00 02 00 00 00 00"), 2);
+  CHECK(p.Setting(4, {0x14, 0x06})->Unsigned(2) == 0x10u && p.SettingTime(4, {0x14, 0x06}) == 3);
+  // Profile name in 130846.
+  p.Handle(Rx(130846, 4, "41 9F FF 03 FF 00 18 08 80 02 0A 42 45 41 54 00 00 00 00 00 00"), 4);
+  auto name = p.Setting(4, pilot_settings::kProfileName, 3);
+  CHECK(name && pilot_settings::Text(*name) == "BEAT");
 }
 
 int main() {

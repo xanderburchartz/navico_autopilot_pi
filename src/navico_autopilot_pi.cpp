@@ -376,14 +376,28 @@ void NavicoAutopilotPi::ReadPilotSettings() {
   auto pilot = m_state.Address(Now());
   auto rudder = RudderNode();
   m_kv_retried.clear();
+  auto add = [this](uint8_t address, simnet::SettingKey key, uint8_t instance) {
+    KvRead item{address, key, instance};
+    if (m_kv_waiting == item ||
+        std::find(m_kv_queue.begin(), m_kv_queue.end(), item) != m_kv_queue.end())
+      return;
+    m_kv_queue.push_back(item);
+  };
+  std::vector<const pilot_settings::Definition*> profiles;
   for (const auto& d : pilot_settings::All()) {
     auto a = d.node == pilot_settings::Node::kPilot ? pilot : rudder;
     if (!a) continue;
-    std::pair<uint8_t, simnet::SettingKey> item{*a, d.key};
-    if (m_kv_waiting == item ||
-        std::find(m_kv_queue.begin(), m_kv_queue.end(), item) != m_kv_queue.end())
-      continue;
-    m_kv_queue.push_back(item);
+    if (d.per_profile)
+      profiles.push_back(&d);
+    else
+      add(*a, d.key, 0);
+  }
+  // Then the steering profiles: name and values per instance.
+  if (pilot) {
+    for (int i = 0; i < pilot_settings::kProfiles; i++) {
+      add(*pilot, pilot_settings::kProfileName, static_cast<uint8_t>(i));
+      for (const auto* d : profiles) add(*pilot, d->key, static_cast<uint8_t>(i));
+    }
   }
   // One request at a time: the NAC-3 answers late and bundled when asked
   // quickly (13 Nov 2026), so the next one goes out after the answer or 1.5 s.
@@ -414,8 +428,8 @@ void NavicoAutopilotPi::OnKvTimer(wxTimerEvent&) {
   }
   double now = Now();
   if (m_kv_waiting) {
-    auto [wa, wk] = *m_kv_waiting;
-    bool answered = m_state.Setting(wa, wk) && m_state.SettingTime(wa, wk) >= m_kv_sent;
+    auto [wa, wk, wi] = *m_kv_waiting;
+    bool answered = m_state.Setting(wa, wk, wi) && m_state.SettingTime(wa, wk, wi) >= m_kv_sent;
     if (!answered && now - m_kv_sent < 1.5) return;
     // The NAC-3 leaves some requests unanswered (more so while the bus is
     // busy); ask those once more at the end, as a display asks again.
@@ -426,12 +440,12 @@ void NavicoAutopilotPi::OnKvTimer(wxTimerEvent&) {
     m_kv_timer.Stop();
     return;
   }
-  auto [address, key] = m_kv_queue.front();
+  auto [address, key, instance] = m_kv_queue.front();
   m_kv_queue.erase(m_kv_queue.begin());
-  m_kv_waiting = std::make_pair(address, key);
+  m_kv_waiting = KvRead{address, key, instance};
   m_kv_sent = now;
   Register(driver->handle);
-  auto data = simnet::KeyValueRead(address, key);
+  auto data = simnet::KeyValueRead(address, key, instance);
   auto payload = std::make_shared<std::vector<uint8_t>>(data);
   // 130845 is a PDU2 PGN: the device address is in the data (byte 2).
   WriteCommDriverN2K(driver->handle, simnet::kPgnKeyValue, 255, 3, payload);

@@ -10,6 +10,7 @@
 #include <memory>
 #include <optional>
 #include <set>
+#include <tuple>
 #include <string>
 #include <vector>
 
@@ -120,9 +121,11 @@ private:
 
   bool SendNfu(simnet::NfuSide side, bool log);
   void OnKvTimer(wxTimerEvent&);
-  std::vector<std::pair<uint8_t, simnet::SettingKey>> m_kv_queue;
-  std::optional<std::pair<uint8_t, simnet::SettingKey>> m_kv_waiting;
-  std::set<std::pair<uint8_t, simnet::SettingKey>> m_kv_retried;
+  /** Address, key, instance of a settings read. */
+  using KvRead = std::tuple<uint8_t, simnet::SettingKey, uint8_t>;
+  std::vector<KvRead> m_kv_queue;
+  std::optional<KvRead> m_kv_waiting;
+  std::set<KvRead> m_kv_retried;
   double m_kv_sent = 0;
   wxTimer m_kv_timer;
   void OnNfuTimer(wxTimerEvent&);

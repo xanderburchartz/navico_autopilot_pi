@@ -5,6 +5,7 @@
 
 #include "pilot_state.h"
 
+#include <algorithm>
 #include <cctype>
 #include <cmath>
 
@@ -157,8 +158,8 @@ void PilotState::Handle(const simnet::Message& m, double now) {
       auto kv = simnet::ParseKeyValue(m.data, m.pgn == simnet::kPgnKeyValueLong);
       if (!kv || kv->op != simnet::KeyOp::kReply) return;
       // The device puts its own address in byte 2 of the reply.
-      m_settings[{m.source, kv->key}] = *kv;
-      m_setting_times[{m.source, kv->key}] = now;
+      m_settings[{m.source, kv->key, kv->instance}] = *kv;
+      m_setting_times[{m.source, kv->key, kv->instance}] = now;
       return;
     }
     case simnet::kPgnSpeed: {
@@ -193,16 +194,26 @@ void PilotState::Handle(const simnet::Message& m, double now) {
   }
 }
 
-std::optional<simnet::KeyValue> PilotState::Setting(uint8_t address,
-                                                    simnet::SettingKey key) const {
-  auto it = m_settings.find({address, key});
+std::optional<simnet::KeyValue> PilotState::Setting(uint8_t address, simnet::SettingKey key,
+                                                    uint8_t instance) const {
+  auto it = m_settings.find({address, key, instance});
   if (it == m_settings.end()) return std::nullopt;
   return it->second;
 }
 
-double PilotState::SettingTime(uint8_t address, simnet::SettingKey key) const {
-  auto it = m_setting_times.find({address, key});
+double PilotState::SettingTime(uint8_t address, simnet::SettingKey key, uint8_t instance) const {
+  auto it = m_setting_times.find({address, key, instance});
   return it == m_setting_times.end() ? -1e9 : it->second;
+}
+
+std::optional<simnet::KeyValue> PilotState::Setting(uint8_t address,
+                                                    simnet::SettingKey key) const {
+  bool ff_newer = SettingTime(address, key, 0xFF) > SettingTime(address, key, 0);
+  return Setting(address, key, ff_newer ? 0xFF : 0);
+}
+
+double PilotState::SettingTime(uint8_t address, simnet::SettingKey key) const {
+  return std::max(SettingTime(address, key, 0), SettingTime(address, key, 0xFF));
 }
 
 std::optional<double> PilotState::SpeedThroughWater(double now) const {

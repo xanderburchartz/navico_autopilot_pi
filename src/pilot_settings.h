@@ -41,7 +41,19 @@ struct Definition {
   const char* zero_label = nullptr;
   /** Decimals to show, matching the pilot's resolution and the displays. */
   int decimals = 1;
+  /** One value per steering profile (instances 0 to kProfiles - 1). */
+  bool per_profile = false;
 };
+
+/** Steering profiles of a NAC-3 set to Sail, by instance (byte 3): 0 ENGINE,
+ *  1 REACH, 2 RUN, 3 BEAT, 4 WORK4, 5 WORK5; instance FF answers with the
+ *  active one (13 Nov 2026). Instances from 6 answer FF. */
+constexpr int kProfiles = 6;
+/** Profile name, answered in 130846 per instance ("ENGINE"). */
+constexpr simnet::SettingKey kProfileName{0x18, 0x8008};
+
+/** Text of a 130846 value, up to the first NUL. */
+std::string Text(const simnet::KeyValue& kv);
 
 const std::vector<Definition>& All();
 

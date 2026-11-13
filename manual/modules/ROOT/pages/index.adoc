@@ -109,8 +109,8 @@ the pilot does not change to NAV and reports "Navigation data missing".
 === Autopilot settings
 
 *Autopilot settings...* opens a window with the settings the pilot computer
-keeps itself: boat, sailing, steering profile High, drive and rudder
-calibration. The plugin asks the pilot for each value when the window opens,
+keeps itself: boat, sailing, drive, rudder calibration and the steering
+profiles. The plugin asks the pilot for each value when the window opens,
 one at a time; a value that stays at `...` got no answer, *Read again* asks
 once more. Not every pilot answers every request on the first try.
 
@@ -119,8 +119,14 @@ confirmation and then sends it. The pilot answers with the value it took,
 which can be rounded to its own resolution; the window shows that answer.
 Boat type, drive voltage and the rudder calibration are shown but cannot be
 changed here: a wrong value there can harm the drive or belongs to the
-commissioning steps on the pilot controller. Profile Low, the control
-method, the clutch and the minimum rudder are not in the list yet.
+commissioning steps on the pilot controller. The control method, the clutch
+and the minimum rudder are not in the list yet.
+
+A NAC-3 set to Sail keeps rudder gain, counter rudder, autotrim and turn
+rate per steering profile; the window shows them in a table with the names
+the pilot gives (ENGINE, REACH, RUN, BEAT, WORK4, WORK5 on a NAC-3).
+Autotune adjusts the active profile. The plugin does not change these
+values yet.
 
 Apart from NFU, each button press sends one command, with no heartbeat. Every
 command is written to the OpenCPN log with its bytes, on lines starting with

@@ -658,6 +658,10 @@ public:
     grid->AddGrowableCol(0);
     const char* section = "";
     for (const auto& d : pilot_settings::All()) {
+      if (d.per_profile) {
+        m_profile_defs.push_back(&d);
+        continue;
+      }
       if (std::string(section) != d.section) {
         section = d.section;
         auto* h = new wxStaticText(this, wxID_ANY, wxGetTranslation(section));
@@ -694,7 +698,54 @@ public:
         grid->AddSpacer(0);
       }
     }
-    top->Add(grid, 1, wxEXPAND | wxALL, 12);
+    top->Add(grid, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 12);
+
+    // Steering profiles: one column per profile, names as the pilot gives them.
+    if (!m_profile_defs.empty()) {
+      auto* h = new wxStaticText(this, wxID_ANY, _("Steering profiles"));
+      wxFont f = h->GetFont();
+      f.SetWeight(wxFONTWEIGHT_BOLD);
+      h->SetFont(f);
+      h->SetForegroundColour(theme.text);
+      top->Add(h, 0, wxLEFT | wxRIGHT | wxTOP, 12);
+      auto* pg = new wxFlexGridSizer(pilot_settings::kProfiles + 2, 4, 12);
+      pg->AddGrowableCol(0);
+      pg->AddSpacer(0);
+      for (int i = 0; i < pilot_settings::kProfiles; i++) {
+        auto* n = new wxStaticText(this, wxID_ANY, wxString::Format("%d", i + 1), wxDefaultPosition,
+                                   wxDefaultSize, wxALIGN_RIGHT | wxST_NO_AUTORESIZE);
+        n->SetMinSize(wxSize(GetCharWidth() * 8, -1));
+        n->SetForegroundColour(theme.label);
+        pg->Add(n, 0, wxEXPAND);
+        m_profile_names.push_back(n);
+      }
+      pg->AddSpacer(0);
+      for (const auto* d : m_profile_defs) {
+        auto* name = new wxStaticText(this, wxID_ANY, wxGetTranslation(d->name));
+        name->SetForegroundColour(theme.label);
+        pg->Add(name, 0, wxALIGN_CENTRE_VERTICAL);
+        std::vector<wxStaticText*> row;
+        for (int i = 0; i < pilot_settings::kProfiles; i++) {
+          auto* v = new wxStaticText(this, wxID_ANY, "...", wxDefaultPosition, wxDefaultSize,
+                                     wxALIGN_RIGHT | wxST_NO_AUTORESIZE);
+          v->SetMinSize(wxSize(GetCharWidth() * 8, -1));
+          v->SetForegroundColour(theme.text);
+          pg->Add(v, 0, wxALIGN_CENTRE_VERTICAL | wxEXPAND);
+          row.push_back(v);
+        }
+        m_profile_values.push_back(row);
+        auto* unit = new wxStaticText(this, wxID_ANY, UnitText(d->unit));
+        unit->SetForegroundColour(theme.label);
+        pg->Add(unit, 0, wxALIGN_CENTRE_VERTICAL);
+      }
+      top->Add(pg, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 12);
+      auto* about = new wxStaticText(this, wxID_ANY,
+                                     _("The pilot keeps these per steering profile. The plugin "
+                                       "does not change them yet."));
+      about->SetForegroundColour(theme.label);
+      top->Add(about, 0, wxLEFT | wxRIGHT | wxTOP, 12);
+    }
+    top->AddSpacer(12);
     m_note = new wxStaticText(this, wxID_ANY, "");
     m_note->SetForegroundColour(theme.label);
     top->Add(m_note, 0, wxLEFT | wxRIGHT, 12);
@@ -793,6 +844,7 @@ private:
     int answered = 0;
     size_t i = 0;
     for (const auto& d : pilot_settings::All()) {
+      if (d.per_profile) continue;
       auto a = d.node == pilot_settings::Node::kPilot ? pilot : rudder;
       wxString text = "...";
       bool show_unit = true;
@@ -817,6 +869,23 @@ private:
       wxString unit = show_unit ? UnitText(d.unit) : wxString();
       if (m_units[i]->GetLabel() != unit) m_units[i]->SetLabel(unit);
       i++;
+    }
+    for (int p = 0; pilot && p < static_cast<int>(m_profile_names.size()); p++) {
+      auto inst = static_cast<uint8_t>(p);
+      if (auto kv = s.Setting(*pilot, pilot_settings::kProfileName, inst)) {
+        wxString name = wxString::FromUTF8(pilot_settings::Text(*kv));
+        if (!name.empty() && m_profile_names[p]->GetLabel() != name) m_profile_names[p]->SetLabel(name);
+      }
+      for (size_t r = 0; r < m_profile_defs.size(); r++) {
+        const auto& d = *m_profile_defs[r];
+        wxString text = "...";
+        if (auto kv = s.Setting(*pilot, d.key, inst)) {
+          answered++;
+          auto v = pilot_settings::Decode(d, *kv);
+          text = v ? Shown(d, *v) : wxString("NA");
+        }
+        if (m_profile_values[r][p]->GetLabel() != text) m_profile_values[r][p]->SetLabel(text);
+      }
     }
     if (m_write) {
       // Answer to a change: the pilot sends back the value it took.
@@ -857,6 +926,9 @@ private:
   NavicoAutopilotPi* m_plugin;
   std::vector<wxStaticText*> m_values;
   std::vector<wxStaticText*> m_units;
+  std::vector<const pilot_settings::Definition*> m_profile_defs;
+  std::vector<wxStaticText*> m_profile_names;
+  std::vector<std::vector<wxStaticText*>> m_profile_values;
   wxStaticText* m_note;
   wxTimer m_refresh;
   double m_asked = 0;

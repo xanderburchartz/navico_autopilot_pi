@@ -293,8 +293,11 @@ msgstr "Overstagtijd"
 msgid "Profile Low"
 msgstr "Profiel Laag"
 
-msgid "Profile High"
-msgstr "Profiel Hoog"
+msgid "Steering profiles"
+msgstr "Stuurprofielen"
+
+msgid "The pilot keeps these per steering profile. The plugin does not change them yet."
+msgstr "De stuurautomaat bewaart deze per stuurprofiel. De plugin wijzigt ze nog niet."
 
 msgid "Rudder gain"
 msgstr "Roerversterking"

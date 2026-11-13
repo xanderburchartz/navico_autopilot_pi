@@ -15,6 +15,7 @@
 
 #include <cstdint>
 #include <map>
+#include <tuple>
 #include <optional>
 #include <string>
 #include <utility>
@@ -119,10 +120,15 @@ public:
 
   std::vector<ActiveAlarm> Alarms(double now) const;
 
-  /** Latest value of a setting from a 130845/130846 reply by \p address. */
+  /** Latest value of a setting from a 130845/130846 reply by \p address,
+   *  instance 0 or FF (a read answers with 0, a set with FF). */
   std::optional<simnet::KeyValue> Setting(uint8_t address, simnet::SettingKey key) const;
+  /** The reply for one instance only, e.g. one steering profile. */
+  std::optional<simnet::KeyValue> Setting(uint8_t address, simnet::SettingKey key,
+                                          uint8_t instance) const;
   /** When that reply came (seconds, as passed to Handle), or -1e9. */
   double SettingTime(uint8_t address, simnet::SettingKey key) const;
+  double SettingTime(uint8_t address, simnet::SettingKey key, uint8_t instance) const;
 
   /** Speed through the water (m/s) from 128259. */
   std::optional<double> SpeedThroughWater(double now) const;
@@ -159,8 +165,11 @@ private:
 
   uint64_t m_rudder_name = 0;
   std::map<uint8_t, RudderSource> m_rudder;
-  std::map<std::pair<uint8_t, simnet::SettingKey>, simnet::KeyValue> m_settings;
-  std::map<std::pair<uint8_t, simnet::SettingKey>, double> m_setting_times;
+  // Address, key, instance: the NAC-3 keeps some settings per steering
+  // profile and sends those of all profiles after a change.
+  using SettingId = std::tuple<uint8_t, simnet::SettingKey, uint8_t>;
+  std::map<SettingId, simnet::KeyValue> m_settings;
+  std::map<SettingId, double> m_setting_times;
   std::optional<double> m_stw;
   uint8_t m_stw_source = 255;
   double m_stw_time = -1e9;
