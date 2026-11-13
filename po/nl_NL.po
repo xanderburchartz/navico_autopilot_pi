@@ -151,9 +151,6 @@ msgstr "Nog %d s om te bevestigen"
 msgid "No data from the autopilot."
 msgstr "Geen gegevens van de stuurautomaat."
 
-msgid "No reply from the autopilot."
-msgstr "Geen antwoord van de stuurautomaat."
-
 msgid "The autopilot did not change mode."
 msgstr "De stuurautomaat wisselde niet van stand."
 
@@ -191,3 +188,56 @@ msgstr "%s (automatisch)"
 
 msgid "Automatic: no rudder sensor found yet"
 msgstr "Automatisch: nog geen roersensor gevonden"
+
+msgid "NON FOLLOW-UP"
+msgstr "NON FOLLOW-UP"
+
+msgid "Speed through water"
+msgstr "Bootsnelheid"
+
+msgid "Rudder angle"
+msgstr "Roerhoek"
+
+msgid "Tack or gybe"
+msgstr "Overstag of gijpen"
+
+msgid "Tack?"
+msgstr "Overstag?"
+
+msgid "Gybe?"
+msgstr "Gijpen?"
+
+#, c-format
+msgid "Heading now %s%s, after the manoeuvre about %s%s."
+msgstr "Koers nu %s%s, na de manoeuvre ongeveer %s%s."
+
+#, c-format
+msgid "Wind angle %s %s becomes %s %s."
+msgstr "Windhoek %s %s wordt %s %s."
+
+msgid "starboard"
+msgstr "SB"
+
+msgid "Tack"
+msgstr "Overstag"
+
+msgid "Gybe"
+msgstr "Gijpen"
+
+msgid "TACK"
+msgstr "OVERSTAG"
+
+msgid "NFU could not be sent."
+msgstr "NFU kon niet worden verzonden."
+
+msgid "No reply from the autopilot. Is transmitting enabled on the gateway?"
+msgstr "Geen antwoord van de stuurautomaat. Staat zenden op de gateway aan?"
+
+msgid "Boat speed"
+msgstr "Bootsnelheid"
+
+msgid "Speed over ground (from OpenCPN)"
+msgstr "Grondsnelheid (uit OpenCPN)"
+
+msgid "Speed through water (log)"
+msgstr "Snelheid door het water (log)"

@@ -188,6 +188,13 @@ static void TestPilotState() {
 // Frames recorded on Penny Lane, 13 Nov 2026 (NAC-3 at 4, Triton2 at 18).
 static void TestNavAndSensors() {
   CheckEq(CommandData(Command::kConfirm, 4), "41 9F 04 FF FF 0A 1C 00 FF FF FF", "confirm");
+  CheckEq(CommandData(Command::kTack, 4), "41 9F 04 FF FF 0A 11 00 00 FF FF FF", "tack");
+  CheckEq(NfuData(NfuSide::kPort, 4), "41 9F 04 FF FF 02 0D 00 04 00 00 00", "nfu port");
+  CheckEq(NfuData(NfuSide::kStarboard, 4), "41 9F 04 FF FF 02 0D 00 05 00 00 00", "nfu stbd");
+  CheckEq(NfuData(NfuSide::kStop, 4), "41 9F 04 FF FF 02 0D 00 FF 00 00 00", "nfu stop");
+  auto stw = ParseSpeedThroughWater(Bytes("01 F4 01 FF FF 00 FF FF"));  // 5.00 m/s
+  CHECK(stw && std::fabs(*stw - 5.0) < 1e-9);
+  CHECK(!ParseSpeedThroughWater(Bytes("01 FF FF FF FF 00 FF FF")));
 
   // Echo: an 11-byte command comes back padded to 12 bytes.
   CHECK(EchoMatches(CommandData(Command::kNav, 4), Bytes("41 9f 04 ff ff 0a 0a 00 ff ff ff a3")));
@@ -232,7 +239,8 @@ static void TestNavAndSensors() {
   s.CommandSent(Command::kNav, CommandData(Command::kNav, 4), t0 + 40);
   s.Handle(Rx(130851, 4, "41 9f 04 ff ff 0a 0a 00 ff ff ff a3"), t0 + 40.3);
   s.Handle(Rx(65305, 4, "41 9F 64 0A 08 00 00 40"), t0 + 41);
-  CHECK(s.NotFollowed(t0 + 42) && !s.Unconfirmed(t0 + 42));
+  CHECK(!s.NotFollowed(t0 + 42) && !s.Unconfirmed(t0 + 42));  // 3 s, as the app
+  CHECK(s.NotFollowed(t0 + 44) && !s.Unconfirmed(t0 + 44));
   // No echo at all: unconfirmed.
   s.CommandSent(Command::kAuto, CommandData(Command::kAuto, 4), t0 + 50);
   CHECK(s.Unconfirmed(t0 + 52) && !s.NotFollowed(t0 + 52));

@@ -63,8 +63,9 @@ the rudder angle at the bottom.
 |===
 |Mode |Upper value |Lower value
 
-|Standby |Heading |Speed over ground
-|Auto, No Drift |Set heading |Speed over ground
+|Standby |Heading |Boat speed
+|NFU (standby, button held) |Rudder angle |Boat speed
+|Auto, No Drift |Set heading |Boat speed
 |Nav |Bearing to the waypoint |Distance to the waypoint
 |Wind |Apparent wind angle |Set wind angle
 |===
@@ -73,9 +74,25 @@ Headings are shown in the reference the pilot uses, true or magnetic. The
 colours follow OpenCPN's day, dusk and night schemes; at night everything is
 dim red.
 
+Boat speed is the speed over ground from OpenCPN, or the speed through the
+water from the log; choose it in the settings.
+
 STBY works whenever a pilot is selected, also without recent data. The
-other mode buttons need recent data from the pilot. The course buttons only
-work in Auto, Wind and No Drift.
+other mode buttons need recent data from the pilot. The course buttons work
+in Auto, Wind and No Drift.
+
+In standby the two middle course buttons become *◀ NFU* and *NFU ▶*
+(non-follow-up): the rudder moves to port or starboard as long as you hold
+the button, and stops when you let go. The plugin repeats the command every
+half second while held and sends stop three times on release; it also stops
+when the panel closes or OpenCPN loses focus.
+
+=== Tack and gybe
+
+In Wind mode *TACK* opens a window with the heading now, the expected
+heading after the manoeuvre and the new wind angle; with the wind further
+aft than 90 degrees it is a gybe. *Tack* or *Gybe* sends the command, the
+pilot chooses the side. The window closes by itself after 10 seconds.
 
 === Navigation
 
@@ -89,7 +106,7 @@ The pilot follows the route or waypoint of the active navigation source on
 the bus, for example the plotter or OpenCPN. Without valid navigation data
 the pilot does not change to NAV and reports "Navigation data missing".
 
-Each button press sends one command, no heartbeat and no repeats. Every
+Apart from NFU, each button press sends one command, with no heartbeat. Every
 command is written to the OpenCPN log with its bytes, on lines starting with
 `navico_autopilot_pi:`.
 
@@ -100,12 +117,12 @@ No pilot mode reports seen on the chosen connection. Check that the
 connection receives NMEA 2000 data and that the pilot computer is on.
 Choose the NMEA 2000 connection in the plugin settings::
 OpenCPN has no NMEA 2000 connection, or more than one and none is chosen.
-No reply from the autopilot::
-The pilot did not echo the command. Check that the connection has output
-enabled.
+No reply from the autopilot. Is transmitting enabled on the gateway?::
+The pilot did not echo the command within 1.5 seconds. Check that the
+connection has output enabled.
 The autopilot did not change mode::
-The pilot received the command but did not follow it, for example NAV
-without navigation data.
+The pilot echoed the command but did not follow it within 3 seconds, for
+example NAV without navigation data.
 Alarm: ...::
 An alarm the pilot reports, with its own text, as long as it is active.
 

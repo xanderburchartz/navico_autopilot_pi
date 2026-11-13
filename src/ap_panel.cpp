@@ -11,6 +11,7 @@
 #include "ap_panel.h"
 
 #include <cmath>
+#include <functional>
 #include <optional>
 
 #include <wx/dcbuffer.h>
@@ -112,7 +113,9 @@ struct DisplayData {
   bool magnetic = false;
   std::optional<double> heading, target, wpt_bearing, dtw_nm, sog;
   std::optional<double> awa, set_wind, rudder;  // signed, negative = port
-  wxString badge;  // "NAC 4"
+  bool stw = false;  // speed is through the water, not over ground
+  bool nfu = false;  // non-follow-up active
+  wxString badge;    // "NAC-3 4"
 };
 
 class ApDisplay : public wxWindow {
@@ -276,10 +279,13 @@ private:
   }
 
   void DrawModeBox(wxDC& dc, const wxRect& r) {
-    bool engaged = m_data.alive && m_data.mode != Mode::kStandby && m_data.mode != Mode::kUnknown;
+    bool engaged = m_data.alive && ((m_data.mode != Mode::kStandby && m_data.mode != Mode::kUnknown) ||
+                                    m_data.nfu);
     wxString caption, letter;
     switch (m_data.alive ? m_data.mode : Mode::kUnknown) {
-      case Mode::kStandby: caption = _("STANDBY"); letter = "S"; break;
+      case Mode::kStandby:
+        if (m_data.nfu) { caption = _("NON FOLLOW-UP"); letter = "NFU"; break; }
+        caption = _("STANDBY"); letter = "S"; break;
       case Mode::kAuto: caption = _("HEADING HOLD"); letter = "A"; break;
       case Mode::kWind: caption = _("WIND"); letter = "W"; break;
       case Mode::kNav: caption = _("NAVIGATION"); letter = "N"; break;
@@ -304,7 +310,7 @@ private:
     while (px > 7 && dc.GetTextExtent(caption).x > r.width * 0.92) dc.SetFont(PixelFont(--px, true));
     wxSize t = dc.GetTextExtent(caption);
     dc.DrawText(caption, r.x + (r.width - t.x) / 2, strip.y + (strip.height - t.y) / 2);
-    int lp = static_cast<int>(r.height * (letter.length() > 1 ? 0.42 : 0.55));
+    int lp = static_cast<int>(r.height * (letter.length() > 2 ? 0.30 : letter.length() > 1 ? 0.42 : 0.55));
     dc.SetFont(PixelFont(lp, true));
     t = dc.GetTextExtent(letter);
     int body_y = strip.GetBottom();
@@ -352,6 +358,7 @@ private:
     auto sog = [&]() {
       return m_data.sog ? wxString::Format("%.1f", *m_data.sog) : wxString("-.-");
     };
+    wxString speed_label = m_data.stw ? _("Speed through water") : _("Speed over ground");
     switch (m_data.alive ? m_data.mode : Mode::kUnknown) {
       case Mode::kWind:
         DrawRow(dc, r1, _("Apparent wind"), abs_deg(m_data.awa), L"°", m_data.awa);
@@ -367,11 +374,17 @@ private:
       case Mode::kAuto:
       case Mode::kNoDrift:
         DrawRow(dc, r1, _("Set heading"), Three(m_data.target), unit, std::nullopt);
-        DrawRow(dc, r2, _("Speed over ground"), sog(), "kn", std::nullopt);
+        DrawRow(dc, r2, speed_label, sog(), "kn", std::nullopt);
         break;
       default:
-        DrawRow(dc, r1, _("Heading"), Three(m_data.heading), unit, std::nullopt);
-        DrawRow(dc, r2, _("Speed over ground"), sog(), "kn", std::nullopt);
+        if (m_data.nfu) {
+          DrawRow(dc, r1, _("Rudder angle"),
+                  m_data.rudder ? wxString::Format("%.0f", std::fabs(*m_data.rudder)) : wxString("--"),
+                  L"\u00B0", m_data.rudder);
+        } else {
+          DrawRow(dc, r1, _("Heading"), Three(m_data.heading), unit, std::nullopt);
+        }
+        DrawRow(dc, r2, speed_label, sog(), "kn", std::nullopt);
         break;
     }
   }
@@ -434,25 +447,45 @@ public:
     SetBackgroundStyle(wxBG_STYLE_PAINT);
     Bind(wxEVT_PAINT, &ApButton::OnPaint, this);
     Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent&) {
+      if (!IsEnabled()) return;
       m_pressed = true;
       if (!HasCapture()) CaptureMouse();
       Refresh();
+      if (m_on_press) m_on_press();
     });
     Bind(wxEVT_LEFT_UP, [this](wxMouseEvent& e) {
       if (HasCapture()) ReleaseMouse();
       bool click = m_pressed && GetClientRect().Contains(e.GetPosition());
+      bool was_pressed = m_pressed;
       m_pressed = false;
       Refresh();
-      if (click && IsEnabled()) {
+      if (was_pressed && m_on_release) m_on_release();
+      if (click && IsEnabled() && !m_on_press) {
         wxCommandEvent ev(wxEVT_BUTTON, GetId());
         ev.SetEventObject(this);
         ProcessWindowEvent(ev);
       }
     });
     Bind(wxEVT_MOUSE_CAPTURE_LOST, [this](wxMouseCaptureLostEvent&) {
+      bool was_pressed = m_pressed;
       m_pressed = false;
       Refresh();
+      if (was_pressed && m_on_release) m_on_release();
     });
+  }
+
+  /** Press-and-hold mode (NFU): called on press and on release instead of
+   *  sending wxEVT_BUTTON; release also on capture loss. */
+  void SetHold(std::function<void()> press, std::function<void()> release) {
+    m_on_press = std::move(press);
+    m_on_release = std::move(release);
+  }
+  bool IsHold() const { return static_cast<bool>(m_on_press); }
+
+  void SetText(const wxString& label) {
+    if (label == m_label) return;
+    m_label = label;
+    Refresh();
   }
 
   void SetTheme(const Theme& t) {
@@ -499,7 +532,77 @@ private:
 
   wxString m_label;
   bool m_pressed = false;
+  std::function<void()> m_on_press, m_on_release;
   Theme m_theme = ThemeFor(PI_GLOBAL_COLOR_SCHEME_DAY);
+};
+
+// ---- tack / gybe ----------------------------------------------------------------
+
+/**
+ * Tack or gybe in WIND, as on a Triton2: a window with the heading now and
+ * the expected new heading and wind angle; Confirm sends the command. The
+ * estimate assumes the pilot mirrors the set wind angle (heading turns by
+ * twice that angle), ignoring the loss of speed.
+ */
+class TackDialog : public wxDialog {
+public:
+  TackDialog(wxWindow* parent, NavicoAutopilotPi* plugin, const Theme& theme,
+             std::optional<double> heading, std::optional<double> wind, bool magnetic)
+      : wxDialog(parent, wxID_ANY, _("Tack or gybe"), wxDefaultPosition, wxDefaultSize,
+                 wxCAPTION | wxSTAY_ON_TOP),
+        m_plugin(plugin) {
+    SetBackgroundColour(theme.back);
+    bool gybe = wind && std::fabs(*wind) > 90;
+    wxString unit = magnetic ? L"\u00B0M" : L"\u00B0T";
+    auto* top = new wxBoxSizer(wxVERTICAL);
+    auto text = [&](const wxString& t, bool bold) {
+      auto* st = new wxStaticText(this, wxID_ANY, t);
+      st->SetForegroundColour(bold ? theme.text : theme.label);
+      if (bold) {
+        wxFont f = st->GetFont();
+        f.SetPointSize(f.GetPointSize() * 5 / 4);
+        f.SetWeight(wxFONTWEIGHT_BOLD);
+        st->SetFont(f);
+      }
+      top->Add(st, 0, wxLEFT | wxRIGHT | wxTOP, 12);
+    };
+    text(gybe ? _("Gybe?") : _("Tack?"), true);
+    std::optional<double> next;
+    if (heading && wind) next = std::fmod(*heading + 2 * *wind + 720.0, 360.0);
+    text(wxString::Format(_("Heading now %s%s, after the manoeuvre about %s%s."), Three(heading), unit,
+                          Three(next), unit), false);
+    if (wind)
+      text(wxString::Format(_("Wind angle %s %s becomes %s %s."),
+                            wxString::Format(L"%.0f\u00B0", std::fabs(*wind)),
+                            *wind < 0 ? _("port") : _("starboard"),
+                            wxString::Format(L"%.0f\u00B0", std::fabs(*wind)),
+                            *wind < 0 ? _("starboard") : _("port")),
+           false);
+    auto* buttons = new wxBoxSizer(wxHORIZONTAL);
+    auto* cancel = new ApButton(this, _("Cancel"));
+    auto* confirm = new ApButton(this, gybe ? _("Gybe") : _("Tack"));
+    for (ApButton* b : {cancel, confirm}) {
+      b->SetTheme(theme);
+      b->SetMinSize(wxSize(GetCharWidth() * 14, GetCharHeight() * 3));
+      buttons->Add(b, 0, wxLEFT, 8);
+    }
+    top->Add(buttons, 0, wxALIGN_RIGHT | wxALL, 12);
+    confirm->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
+      m_plugin->SendCommand(Command::kTack);
+      Close();
+    });
+    cancel->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) { Close(); });
+    Bind(wxEVT_CLOSE_WINDOW, [this](wxCloseEvent&) { Destroy(); });
+    // Closes by itself after 10 s, as on a Triton2.
+    m_timeout.SetOwner(this);
+    Bind(wxEVT_TIMER, [this](wxTimerEvent&) { Close(); });
+    m_timeout.StartOnce(10000);
+    SetSizerAndFit(top);
+  }
+
+private:
+  NavicoAutopilotPi* m_plugin;
+  wxTimer m_timeout;
 };
 
 // ---- NAV confirmation ---------------------------------------------------------
@@ -593,7 +696,7 @@ ApPanel::ApPanel(wxWindow* parent, NavicoAutopilotPi* plugin)
   AddButton(modes, _("WIND"), Command::kWind);
   AddButton(modes, _("NAV"), Command::kNav);
   AddButton(modes, _("NO DRIFT"), Command::kNoDrift);
-  modes->AddStretchSpacer();
+  AddButton(modes, _("TACK"), Command::kTack);
   top->Add(modes, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 6);
 
   auto* course = new wxGridSizer(1, 4, 4, 4);
@@ -622,6 +725,10 @@ wxWindow* ApPanel::AddButton(wxSizer* sizer, const wxString& label, Command c) {
   // Large enough to hit on a touch screen.
   b->SetMinSize(wxSize(GetCharWidth() * 9, GetCharHeight() * 3));
   b->Bind(wxEVT_BUTTON, [this, c](wxCommandEvent&) {
+    if (c == Command::kTack) {
+      OpenTackDialog();
+      return;
+    }
     m_plugin->SendCommand(c);
     UpdateState(m_plugin->Now());
   });
@@ -647,22 +754,38 @@ void ApPanel::UpdateState(double now) {
     d.wpt_bearing = Deg(nav->bearing);
     if (nav->distance) d.dtw_nm = *nav->distance / 1852.0;
   }
-  double sog = m_plugin->Sog();
-  if (!std::isnan(sog)) d.sog = sog;
+  d.stw = m_plugin->UseStw();
+  if (d.stw) {
+    if (auto v = s.SpeedThroughWater(now)) d.sog = *v * 3600.0 / 1852.0;
+  } else {
+    double sog = m_plugin->Sog();
+    if (!std::isnan(sog)) d.sog = sog;
+  }
+  d.nfu = m_plugin->NfuActive();
   d.awa = Deg(s.ApparentWind(now));
   if (alive) d.set_wind = Deg(s.TargetWindAngle());
   d.rudder = Deg(s.Rudder(now));
   if (address) {
     wxString model = "AP";
-    for (const auto& c : s.Candidates(now))
-      if (c.address == *address) model = c.model == 0x64 ? "NAC" : "AC";
+    for (const auto& c : s.Candidates(now)) {
+      if (c.address != *address) continue;
+      model = c.model == 0x64 ? "NAC" : "AC";
+      if (!c.model_id.empty()) {
+        // "NAC-3 _Autopilot" -> "NAC-3"
+        std::string m = c.model_id.substr(0, c.model_id.find(" _"));
+        model = wxString::FromUTF8(m.c_str());
+      }
+    }
     d.badge = wxString::Format("%s %d", model, *address);
   }
   m_display->Set(d);
 
   // Buttons. STBY whenever a pilot is selected; the rest only with fresh data.
+  // In standby -1 and +1 are non-follow-up buttons (rudder while held).
   Mode m = s.Mode();
   bool steering = alive && (m == Mode::kAuto || m == Mode::kWind || m == Mode::kNoDrift);
+  bool nfu_buttons = alive && m == Mode::kStandby;
+  if (nfu_buttons != m_nfu_buttons) SetNfuButtons(nfu_buttons);
   for (auto& [c, b] : m_buttons) {
     bool on = control && address.has_value();
     switch (c) {
@@ -671,10 +794,15 @@ void ApPanel::UpdateState(double now) {
       case Command::kWind:
       case Command::kNav:
       case Command::kNoDrift: on = on && alive; break;
+      case Command::kTack: on = on && alive && m == Mode::kWind; break;
+      case Command::kPort1:
+      case Command::kStarboard1: on = on && (steering || nfu_buttons); break;
       default: on = on && steering; break;
     }
     if (b->IsEnabled() != on) b->Enable(on);
   }
+  // Safety net: no NFU outside standby or without data.
+  if (m_plugin->NfuActive() && !nfu_buttons) m_plugin->StopNfu();
 
   // One line of explanation, most important first; then the pilot's alarms.
   wxString msg = m_plugin->LastMessage();
@@ -686,7 +814,7 @@ void ApPanel::UpdateState(double now) {
     else if (!alive)
       msg = _("No data from the autopilot.");
     else if (s.Unconfirmed(now))
-      msg = _("No reply from the autopilot.");
+      msg = _("No reply from the autopilot. Is transmitting enabled on the gateway?");
     else if (s.NotFollowed(now))
       msg = _("The autopilot did not change mode.");
   }
@@ -726,6 +854,41 @@ void ApPanel::UpdateConfirmation(double now) {
   std::optional<double> bearing = nav ? Deg(nav->bearing) : std::nullopt;
   int left = static_cast<int>(std::ceil(PilotState::kNavConfirmWindow - (now - s.AwaitingSince())));
   m_confirm->SetInfo(m_plugin->ActiveWaypoint(), bearing, s.TargetMagnetic(), left);
+}
+
+void ApPanel::SetNfuButtons(bool nfu) {
+  m_nfu_buttons = nfu;
+  auto* port = static_cast<ApButton*>(m_buttons[Command::kPort1]);
+  auto* stbd = static_cast<ApButton*>(m_buttons[Command::kStarboard1]);
+  if (nfu) {
+    port->SetText(L"\u25C0 NFU");
+    stbd->SetText(L"NFU \u25B6");
+    port->SetHold([this] { m_plugin->StartNfu(simnet::NfuSide::kPort); },
+                  [this] { m_plugin->StopNfu(); });
+    stbd->SetHold([this] { m_plugin->StartNfu(simnet::NfuSide::kStarboard); },
+                  [this] { m_plugin->StopNfu(); });
+  } else {
+    m_plugin->StopNfu();
+    port->SetText("-1");
+    stbd->SetText("+1");
+    port->SetHold(nullptr, nullptr);
+    stbd->SetHold(nullptr, nullptr);
+  }
+}
+
+void ApPanel::OpenTackDialog() {
+  const PilotState& s = m_plugin->State();
+  double now = m_plugin->Now();
+  bool magnetic = s.TargetMagnetic();
+  std::optional<double> heading;
+  double h = m_plugin->Heading(magnetic);
+  if (!std::isnan(h)) heading = h;
+  auto wind = Deg(s.TargetWindAngle());
+  if (!wind) wind = Deg(s.ApparentWind(now));
+  auto* dlg = new TackDialog(wxGetTopLevelParent(this), m_plugin, ThemeFor(m_plugin->ColorScheme()),
+                             heading, wind, magnetic);
+  dlg->CentreOnParent();
+  dlg->Show();
 }
 
 void ApPanel::ApplyColours(PI_ColorScheme cs) {

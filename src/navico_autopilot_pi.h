@@ -65,6 +65,13 @@ public:
   void ConfirmNav();
   /** Ask all devices once for their NAME (ISO request for 60928). */
   void RequestAddressClaims();
+  /** Non-follow-up: rudder moves while a button is held (repeated every
+   *  0.5 s); StopNfu sends stop three times. */
+  void StartNfu(simnet::NfuSide side);
+  void StopNfu();
+  bool NfuActive() const { return m_nfu != simnet::NfuSide::kStop; }
+  /** Show speed through the water (128259) instead of OpenCPN's SOG. */
+  bool UseStw() const { return m_use_stw; }
   /** Waypoint name of OpenCPN's own active leg, if OpenCPN navigates. */
   wxString ActiveWaypoint() const;
   PI_ColorScheme ColorScheme() const { return m_scheme; }
@@ -79,7 +86,7 @@ public:
   double Sog() const;
   wxString LastMessage() const { return m_last_message; }
   void ApplySettings(const std::string& driver, std::optional<uint8_t> address,
-                     uint64_t rudder_name);
+                     uint64_t rudder_name, bool use_stw);
   void PanelClosed();
 
 private:
@@ -101,7 +108,16 @@ private:
   double m_hdt = NAN, m_hdm = NAN, m_var = NAN, m_sog = NAN;
   double m_heading_time = -1e9;
 
+  bool SendNfu(simnet::NfuSide side, bool log);
+  void OnNfuTimer(wxTimerEvent&);
+  void OnAppActivate(wxActivateEvent& e);
+
   double m_discover_until = 0;
+  std::string m_claims_driver;  // connection the address claims were requested on
+  bool m_use_stw = false;
+  simnet::NfuSide m_nfu = simnet::NfuSide::kStop;
+  int m_nfu_stops_left = 0;
+  wxTimer m_nfu_timer;
   std::set<uint8_t> m_product_asked;
   wxString m_leg_name;
   double m_leg_time = -1e9;

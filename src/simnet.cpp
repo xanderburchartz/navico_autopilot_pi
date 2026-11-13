@@ -64,6 +64,7 @@ const char* CommandName(Command c) {
     case Command::kStarboard1: return "+1";
     case Command::kStarboard10: return "+10";
     case Command::kConfirm: return "CONFIRM";
+    case Command::kTack: return "TACK";
   }
   return "?";
 }
@@ -95,8 +96,18 @@ std::vector<uint8_t> CommandData(Command command, uint8_t address) {
     case Command::kStarboard10: change(true, 10); break;
     // Recorded from a Triton2 keypad confirming NAV, followed by NAV (0x0A).
     case Command::kConfirm: mode(0x1C); break;
+    // As the Triton2 app sends it: no side, the pilot tacks through the wind
+    // (or gybes) to the mirrored wind angle.
+    case Command::kTack: d.insert(d.end(), {0x11, 0x00, 0x00, 0xFF, 0xFF, 0xFF}); break;
   }
   return d;
+}
+
+std::vector<uint8_t> NfuData(NfuSide side, uint8_t address) {
+  // Recorded from a Triton2 keypad (16 Oct 2026): command type 0x02, event
+  // 0x0D (non-follow-up), direction 4 port rudder, 5 starboard, FF stop.
+  uint8_t dir = side == NfuSide::kPort ? 0x04 : side == NfuSide::kStarboard ? 0x05 : 0xFF;
+  return {kHeader0, kHeader1, address, 0xFF, 0xFF, 0x02, 0x0D, 0x00, dir, 0x00, 0x00, 0x00};
 }
 
 std::vector<uint8_t> IsoRequestData(int pgn) {
@@ -219,6 +230,13 @@ std::optional<AlarmText> ParseAlarmText(const std::vector<uint8_t>& d) {
   while (!t.text.empty() && (t.text.back() == '\0' || t.text.back() == ' '))
     t.text.pop_back();
   return t;
+}
+
+std::optional<double> ParseSpeedThroughWater(const std::vector<uint8_t>& d) {
+  if (d.size() < 3) return std::nullopt;
+  uint16_t raw = U16(d, 1);
+  if (raw >= 0xFFFD) return std::nullopt;
+  return raw * 0.01;
 }
 
 std::optional<NavData> ParseNavData(const std::vector<uint8_t>& d) {

@@ -40,12 +40,16 @@ public:
   static constexpr double kCandidateTimeout = 30.0;
   /** A command without a matching report within this time: "not confirmed". */
   static constexpr double kConfirmTimeout = 1.5;
+  /** Echoed command without a matching report after this: "not followed". */
+  static constexpr double kFollowTimeout = 3.0;
   /** How long the pilot waits for a NAV confirmation (measured on a NAC-3). */
   static constexpr double kNavConfirmWindow = 10.0;
   /** Rudder and wind values older than this are not shown. */
   static constexpr double kSensorTimeout = 5.0;
   /** An active alarm is repeated every ~8.8 s; forget it after this. */
-  static constexpr double kAlarmTimeout = 20.0;
+  static constexpr double kAlarmTimeout = 30.0;
+  /** A wind source must be quiet this long before another one is taken. */
+  static constexpr double kWindSourceHold = 5.0;
 
   /** A device that sends a rudder angle (127245). */
   struct RudderSource {
@@ -114,6 +118,9 @@ public:
 
   std::vector<ActiveAlarm> Alarms(double now) const;
 
+  /** Speed through the water (m/s) from 128259. */
+  std::optional<double> SpeedThroughWater(double now) const;
+
   /** Bearing (rad) and distance (m) to the waypoint from 129284, if valid. */
   std::optional<simnet::NavData> NavData(double now) const;
 
@@ -146,6 +153,9 @@ private:
 
   uint64_t m_rudder_name = 0;
   std::map<uint8_t, RudderSource> m_rudder;
+  std::optional<double> m_stw;
+  uint8_t m_stw_source = 255;
+  double m_stw_time = -1e9;
   simnet::NavData m_nav;
   double m_nav_time = -1e9;
   std::optional<double> m_awa;

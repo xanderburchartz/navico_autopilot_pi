@@ -35,6 +35,7 @@ constexpr int kPgnAlarmText = 130856;     ///< Simnet: alarm text
 constexpr int kPgnRudder = 127245;        ///< Rudder
 constexpr int kPgnWind = 130306;          ///< Wind data
 constexpr int kPgnNavData = 129284;       ///< Navigation data (to the waypoint)
+constexpr int kPgnSpeed = 128259;         ///< Speed (through the water)
 constexpr int kCommandPriority = 2;       ///< as the keypad and the B&G app
 constexpr uint16_t kManufacturerSimrad = 1857;
 constexpr uint16_t kManufacturerNavico = 275;
@@ -51,8 +52,15 @@ enum class Command {
   kPort10,
   kStarboard1,
   kStarboard10,
-  kConfirm   ///< confirm a pending mode change (NAV: course to waypoint)
+  kConfirm,  ///< confirm a pending mode change (NAV: course to waypoint)
+  kTack      ///< tack or gybe (in WIND); the pilot chooses the side
 };
+
+/** Non-follow-up: rudder to port, to starboard, or stop. */
+enum class NfuSide { kStop, kPort, kStarboard };
+
+/** Data of PGN 130850 for non-follow-up, as a Triton2 keypad sends it. */
+std::vector<uint8_t> NfuData(NfuSide side, uint8_t address);
 
 /** Pilot mode as reported in PGN 65305, report "Mode". */
 enum class Mode { kUnknown, kStandby, kAuto, kWind, kNav, kNoDrift };
@@ -146,6 +154,9 @@ struct AlarmText {
   std::string text;
 };
 std::optional<AlarmText> ParseAlarmText(const std::vector<uint8_t>& d);
+
+/** 128259: speed through the water (m/s), none if not available. */
+std::optional<double> ParseSpeedThroughWater(const std::vector<uint8_t>& d);
 
 /** 129284: bearing (rad, 0..2pi) and distance (m) from position to waypoint. */
 struct NavData {

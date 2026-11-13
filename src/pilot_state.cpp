@@ -152,6 +152,15 @@ void PilotState::Handle(const simnet::Message& m, double now) {
       src.last_seen = now;
       return;
     }
+    case simnet::kPgnSpeed: {
+      auto v = simnet::ParseSpeedThroughWater(m.data);
+      if (!v) return;
+      if (m_stw_source != m.source && now - m_stw_time < kWindSourceHold) return;
+      m_stw = v;
+      m_stw_source = m.source;
+      m_stw_time = now;
+      return;
+    }
     case simnet::kPgnNavData: {
       auto n = simnet::ParseNavData(m.data);
       if (!n || !n->bearing) return;  // all "no value" when navigation stops
@@ -163,7 +172,7 @@ void PilotState::Handle(const simnet::Message& m, double now) {
       auto w = simnet::ParseWind(m.data);
       if (!w || !w->angle || w->reference != 2) return;  // apparent only
       // Several sources may send it; stay with one until it goes quiet.
-      if (m_awa_source != m.source && now - m_awa_time < 3.0) return;
+      if (m_awa_source != m.source && now - m_awa_time < kWindSourceHold) return;
       double a = *w->angle;
       m_awa = a > kPi ? a - 2 * kPi : a;
       m_awa_source = m.source;
@@ -173,6 +182,11 @@ void PilotState::Handle(const simnet::Message& m, double now) {
     default:
       return;
   }
+}
+
+std::optional<double> PilotState::SpeedThroughWater(double now) const {
+  if (now - m_stw_time > kSensorTimeout) return std::nullopt;
+  return m_stw;
 }
 
 std::optional<simnet::NavData> PilotState::NavData(double now) const {
@@ -314,5 +328,5 @@ bool PilotState::Unconfirmed(double now) const {
 }
 
 bool PilotState::NotFollowed(double now) const {
-  return m_pending && m_echoed && now - m_pending_time > kConfirmTimeout;
+  return m_pending && m_echoed && now - m_pending_time > kFollowTimeout;
 }

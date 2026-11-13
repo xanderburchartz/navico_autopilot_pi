@@ -38,6 +38,7 @@ private:
   int m_pilot_choice = -1;
   wxSpinCtrl* m_address;
   wxChoice* m_rudder;
+  wxChoice* m_speed;
   std::vector<uint64_t> m_rudder_names;  // 0 = automatic
   uint64_t m_rudder_choice = 0;
   wxTimer m_refresh;

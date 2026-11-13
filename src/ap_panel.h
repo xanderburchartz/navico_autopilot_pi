@@ -38,6 +38,8 @@ public:
 private:
   wxWindow* AddButton(wxSizer* sizer, const wxString& label, simnet::Command c);
   void UpdateConfirmation(double now);
+  void SetNfuButtons(bool nfu);
+  void OpenTackDialog();
 
   NavicoAutopilotPi* m_plugin;
   ApDisplay* m_display;
@@ -45,6 +47,7 @@ private:
   std::map<simnet::Command, wxWindow*> m_buttons;
   NavConfirmDialog* m_confirm = nullptr;
   double m_confirm_handled = -1e9;  ///< AwaitingSince() of the last shown request
+  bool m_nfu_buttons = false;
 };
 
 #endif  // NAVICO_AP_PANEL_H

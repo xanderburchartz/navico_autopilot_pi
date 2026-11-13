@@ -49,12 +49,16 @@ following the standard drops it. Fixed in 5.14.
 
 ### Safety
 
-- The plugin sends **no heartbeat and no repeats**. Each button press sends
-  one PGN 130850; confirming NAV sends two (see below).
-- Only when you open the plugin's settings it sends requests: one ISO request
-  for address claims to all devices (one frame back from each), and a request
-  for product information to each autopilot and rudder sensor that answers,
-  not to the whole bus.
+- The plugin sends **no heartbeat**. Each button press sends one PGN 130850;
+  confirming NAV sends two (see below). The only repeated command is
+  non-follow-up: while an NFU button is held (in standby), the direction is
+  repeated every 0.5 s, as the NAC-3 stops by itself about 2.5 s after the
+  last one; on release, when the panel closes or OpenCPN loses focus, it sends
+  stop three times, 0.1 s apart.
+- Requests: once per connection (and when you open the settings) one ISO
+  request for address claims to all devices (one frame back from each), then
+  a request for product information to each autopilot and rudder sensor that
+  answers, not to the whole bus.
 - STBY can be pressed whenever a pilot is selected, even without recent data.
 - Autopilot and rudder sensor are chosen automatically (the most likely one if
   there are several) and can be overruled in the settings.
@@ -72,6 +76,8 @@ following the standard drops it. Fixed in 5.14.
 | -1 / +1 | `41 9F <pilot> FF FF 0A 1A 00 02/03 AF 00 FF` |
 | -10 / +10 | `41 9F <pilot> FF FF 0A 1A 00 02/03 D1 06 FF` |
 | Confirm (NAV) | `41 9F <pilot> FF FF 0A 1C 00 FF FF FF`, then Nav |
+| Tack / gybe (WIND) | `41 9F <pilot> FF FF 0A 11 00 00 FF FF FF` |
+| NFU port / stbd / stop | `41 9F <pilot> FF FF 02 0D 00 04/05/FF 00 00 00` |
 
 `41 9F` is manufacturer 1857 (Simrad), industry marine. `<pilot>` is the bus
 address of the autopilot. Byte 7 must be `00`; a NAC-3 ignores the command
@@ -91,7 +97,8 @@ literal echo of each command the pilot executed, 25-55 ms later), 130850 with
 byte 4 = `01` and 130856 (pilot alarms and their text), 127237 (heading to
 steer), 65341 (set wind angle), 127245 (rudder angle, bytes 4-5, positive =
 starboard), 130306 (apparent wind), 129284 (bearing and distance to the
-waypoint), 60928 and 126996 (NAME and model ID, to recognise devices). The
+waypoint), 128259 (speed through the water, if chosen instead of SOG),
+60928 and 126996 (NAME and model ID, to recognise devices). The
 actual heading and speed come from OpenCPN itself.
 
 **Which device is the pilot.** A NAC-3 claims several addresses; only the

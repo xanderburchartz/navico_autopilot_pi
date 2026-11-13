@@ -49,6 +49,7 @@ wxDEFINE_EVENT(EVT_NAVICO_AP_127245, ObservedEvt);
 wxDEFINE_EVENT(EVT_NAVICO_AP_130306, ObservedEvt);
 wxDEFINE_EVENT(EVT_NAVICO_AP_129284, ObservedEvt);
 wxDEFINE_EVENT(EVT_NAVICO_AP_126996, ObservedEvt);
+wxDEFINE_EVENT(EVT_NAVICO_AP_128259, ObservedEvt);
 
 extern "C" DECL_EXP opencpn_plugin* create_pi(void* ppimgr) {
   return new NavicoAutopilotPi(ppimgr);
@@ -57,7 +58,7 @@ extern "C" DECL_EXP opencpn_plugin* create_pi(void* ppimgr) {
 extern "C" DECL_EXP void destroy_pi(opencpn_plugin* p) { delete p; }
 
 NavicoAutopilotPi::NavicoAutopilotPi(void* ppimgr)
-    : opencpn_plugin_118(ppimgr), m_timer(this) {}
+    : opencpn_plugin_118(ppimgr), m_nfu_timer(this), m_timer(this) {}
 
 NavicoAutopilotPi::~NavicoAutopilotPi() = default;
 
@@ -87,9 +88,13 @@ int NavicoAutopilotPi::Init() {
   listen(simnet::kPgnWind, EVT_NAVICO_AP_130306);
   listen(simnet::kPgnNavData, EVT_NAVICO_AP_129284);
   listen(simnet::kPgnProductInfo, EVT_NAVICO_AP_126996);
+  listen(simnet::kPgnSpeed, EVT_NAVICO_AP_128259);
 
-  Bind(wxEVT_TIMER, &NavicoAutopilotPi::OnTimer, this);
+  Bind(wxEVT_TIMER, &NavicoAutopilotPi::OnTimer, this, m_timer.GetId());
+  Bind(wxEVT_TIMER, &NavicoAutopilotPi::OnNfuTimer, this, m_nfu_timer.GetId());
   m_timer.Start(500);
+  // Safety net for NFU: stop when OpenCPN loses focus.
+  if (wxTheApp) wxTheApp->Bind(wxEVT_ACTIVATE_APP, &NavicoAutopilotPi::OnAppActivate, this);
 
   wxLogMessage("navico_autopilot_pi: started");
   return WANTS_TOOLBAR_CALLBACK | INSTALLS_TOOLBAR_TOOL | WANTS_PREFERENCES |
@@ -97,7 +102,10 @@ int NavicoAutopilotPi::Init() {
 }
 
 bool NavicoAutopilotPi::DeInit() {
+  StopNfu();
+  if (wxTheApp) wxTheApp->Unbind(wxEVT_ACTIVATE_APP, &NavicoAutopilotPi::OnAppActivate, this);
   m_timer.Stop();
+  m_nfu_timer.Stop();
   m_listeners.clear();
   SaveConfig();
   if (m_panel) {
@@ -150,6 +158,12 @@ void NavicoAutopilotPi::OnN2k(int pgn, ObservedEvt& ev) {
   auto wind_before = m_state.TargetWindAngle();
   double now = Now();
   m_state.Handle(*msg, now);
+  // Once per connection, ask the devices for their NAME, as the Triton app
+  // does when it connects: one request, one frame back from each device.
+  if (auto d = Driver(); d && d->handle != m_claims_driver) {
+    m_claims_driver = d->handle;
+    RequestAddressClaims();
+  }
   // While the settings are open: ask pilots and rudder sensors (only those)
   // for their model ID, to tell a NAC-3's rudder feedback from its virtual one.
   if (pgn == simnet::kPgnAddressClaim && now < m_discover_until) {
@@ -277,6 +291,64 @@ void NavicoAutopilotPi::RequestAddressClaims() {
   SendIsoRequest(simnet::kPgnAddressClaim, 255);
 }
 
+bool NavicoAutopilotPi::SendNfu(simnet::NfuSide side, bool log) {
+  auto driver = Driver();
+  auto address = m_state.Address(Now());
+  if (!driver || !address) return false;
+  Register(driver->handle);
+  auto data = simnet::NfuData(side, *address);
+  auto payload = std::make_shared<std::vector<uint8_t>>(data);
+  CommDriverResult r = WriteCommDriverN2K(driver->handle, simnet::kPgnCommand, 255,
+                                          simnet::kCommandPriority, payload);
+  if (log)  // not every repeat, to keep the log readable
+    wxLogMessage("navico_autopilot_pi: NFU %s to pilot %d: 130850 %s (result %d)",
+                 side == simnet::NfuSide::kStop ? "stop"
+                 : side == simnet::NfuSide::kPort ? "port" : "starboard",
+                 *address, simnet::Hex(data).c_str(), r);
+  return r == RESULT_COMM_NO_ERROR;
+}
+
+void NavicoAutopilotPi::StartNfu(simnet::NfuSide side) {
+  if (side == simnet::NfuSide::kStop) return StopNfu();
+  // As the Triton2 keypad: first a stop, then the direction. The NAC-3
+  // stops on its own about 2.5 s after the last command, so the direction is
+  // repeated every 0.5 s while the button is held.
+  SendNfu(simnet::NfuSide::kStop, false);
+  if (!SendNfu(side, true)) {
+    m_last_message = _("NFU could not be sent.");
+    return;
+  }
+  m_nfu = side;
+  m_nfu_stops_left = 0;
+  m_nfu_timer.Start(500);
+}
+
+void NavicoAutopilotPi::StopNfu() {
+  if (m_nfu == simnet::NfuSide::kStop && m_nfu_stops_left == 0) return;
+  m_nfu = simnet::NfuSide::kStop;
+  // Stop three times, 0.1 s apart: one lost message must not let the rudder run.
+  SendNfu(simnet::NfuSide::kStop, true);
+  m_nfu_stops_left = 2;
+  m_nfu_timer.Start(100);
+}
+
+void NavicoAutopilotPi::OnNfuTimer(wxTimerEvent&) {
+  if (m_nfu != simnet::NfuSide::kStop) {
+    if (!SendNfu(m_nfu, false)) StopNfu();
+    return;
+  }
+  if (m_nfu_stops_left > 0) {
+    SendNfu(simnet::NfuSide::kStop, false);
+    m_nfu_stops_left--;
+  }
+  if (m_nfu_stops_left == 0) m_nfu_timer.Stop();
+}
+
+void NavicoAutopilotPi::OnAppActivate(wxActivateEvent& e) {
+  if (!e.GetActive()) StopNfu();
+  e.Skip();
+}
+
 void NavicoAutopilotPi::ConfirmNav() {
   // Recorded from a Triton2 confirming the course to the waypoint: 0x1C,
   // directly followed by NAV; the NAC-3 echoed both and went to NAV.
@@ -344,6 +416,7 @@ void NavicoAutopilotPi::ShowPanel(bool show) {
         .Hide();
     aui->AddPane(m_panel, info);
   }
+  if (!show) StopNfu();
   aui->GetPane(m_panel).Show(show);
   aui->Update();
   m_panel_shown = show;
@@ -356,6 +429,7 @@ void NavicoAutopilotPi::SetColorScheme(PI_ColorScheme cs) {
 }
 
 void NavicoAutopilotPi::PanelClosed() {
+  StopNfu();
   m_panel_shown = false;
   SetToolbarItemState(m_tool_id, false);
 }
@@ -391,7 +465,8 @@ void NavicoAutopilotPi::ShowPreferencesDialog(wxWindow* parent) {
 
 void NavicoAutopilotPi::ApplySettings(const std::string& driver,
                                       std::optional<uint8_t> address,
-                                      uint64_t rudder_name) {
+                                      uint64_t rudder_name, bool use_stw) {
+  m_use_stw = use_stw;
   if (address != m_state.FixedAddress()) m_state.SetPilotName(0);
   m_driver = driver;
   m_state.SetFixedAddress(address);
@@ -418,6 +493,9 @@ void NavicoAutopilotPi::LoadConfig() {
   conf->Read("PilotName", &name, "");
   unsigned long long raw = 0;
   if (name.ToULongLong(&raw, 16)) m_state.SetPilotName(raw);
+  wxString speed;
+  conf->Read("SpeedSource", &speed, "SOG");
+  m_use_stw = speed == "STW";
   wxString rudder;
   conf->Read("RudderName", &rudder, "");
   raw = 0;
@@ -437,6 +515,7 @@ void NavicoAutopilotPi::SaveConfig() {
   conf->Write("RudderName", m_state.RudderName()
                                ? wxString::Format("%llx", static_cast<unsigned long long>(m_state.RudderName()))
                                : wxString());
+  conf->Write("SpeedSource", m_use_stw ? "STW" : "SOG");
   conf->DeleteEntry("ControlEnabled", false);  // setting of 0.1.0 alpha, gone
   conf->Flush();
 }

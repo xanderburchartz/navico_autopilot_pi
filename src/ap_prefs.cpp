@@ -66,6 +66,13 @@ ApPrefs::ApPrefs(wxWindow* parent, NavicoAutopilotPi* plugin)
     m_rudder_choice = r >= 0 ? m_rudder_names[r] : 0;
   });
   grid->Add(m_rudder, 1, wxEXPAND);
+
+  grid->Add(new wxStaticText(this, wxID_ANY, _("Boat speed")), 0, wxALIGN_CENTRE_VERTICAL);
+  m_speed = new wxChoice(this, wxID_ANY);
+  m_speed->Append(_("Speed over ground (from OpenCPN)"));
+  m_speed->Append(_("Speed through water (log)"));
+  m_speed->SetSelection(plugin->UseStw() ? 1 : 0);
+  grid->Add(m_speed, 1, wxEXPAND);
   top->Add(grid, 0, wxEXPAND | wxALL, 10);
   FillPilotList();
   FillRudderList();
@@ -156,7 +163,7 @@ void ApPrefs::OnOk(wxCommandEvent& ev) {
     address = static_cast<uint8_t>(a);
   else if (a == kFixed)
     address = static_cast<uint8_t>(m_address->GetValue());
-  m_plugin->ApplySettings(handle, address, m_rudder_choice);
+  m_plugin->ApplySettings(handle, address, m_rudder_choice, m_speed->GetSelection() == 1);
   ev.Skip();  // closes the dialog
 }
 
