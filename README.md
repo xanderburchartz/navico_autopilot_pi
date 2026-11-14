@@ -33,11 +33,27 @@ are welcome.
 
 ## Installing a test build
 
-Until the plugin is in the OpenCPN catalog, test builds are on the
-[Releases](../../releases) page. Download the tarball for your system (the
-release notes say which), then in OpenCPN choose Options, Plugins,
-**Import plugin...** and pick the file without unpacking it. Enable the
-plugin and choose the NMEA 2000 connection in its preferences.
+There are two ways. Either way, enable the plugin afterwards and choose the
+NMEA 2000 connection in its preferences.
+
+**From the Alpha catalog.** The plugin is in OpenCPN's Alpha plugin catalog,
+not yet in the default (master) catalog. OpenCPN only lets you switch
+catalogs in expert mode:
+
+1. Quit OpenCPN and add the line `CatalogExpert=1` to the `[PlugIns]`
+   section of `opencpn.conf`.
+2. Start OpenCPN and choose Options, Plugins, **Settings...**. Set
+   "Catalog channel" to **Alpha** and press Done.
+3. Press **Update Plugin Catalog**. Navico Autopilot now appears in the
+   plugin list; select it and press **Install...**.
+
+The Alpha catalog also offers alpha versions of other plugins. To go back,
+set the channel to master and update the catalog again.
+
+**From a file.** Test builds are on the [Releases](../../releases) page.
+Download the tarball for your system (the release notes say which), then in
+OpenCPN choose Options, Plugins, **Import plugin...** and pick the file
+without unpacking it.
 
 Please report results, good or bad, with the "Test report" issue form.
 Reports for Nav with an active route, AC12/AC42, NAC-1/2 and Android are
@@ -224,7 +240,9 @@ keeps the tarballs as workflow artifacts. Upload to Cloudsmith and the catalog
 metadata push only happen when the `CLOUDSMITH_API_KEY` secret is set. A tag
 (for example `v0.1.1-alpha`) also creates a GitHub release with all tarballs
 and their catalog metadata (`.xml`, with the tarball URL pointing at that
-release); tags with a hyphen become a pre-release.
+release); tags with a hyphen become a pre-release. Those `.xml` files go to
+the [OpenCPN/plugins](https://github.com/OpenCPN/plugins) repository by pull
+request, for example against `Alpha` (v0.1.1-alpha: OpenCPN/plugins#1487).
 
 ## Testing without a boat
 
