@@ -698,25 +698,29 @@ void NavicoAutopilotPi::OnTimer(wxTimerEvent&) {
 void NavicoAutopilotPi::NotifyAlarms() {
 #ifdef NAVICO_AP_NOTIFICATIONS
   // Each alarm of the pilot once as an OpenCPN notification (the bell on the
-  // chart), taken back when the pilot clears it. Acknowledging it in OpenCPN
-  // does not acknowledge it on the pilot.
+  // chart), taken back when the pilot has not sent it for 30 s (an alarm that
+  // comes and goes stays one notification). Acknowledging it in OpenCPN does
+  // not acknowledge it on the pilot.
   std::set<uint16_t> active;
+  std::map<uint16_t, std::string> texts;
   for (const auto& a : m_state.Alarms(Now())) {
     if (a.text.empty()) continue;  // wait for the text (130856)
     active.insert(a.id);
-    if (m_notifications.count(a.id)) continue;
-    wxString text = wxString::Format(_("Autopilot: %s"), wxString::FromUTF8(a.text.c_str()));
-    m_notifications[a.id] =
-        RaiseNotification(PI_NotificationSeverity::PI_kWarning, std::string(text.utf8_str()));
-    wxLogMessage("navico_autopilot_pi: notification for alarm %d: %s", a.id, a.text.c_str());
+    texts[a.id] = a.text;
   }
-  for (auto it = m_notifications.begin(); it != m_notifications.end();) {
-    if (active.count(it->first)) {
-      ++it;
-      continue;
-    }
+  AlarmNotices::Changes c = m_alarm_notices.Update(active, Now());
+  for (uint16_t id : c.raise) {
+    wxString text = wxString::Format(_("Autopilot: %s"), wxString::FromUTF8(texts[id].c_str()));
+    m_notifications[id] =
+        RaiseNotification(PI_NotificationSeverity::PI_kWarning, std::string(text.utf8_str()));
+    wxLogMessage("navico_autopilot_pi: notification for alarm %d: %s", id, texts[id].c_str());
+  }
+  for (uint16_t id : c.clear) {
+    auto it = m_notifications.find(id);
+    if (it == m_notifications.end()) continue;
     AcknowledgeNotification(it->second);
-    it = m_notifications.erase(it);
+    m_notifications.erase(it);
+    wxLogMessage("navico_autopilot_pi: notification for alarm %d taken back", id);
   }
 #endif
 }

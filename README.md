@@ -3,10 +3,19 @@
 Controls a Navico autopilot computer (B&G and Simrad NAC-1, NAC-2, NAC-3,
 AC12, AC42) directly over NMEA 2000:
 
-- Standby, Auto (heading hold), Wind, Nav, No Drift;
+- Standby, Auto (heading hold), Wind, Nav (with the confirmation a pilot
+  keypad gives), No Drift, tack and gybe in Wind;
 - course changes of -10, -1, +1 and +10 degrees (in Wind mode they move the
-  wind angle);
-- shows the pilot mode, the heading and the target heading or wind angle.
+  wind angle); in standby the same buttons steer non-follow-up;
+- shows the pilot mode, heading, set heading or wind angle, rudder angle,
+  boat speed, the waypoint the pilot steers to and the pilot's alarms (also
+  as OpenCPN notifications);
+- reads and changes the settings of the pilot computer (steering profiles,
+  wind mode, tack, installation values behind an extra step), with a
+  snapshot before each change and a way back to an earlier snapshot.
+
+What changed in the latest version: [.github/release-notes.md](.github/release-notes.md),
+also shown with each test build on the [Releases](../../releases) page.
 
 Status: **alpha**. Tested so far:
 
@@ -192,7 +201,8 @@ Without a wxWidgets 3.2 installation the template tries to build wxWidgets
 Unit tests (no wxWidgets needed):
 
 ```
-c++ -std=c++17 -Isrc test/test_simnet.cpp src/simnet.cpp src/pilot_state.cpp -o test_simnet && ./test_simnet
+c++ -std=c++17 -Isrc test/test_simnet.cpp src/simnet.cpp src/pilot_state.cpp \
+  src/pilot_settings.cpp src/route_info.cpp -o test_simnet && ./test_simnet
 ```
 
 ## Continuous integration
@@ -202,8 +212,9 @@ flatpak (x86_64, aarch64), Debian bookworm/trixie/forky (x86_64, arm64),
 macOS universal, Android (arm64, armhf) and Windows (Win32, x64). Each run
 keeps the tarballs as workflow artifacts. Upload to Cloudsmith and the catalog
 metadata push only happen when the `CLOUDSMITH_API_KEY` secret is set. A tag
-(for example `v0.1.0-alpha`) also creates a GitHub release with all tarballs;
-tags with a hyphen become a pre-release.
+(for example `v0.1.1-alpha`) also creates a GitHub release with all tarballs
+and their catalog metadata (`.xml`, with the tarball URL pointing at that
+release); tags with a hyphen become a pre-release.
 
 ## Testing without a boat
 

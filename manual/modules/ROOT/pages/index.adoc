@@ -167,8 +167,10 @@ The pilot echoed the command but did not follow it within 3 seconds, for
 example NAV without navigation data.
 Alarm: ...::
 An alarm the pilot reports, with its own text, as long as it is active. It also appears once
-under OpenCPN's notification bell. Acknowledging it there does not
-acknowledge it on the pilot.
+under OpenCPN's notification bell; an alarm that comes and goes keeps that
+one notification, which is taken back 30 seconds after the pilot stopped
+reporting it. Acknowledging it there does not acknowledge it on the pilot.
+Not on Android, where the OpenCPN library has no notifications.
 The autopilot did not answer. It may accept settings requests only from its own displays.::
 None of the settings requests got an answer. The NAC-3 answers through a
 Yacht Devices gateway; other pilots or gateways may not.

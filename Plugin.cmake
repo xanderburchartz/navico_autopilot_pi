@@ -33,7 +33,7 @@ set(OCPN_RELEASE_REPO
 # -------  Plugin setup --------
 #
 set(PKG_NAME navico_autopilot_pi)
-set(PKG_VERSION 0.1.0) # Major.Minor.Patch
+set(PKG_VERSION 0.1.1) # Major.Minor.Patch
 set(PKG_PRERELEASE "alpha")  # Empty, or a tag like 'beta'
 
 set(DISPLAY_NAME "Navico Autopilot")    # Dialogs, installer artifacts, ...
@@ -70,6 +70,7 @@ set(SRC
     src/pilot_state.cpp
     src/pilot_settings.h
     src/pilot_settings.cpp
+    src/alarm_notices.h
     src/route_info.h
     src/route_info.cpp
 )

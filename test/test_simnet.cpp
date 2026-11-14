@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 
+#include "alarm_notices.h"
 #include "pilot_settings.h"
 #include "pilot_state.h"
 #include "route_info.h"
@@ -442,6 +443,23 @@ static void TestRoutes() {
   CHECK(!route_info::Apply(r, "WMM_VARIATION_BOAT", "{}", 9));
 }
 
+static void TestAlarmNotices() {
+  // The NAC-3 with "Drive computer missing" (0x4D) switching every few seconds.
+  AlarmNotices n(30);
+  auto c = n.Update({0x4D}, 0);
+  CHECK(c.raise.size() == 1 && c.raise[0] == 0x4D && c.clear.empty());
+  c = n.Update({}, 3);  // gone for a moment: notification stays
+  CHECK(c.raise.empty() && c.clear.empty());
+  c = n.Update({0x4D}, 6);  // back: no second notification
+  CHECK(c.raise.empty() && c.clear.empty());
+  c = n.Update({}, 35);  // 29 s gone
+  CHECK(c.clear.empty());
+  c = n.Update({}, 36);  // 30 s gone: taken back
+  CHECK(c.clear.size() == 1 && c.clear[0] == 0x4D);
+  c = n.Update({0x4D, 0x10}, 40);  // a new alarm is a new notification
+  CHECK(c.raise.size() == 2);
+}
+
 int main() {
   TestCommands();
   TestParse();
@@ -449,6 +467,7 @@ int main() {
   TestNavAndSensors();
   TestKeyValue();
   TestRoutes();
+  TestAlarmNotices();
   if (failures) {
     std::printf("%d failure(s)\n", failures);
     return 1;

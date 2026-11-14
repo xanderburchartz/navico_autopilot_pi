@@ -22,6 +22,7 @@
 #include <wx/timer.h>
 
 #include "ocpn_plugin.h"
+#include "alarm_notices.h"
 #include "pilot_state.h"
 #include "pilot_settings.h"
 #include "route_info.h"
@@ -186,6 +187,7 @@ private:
   void OnNavData(ObservedEvt& ev);
   void NotifyAlarms();
   std::map<uint16_t, std::string> m_notifications;  // alarm id -> notification guid
+  AlarmNotices m_alarm_notices;
 
   wxBitmap m_bitmap;
   int m_tool_id = -1;

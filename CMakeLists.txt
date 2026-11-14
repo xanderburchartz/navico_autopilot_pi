@@ -124,6 +124,13 @@ configure_file(
 )
 
 set(checksum "@checksum@")
+# Summary and description as XML text: a bare & ("B&G") is invalid XML.
+# The plain versions stay for config.h (the plugin list in OpenCPN).
+foreach (_xml_var PKG_SUMMARY PKG_DESCRIPTION)
+  string(REPLACE "&" "&amp;" ${_xml_var}_XML "${${_xml_var}}")
+  string(REPLACE "<" "&lt;" ${_xml_var}_XML "${${_xml_var}_XML}")
+  string(REPLACE ">" "&gt;" ${_xml_var}_XML "${${_xml_var}_XML}")
+endforeach ()
 configure_file(
   # The XML metadata file
   ${CMAKE_SOURCE_DIR}/plugin.xml.in

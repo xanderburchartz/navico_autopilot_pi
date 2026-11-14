@@ -1,5 +1,54 @@
 Test build of the Navico Autopilot plugin. Requires **OpenCPN 5.14 or later**.
 
+## New in 0.1.1
+
+Fixed:
+- OpenCPN could crash on quit when a window of the plugin (settings, tack,
+  NAV confirmation) was open or had been open. The windows are now closed
+  before the plugin is unloaded.
+- The catalog metadata (.xml) was invalid XML because of the "&" in "B&G".
+  This release has metadata files for each tarball.
+
+Panel:
+- Display in the style of a Navico pilot: mode, heading, set heading or
+  wind angle, rudder angle, boat speed (STW or SOG, your choice) and the
+  pilot's alarms.
+- NAV asks for a confirmation and then confirms on the pilot the way a
+  Triton2 keypad does (without it the pilot does not take Nav).
+- Tack or gybe in Wind mode; non-follow-up steering with the course buttons
+  in standby (the rudder moves while the button is held).
+- Name of the waypoint the pilot steers to: from the plotter if it sends one
+  (129285), else from OpenCPN's active route, with a short note on arrival
+  and at the end of the route.
+- Follows OpenCPN's day, dusk and night colours.
+- Pilot alarms also appear as OpenCPN notifications (the bell on the chart).
+  An alarm that comes and goes keeps one notification; it is taken back 30 s
+  after the pilot stopped reporting it. Not on Android (see below).
+
+Pilot settings (gear icon top right of the panel):
+- Reads the settings of the pilot computer and lets you change them, each
+  change after a confirmation: wind mode, tack time and angle, manual speed,
+  and per steering profile ("Low speed" and "High speed", as on a Triton2)
+  turn rate, rudder gain, counter rudder, autotrim, init rudder, rudder
+  limit, off heading limit, track response, approach angle and course change
+  confirm angle.
+- Installation settings (boat length and speeds, rudder deadband, minimum
+  and maximum power, minimum rudder) stay hidden until you press
+  "Installation" three times within 3 s. Boat type, drive voltage, drive
+  engage and rudder calibration are only shown, not changed. The control
+  method is not in the plugin yet.
+- Before the first change, the plugin stores a snapshot of all settings.
+  "Snapshots..." lists them and can put an earlier snapshot back; it shows
+  what will change and asks first.
+- Measured on a B&G NAC-3. Other pilots may answer differently; please
+  report what you see.
+
+Other:
+- Built against plugin API 1.20 (OpenCPN 5.12 and later load it; network
+  gateways need 5.14, see the README). The Android builds stay on API 1.18.
+- No product information requests over network gateways (OpenCPN keeps the
+  answers to itself there).
+
 ## Which file
 
 | Your OpenCPN | File ending in |

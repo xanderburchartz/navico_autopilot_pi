@@ -4,7 +4,7 @@
   <name> @PLUGIN_API_NAME@ </name>
   <version> @pkg_semver@ </version>
   <release> @PROJECT_VERSION_TWEAK@ </release>
-  <summary> @PKG_SUMMARY@ </summary>
+  <summary> @PKG_SUMMARY_XML@ </summary>
 
   <api-version> @API_VERSION@ </api-version>
   <open-source> @PKG_IS_OPEN_SOURCE@ </open-source>
@@ -12,7 +12,7 @@
   <source> @PKG_HOMEPAGE@ </source>
   <info-url> @PKG_INFO_URL@ </info-url>
 
-  <description> @PKG_DESCRIPTION@ </description>
+  <description> @PKG_DESCRIPTION_XML@ </description>
 
   <target>@plugin_target@</target>
   <target-version>@plugin_target_version@</target-version>
