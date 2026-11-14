@@ -205,6 +205,16 @@ c++ -std=c++17 -Isrc test/test_simnet.cpp src/simnet.cpp src/pilot_state.cpp \
   src/pilot_settings.cpp src/route_info.cpp -o test_simnet && ./test_simnet
 ```
 
+## Translations
+
+The texts in the code are English. Translations come from the plugin's own
+catalog (`opencpn-navico_autopilot_pi`) only: `src/translate.h` redefines
+`_()` with that domain, so the plugin neither takes nor changes the
+translations of OpenCPN or other plugins. Texts in tables (the settings) are
+marked with `N_()` and translated when shown. The template is
+`po/navico_autopilot_pi.pot` (`make navico_autopilot-pot-update`); a
+language is a `po/<lang>.po` file. Dutch is included.
+
 ## Continuous integration
 
 `.github/workflows/build.yml` builds every catalog target on GitHub Actions:

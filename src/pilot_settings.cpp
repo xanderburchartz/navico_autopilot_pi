@@ -8,6 +8,10 @@
 #include <cstdio>
 #include <sstream>
 
+// N_ marks a text for translation (xgettext --keyword=N_); the panel
+// translates it when it shows it (Tr in translate.h).
+#define N_(s) s
+
 namespace pilot_settings {
 
 namespace {
@@ -22,60 +26,60 @@ const std::vector<Definition>& All() {
   // rudder feedback node. Confirmed by the signalk-navico-autopilot-bridge
   // author by changing them on a display and listening.
   static const std::vector<Definition> list = {
-      {{0x18, 0x0A}, Node::kPilot, "Boat", "Boat type", "", 1, false, 1,
-       {"Sail", "Outboard", "Displacement", "Planing"}},
+      {{0x18, 0x0A}, Node::kPilot, N_("Boat"), N_("Boat type"), "", 1, false, 1,
+       {N_("Sail"), N_("Outboard"), N_("Displacement"), N_("Planing")}},
       // Measured on Penny Lane (13 Nov 2026), checked against the Triton2 menu.
-      {{0x18, 0x56}, Node::kPilot, "Boat", "Boat length", "m", 2, false, 0.1, {}},
-      {{0x18, 0x7F}, Node::kPilot, "Boat", "Cruising speed", "kn", 2, false, 0.01 * kMsToKn, {}},
-      {{0x18, 0x0C}, Node::kPilot, "Boat", "Transition speed", "kn", 2, false, 0.01 * kMsToKn, {}},
-      {{0x18, 0x57}, Node::kPilot, "Boat", "Low boat speed alarm below", "kn", 2, false,
+      {{0x18, 0x56}, Node::kPilot, N_("Boat"), N_("Boat length"), "m", 2, false, 0.1, {}},
+      {{0x18, 0x7F}, Node::kPilot, N_("Boat"), N_("Cruising speed"), "kn", 2, false, 0.01 * kMsToKn, {}},
+      {{0x18, 0x0C}, Node::kPilot, N_("Boat"), N_("Transition speed"), "kn", 2, false, 0.01 * kMsToKn, {}},
+      {{0x18, 0x57}, Node::kPilot, N_("Boat"), N_("Low boat speed alarm below"), "kn", 2, false,
        0.01 * kMsToKn, {}},
       // Changed on a Triton2 while listening (13 Nov 2026): Apparent 0x19,
       // True 0x1A, Auto 0x1C; before that the pilot had 0x04.
-      {{0x1C, 0x09}, Node::kPilot, "Sailing", "Wind mode", "", 1, false, 1,
-       {"", "Apparent", "True", "", "Auto"}, nullptr, 0, false, 0x07, 0x18},
-      {{0x1C, 0x08}, Node::kPilot, "Sailing", "Tack time", "s", 2, false, 0.1, {}},
-      {{0x18, 0x0B}, Node::kPilot, "Sailing", "Tack angle", "deg", 2, false, 360.0 / 65536.0, {}, nullptr, 0},
+      {{0x1C, 0x09}, Node::kPilot, N_("Sailing"), N_("Wind mode"), "", 1, false, 1,
+       {"", N_("Apparent"), N_("True"), "", N_("Auto")}, nullptr, 0, false, 0x07, 0x18},
+      {{0x1C, 0x08}, Node::kPilot, N_("Sailing"), N_("Tack time"), "s", 2, false, 0.1, {}},
+      {{0x18, 0x0B}, Node::kPilot, N_("Sailing"), N_("Tack angle"), "deg", 2, false, 360.0 / 65536.0, {}, nullptr, 0},
       // Triton2 "Manual speed" (13 Nov 2026: 5 kn sent as 257).
-      {{0x18, 0x91}, Node::kPilot, "Sailing", "Manual speed", "kn", 2, false, 0.01 * kMsToKn, {}},
+      {{0x18, 0x91}, Node::kPilot, N_("Sailing"), N_("Manual speed"), "kn", 2, false, 0.01 * kMsToKn, {}},
       // Per steering profile (instance), in the order of the Triton2 menu
       // (13 Nov 2026). The "Low" of other sources in group 19 does not
       // answer on this NAC-3. Autotune changed gain and counter rudder of
       // profile 0 only (15 Oct 2026).
-      {{0x1A, 0x10}, Node::kPilot, "Steering profiles", "Turn rate", "deg/min", 4, false,
+      {{0x1A, 0x10}, Node::kPilot, N_("Steering profiles"), N_("Turn rate"), "deg/min", 4, false,
        3.125e-8 * kRadToDeg * 60.0, {}, nullptr, 0, true},
-      {{0x1A, 0x0D}, Node::kPilot, "Steering profiles", "Rudder gain", "", 2, false, 0.01, {},
+      {{0x1A, 0x0D}, Node::kPilot, N_("Steering profiles"), N_("Rudder gain"), "", 2, false, 0.01, {},
        nullptr, 2, true},
-      {{0x1A, 0x0F}, Node::kPilot, "Steering profiles", "Counter rudder", "", 2, false, 0.01, {},
+      {{0x1A, 0x0F}, Node::kPilot, N_("Steering profiles"), N_("Counter rudder"), "", 2, false, 0.01, {},
        nullptr, 2, true},
-      {{0x1A, 0x0E}, Node::kPilot, "Steering profiles", "Autotrim", "s", 2, false, 0.1, {},
+      {{0x1A, 0x0E}, Node::kPilot, N_("Steering profiles"), N_("Autotrim"), "s", 2, false, 0.1, {},
        nullptr, 1, true},
-      {{0x18, 0x79}, Node::kPilot, "Steering profiles", "Init rudder", "", 1, false, 1,
-       {"Actual", "Midships"}, nullptr, 0, true},
-      {{0x18, 0x7A}, Node::kPilot, "Steering profiles", "Rudder limit", "deg", 2, false,
+      {{0x18, 0x79}, Node::kPilot, N_("Steering profiles"), N_("Init rudder"), "", 1, false, 1,
+       {N_("Actual"), N_("Midships")}, nullptr, 0, true},
+      {{0x18, 0x7A}, Node::kPilot, N_("Steering profiles"), N_("Rudder limit"), "deg", 2, false,
        0.0001 * kRadToDeg, {}, nullptr, 0, true},
       // A tick box on the Triton2: off sends 0, on sends the lowest value.
-      {{0x18, 0x78}, Node::kPilot, "Steering profiles", "Off heading limit", "deg", 2, false,
-       0.0001 * kRadToDeg, {}, "Off", 0, true},
-      {{0x1B, 0x11}, Node::kPilot, "Steering profiles", "Track response", "", 1, false, 1, {},
+      {{0x18, 0x78}, Node::kPilot, N_("Steering profiles"), N_("Off heading limit"), "deg", 2, false,
+       0.0001 * kRadToDeg, {}, N_("Off"), 0, true},
+      {{0x1B, 0x11}, Node::kPilot, N_("Steering profiles"), N_("Track response"), "", 1, false, 1, {},
        nullptr, 0, true},
-      {{0x1B, 0x81}, Node::kPilot, "Steering profiles", "Track approach angle", "deg", 2, false,
+      {{0x1B, 0x81}, Node::kPilot, N_("Steering profiles"), N_("Track approach angle"), "deg", 2, false,
        0.0001 * kRadToDeg, {}, nullptr, 0, true},
-      {{0x1B, 0x0C}, Node::kPilot, "Steering profiles", "Course change confirm angle", "deg", 2,
-       false, 0.0001 * kRadToDeg, {}, "Off", 0, true},
+      {{0x1B, 0x0C}, Node::kPilot, N_("Steering profiles"), N_("Course change confirm angle"), "deg", 2,
+       false, 0.0001 * kRadToDeg, {}, N_("Off"), 0, true},
       // Recorded on Penny Lane (13 Nov 2026, Triton2 set and NAC-3 reply).
-      {{0x14, 0x06}, Node::kPilot, "Drive", "Rudder deadband", "deg", 2, false,
-       0.0001 * kRadToDeg, {}, "Auto"},
-      {{0x14, 0x1D}, Node::kPilot, "Drive", "Drive voltage", "V", 2, false, 0.01, {}},
+      {{0x14, 0x06}, Node::kPilot, N_("Drive"), N_("Rudder deadband"), "deg", 2, false,
+       0.0001 * kRadToDeg, {}, N_("Auto")},
+      {{0x14, 0x1D}, Node::kPilot, N_("Drive"), N_("Drive voltage"), "V", 2, false, 0.01, {}},
       // Changed on a Triton2 while listening (13 Nov 2026): Auto sets 14/0061
       // to 1 and bits 5/6 of 14/0009; Clutch sets both back.
-      {{0x14, 0x61}, Node::kPilot, "Drive", "Drive engage", "", 1, false, 1, {"Clutch", "Auto"}},
-      {{0x14, 0x63}, Node::kPilot, "Drive", "Minimum rudder", "deg", 2, false, 0.0001 * kRadToDeg, {}},
-      {{0x14, 0x02}, Node::kPilot, "Drive", "Minimum power", "%", 2, false, 1, {}, nullptr, 0},
-      {{0x14, 0x01}, Node::kPilot, "Drive", "Maximum power", "%", 2, false, 1, {}, nullptr, 0},
-      {{0x09, 0x01}, Node::kRudder, "Rudder", "Calibration, starboard", "deg", 2, true,
+      {{0x14, 0x61}, Node::kPilot, N_("Drive"), N_("Drive engage"), "", 1, false, 1, {N_("Clutch"), N_("Auto")}},
+      {{0x14, 0x63}, Node::kPilot, N_("Drive"), N_("Minimum rudder"), "deg", 2, false, 0.0001 * kRadToDeg, {}},
+      {{0x14, 0x02}, Node::kPilot, N_("Drive"), N_("Minimum power"), "%", 2, false, 1, {}, nullptr, 0},
+      {{0x14, 0x01}, Node::kPilot, N_("Drive"), N_("Maximum power"), "%", 2, false, 1, {}, nullptr, 0},
+      {{0x09, 0x01}, Node::kRudder, N_("Rudder"), N_("Calibration, starboard"), "deg", 2, true,
        0.0001 * kRadToDeg, {}},
-      {{0x09, 0x02}, Node::kRudder, "Rudder", "Calibration, port", "deg", 2, true,
+      {{0x09, 0x02}, Node::kRudder, N_("Rudder"), N_("Calibration, port"), "deg", 2, true,
        0.0001 * kRadToDeg, {}},
   };
   return list;
@@ -117,7 +121,7 @@ std::optional<Limits> Editable(simnet::SettingKey key) {
 }
 
 const std::vector<Profile>& Profiles() {
-  static const std::vector<Profile> list = {{0, "Low speed"}, {1, "High speed"}};
+  static const std::vector<Profile> list = {{0, N_("Low speed")}, {1, N_("High speed")}};
   return list;
 }
 

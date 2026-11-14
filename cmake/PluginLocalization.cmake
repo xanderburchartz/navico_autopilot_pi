@@ -21,7 +21,7 @@ if (GETTEXT_XGETTEXT_EXECUTABLE)
     COMMAND
       ${GETTEXT_XGETTEXT_EXECUTABLE} --force-po --package-name=${PACKAGE_NAME}
       --package-version="${PROJECT_VERSION}" --output=po/${PACKAGE_NAME}.pot
-      --keyword=_ --width=80
+      --keyword=_ --keyword=N_ --width=80
       --files-from=${CMAKE_CURRENT_SOURCE_DIR}/po/POTFILES.in
     DEPENDS po/POTFILES.in po/${PACKAGE_NAME}.pot
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}

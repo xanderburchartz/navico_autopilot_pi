@@ -645,7 +645,7 @@ public:
     text(gybe ? _("Gybe?") : _("Tack?"), true);
     std::optional<double> next;
     if (heading && wind) next = std::fmod(*heading + 2 * *wind + 720.0, 360.0);
-    text(wxString::Format(_("Heading now %s%s, after the manoeuvre about %s%s."), Three(heading), unit,
+    text(wxString::Format(_("Heading now %s%s, after the maneuver about %s%s."), Three(heading), unit,
                           Three(next), unit), false);
     if (wind)
       text(wxString::Format(_("Wind angle %s %s becomes %s %s."),
@@ -710,7 +710,7 @@ public:
       size_t first = m_all_rows.size();
       if (std::string(section) != d.section) {
         section = d.section;
-        auto* h = new wxStaticText(this, wxID_ANY, wxGetTranslation(section));
+        auto* h = new wxStaticText(this, wxID_ANY, Tr(section));
         m_all_rows.push_back(h);
         wxFont f = h->GetFont();
         f.SetWeight(wxFONTWEIGHT_BOLD);
@@ -721,7 +721,7 @@ public:
         grid->AddSpacer(0);
         grid->AddSpacer(0);
       }
-      auto* name = new wxStaticText(this, wxID_ANY, wxGetTranslation(d.name));
+      auto* name = new wxStaticText(this, wxID_ANY, Tr(d.name));
       name->SetForegroundColour(theme.label);
       auto* value = new wxStaticText(this, wxID_ANY, "...", wxDefaultPosition, wxDefaultSize,
                                      wxALIGN_RIGHT | wxST_NO_AUTORESIZE);
@@ -771,7 +771,7 @@ public:
       pg->AddGrowableCol(0);
       pg->AddSpacer(0);
       for (const auto& prof : profiles) {
-        auto* n = new wxStaticText(this, wxID_ANY, wxGetTranslation(prof.name), wxDefaultPosition,
+        auto* n = new wxStaticText(this, wxID_ANY, Tr(prof.name), wxDefaultPosition,
                                    wxDefaultSize, wxALIGN_CENTRE_HORIZONTAL | wxST_NO_AUTORESIZE);
         n->SetMinSize(wxSize(GetCharWidth() * 12, -1));
         n->SetForegroundColour(theme.label);
@@ -779,7 +779,7 @@ public:
       }
       pg->AddSpacer(0);
       for (const auto* d : m_profile_defs) {
-        auto* name = new wxStaticText(this, wxID_ANY, wxGetTranslation(d->name));
+        auto* name = new wxStaticText(this, wxID_ANY, Tr(d->name));
         name->SetForegroundColour(theme.label);
         pg->Add(name, 0, wxALIGN_CENTRE_VERTICAL);
         std::vector<std::function<void(const wxString&)>> row;
@@ -866,10 +866,10 @@ private:
   static wxString Shown(const pilot_settings::Definition& d, double v) {
     if (!d.choices.empty()) {
       auto i = static_cast<size_t>(v);
-      return v >= 0 && i < d.choices.size() && d.choices[i][0] ? wxGetTranslation(d.choices[i])
+      return v >= 0 && i < d.choices.size() && d.choices[i][0] ? Tr(d.choices[i])
                                                                 : wxString::Format("%.0f", v);
     }
-    if (d.zero_label && v == 0) return wxGetTranslation(d.zero_label);
+    if (d.zero_label && v == 0) return Tr(d.zero_label);
     return wxString::Format("%.*f", d.decimals, v);
   }
 
@@ -928,10 +928,10 @@ private:
       std::optional<uint32_t> now;
       if (kv) now = kv->Unsigned(static_cast<size_t>(d->bytes));
       if (now && *now == e.raw) continue;
-      wxString name = wxGetTranslation(d->name);
+      wxString name = Tr(d->name);
       for (const auto& prof : pilot_settings::Profiles())
         if (d->per_profile && prof.instance == e.instance)
-          name += " (" + wxGetTranslation(prof.name) + ")";
+          name += " (" + Tr(prof.name) + ")";
       lines += wxString::Format("%s: %s -> %s\n", name, now ? Describe(*d, *now) : wxString("?"),
                                 Describe(*d, e.raw));
       writes.push_back({*a, e.key, e.raw, d->bytes, d->per_profile ? e.instance : uint8_t{0xFF}});
@@ -987,17 +987,17 @@ private:
     std::optional<double> current;
     auto kv_now = instance == 0xFF ? s.Setting(*address, d.key) : s.Setting(*address, d.key, instance);
     if (kv_now) current = pilot_settings::Decode(d, *kv_now);
-    wxString title = wxGetTranslation(d.name);
+    wxString title = Tr(d.name);
     for (const auto& prof : pilot_settings::Profiles())
       if (d.per_profile && prof.instance == instance)
-        title += " (" + wxGetTranslation(prof.name) + ")";
+        title += " (" + Tr(prof.name) + ")";
     if (!d.choices.empty()) {
       // A choice, e.g. wind mode: pick from the names.
       wxArrayString names;
       std::vector<int> values;
       for (size_t i = 0; i < d.choices.size(); i++) {
         if (!d.choices[i][0] || i < limits->min || i > limits->max) continue;
-        names.Add(wxGetTranslation(d.choices[i]));
+        names.Add(Tr(d.choices[i]));
         values.push_back(static_cast<int>(i));
       }
       wxSingleChoiceDialog pick(this, title, title, names);
@@ -1010,7 +1010,7 @@ private:
     }
     wxString range = wxString::Format(_("Between %g and %g %s."), limits->min, limits->max,
                                       UnitText(d.unit));
-    if (d.zero_label) range += " " + wxString::Format(_("0 = %s."), wxGetTranslation(d.zero_label));
+    if (d.zero_label) range += " " + wxString::Format(_("0 = %s."), Tr(d.zero_label));
     wxTextEntryDialog ask(this, range, title,
                           !current ? wxString()
                           : d.zero_label && *current == 0 ? wxString("0")
@@ -1086,7 +1086,7 @@ private:
           if (!v)
             text = "NA";
           else if (d.zero_label && *v == 0) {
-            text = wxGetTranslation(d.zero_label);
+            text = Tr(d.zero_label);
             show_unit = false;
           }
           else

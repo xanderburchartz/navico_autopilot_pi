@@ -1,0 +1,665 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the navico_autopilot_pi package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: navico_autopilot_pi 0.1.1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-11-14 09:51+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: src/navico_autopilot_pi.cpp:80 src/navico_autopilot_pi.cpp:658
+#: src/ap_prefs.cpp:45
+msgid "Autopilot"
+msgstr ""
+
+#: src/navico_autopilot_pi.cpp:81
+msgid "Navico autopilot"
+msgstr ""
+
+#: src/navico_autopilot_pi.cpp:259
+msgid "No NMEA 2000 connection chosen."
+msgstr ""
+
+#: src/navico_autopilot_pi.cpp:264
+msgid "No autopilot selected."
+msgstr ""
+
+#: src/navico_autopilot_pi.cpp:276
+#, c-format
+msgid "Sending failed (error %d)."
+msgstr ""
+
+#: src/navico_autopilot_pi.cpp:339
+msgid "NFU could not be sent."
+msgstr ""
+
+#: src/navico_autopilot_pi.cpp:617
+#, c-format
+msgid "OpenCPN: route %s ended."
+msgstr ""
+
+#: src/navico_autopilot_pi.cpp:620
+#, c-format
+msgid "OpenCPN: arrived at %s."
+msgstr ""
+
+#: src/navico_autopilot_pi.cpp:621
+#, c-format
+msgid "OpenCPN: arrived at %s, next %s."
+msgstr ""
+
+#: src/navico_autopilot_pi.cpp:714
+#, c-format
+msgid "Autopilot: %s"
+msgstr ""
+
+#: src/ap_panel.cpp:328
+msgid "NON FOLLOW-UP"
+msgstr ""
+
+#: src/ap_panel.cpp:329
+msgid "STANDBY"
+msgstr ""
+
+#: src/ap_panel.cpp:330
+msgid "HEADING HOLD"
+msgstr ""
+
+#: src/ap_panel.cpp:331 src/ap_panel.cpp:1262
+msgid "WIND"
+msgstr ""
+
+#: src/ap_panel.cpp:332
+msgid "NAVIGATION"
+msgstr ""
+
+#: src/ap_panel.cpp:333 src/ap_panel.cpp:1264
+msgid "NO DRIFT"
+msgstr ""
+
+#: src/ap_panel.cpp:334
+msgid "NO PILOT"
+msgstr ""
+
+#: src/ap_panel.cpp:402
+msgid "Speed through water"
+msgstr ""
+
+#: src/ap_panel.cpp:402
+msgid "Speed over ground"
+msgstr ""
+
+#: src/ap_panel.cpp:405
+msgid "Apparent wind"
+msgstr ""
+
+#: src/ap_panel.cpp:406
+msgid "Set angle"
+msgstr ""
+
+#: src/ap_panel.cpp:410
+msgid "Bearing WPT"
+msgstr ""
+
+#: src/ap_panel.cpp:411
+#, c-format
+msgid "Bearing %s"
+msgstr ""
+
+#: src/ap_panel.cpp:413
+msgid "Distance WPT"
+msgstr ""
+
+#: src/ap_panel.cpp:419
+msgid "Set heading"
+msgstr ""
+
+#: src/ap_panel.cpp:424
+msgid "Rudder angle"
+msgstr ""
+
+#: src/ap_panel.cpp:428
+msgid "Heading"
+msgstr ""
+
+#: src/ap_panel.cpp:628
+msgid "Tack or gybe"
+msgstr ""
+
+#: src/ap_panel.cpp:645
+msgid "Gybe?"
+msgstr ""
+
+#: src/ap_panel.cpp:645
+msgid "Tack?"
+msgstr ""
+
+#: src/ap_panel.cpp:648
+#, c-format
+msgid "Heading now %s%s, after the maneuver about %s%s."
+msgstr ""
+
+#: src/ap_panel.cpp:651
+#, c-format
+msgid "Wind angle %s %s becomes %s %s."
+msgstr ""
+
+#: src/ap_panel.cpp:653 src/ap_panel.cpp:655
+msgid "port"
+msgstr ""
+
+#: src/ap_panel.cpp:653 src/ap_panel.cpp:655
+msgid "starboard"
+msgstr ""
+
+#: src/ap_panel.cpp:658 src/ap_panel.cpp:1205
+msgid "Cancel"
+msgstr ""
+
+#: src/ap_panel.cpp:659
+msgid "Gybe"
+msgstr ""
+
+#: src/ap_panel.cpp:659
+msgid "Tack"
+msgstr ""
+
+#: src/ap_panel.cpp:694
+msgid "Autopilot settings"
+msgstr ""
+
+#: src/ap_panel.cpp:739
+msgid "Change"
+msgstr ""
+
+#: src/ap_panel.cpp:764 src/pilot_settings.cpp:49 src/pilot_settings.cpp:51
+#: src/pilot_settings.cpp:53 src/pilot_settings.cpp:55 src/pilot_settings.cpp:57
+#: src/pilot_settings.cpp:59 src/pilot_settings.cpp:62 src/pilot_settings.cpp:64
+#: src/pilot_settings.cpp:66 src/pilot_settings.cpp:68
+msgid "Steering profiles"
+msgstr ""
+
+#: src/ap_panel.cpp:812
+msgid "Press a value to change it."
+msgstr ""
+
+#: src/ap_panel.cpp:824
+msgid "Installation"
+msgstr ""
+
+#: src/ap_panel.cpp:830
+msgid "Snapshots..."
+msgstr ""
+
+#: src/ap_panel.cpp:835
+msgid "Read again"
+msgstr ""
+
+#: src/ap_panel.cpp:836
+msgid "Close"
+msgstr ""
+
+#: src/ap_panel.cpp:896
+msgid "Take a snapshot now"
+msgstr ""
+
+#: src/ap_panel.cpp:898
+#, c-format
+msgid "%s, %s (%zu values)"
+msgstr ""
+
+#: src/ap_panel.cpp:901
+msgid "Take a snapshot of the settings now, or choose one to go back to."
+msgstr ""
+
+#: src/ap_panel.cpp:902 src/ap_panel.cpp:945 src/ap_panel.cpp:953
+msgid "Snapshots"
+msgstr ""
+
+#: src/ap_panel.cpp:906
+msgid "Taken by hand"
+msgstr ""
+
+#: src/ap_panel.cpp:908
+msgid "The snapshot could not be saved."
+msgstr ""
+
+#: src/ap_panel.cpp:909
+#, c-format
+msgid ""
+"Snapshot saved: %zu values, %d not read. Read again and take another for a "
+"complete one."
+msgstr ""
+
+#: src/ap_panel.cpp:912
+#, c-format
+msgid "Snapshot saved: %zu values."
+msgstr ""
+
+#: src/ap_panel.cpp:940
+msgid "The settings are the same as in that snapshot."
+msgstr ""
+
+#: src/ap_panel.cpp:943
+#, c-format
+msgid ""
+"Go back to the snapshot of %s?\n"
+"\n"
+"%s"
+msgstr ""
+
+#: src/ap_panel.cpp:947
+#, c-format
+msgid "Before going back to %s"
+msgstr ""
+
+#: src/ap_panel.cpp:952 src/ap_panel.cpp:1050
+msgid "The snapshot of the current settings could not be saved. Change anyway?"
+msgstr ""
+
+#: src/ap_panel.cpp:957
+#, c-format
+msgid "Values sent: %zu. The window shows what the autopilot answers."
+msgstr ""
+
+#: src/ap_panel.cpp:968
+#, c-format
+msgid "Press %d more times to show the installation settings."
+msgstr ""
+
+#: src/ap_panel.cpp:974
+msgid ""
+"Installation settings: boat, drive and rudder. Change them only if you know "
+"what they do."
+msgstr ""
+
+#: src/ap_panel.cpp:1011
+#, c-format
+msgid "Between %g and %g %s."
+msgstr ""
+
+#: src/ap_panel.cpp:1013
+#, c-format
+msgid "0 = %s."
+msgstr ""
+
+#: src/ap_panel.cpp:1037
+#, c-format
+msgid "Change %s from %s to %s?"
+msgstr ""
+
+#: src/ap_panel.cpp:1040 src/ap_panel.cpp:1051
+msgid "Change autopilot setting"
+msgstr ""
+
+#: src/ap_panel.cpp:1048
+#, c-format
+msgid "Before changing %s"
+msgstr ""
+
+#: src/ap_panel.cpp:1060
+msgid "Sending failed."
+msgstr ""
+
+#: src/ap_panel.cpp:1131
+#, c-format
+msgid "%s set to %s."
+msgstr ""
+
+#: src/ap_panel.cpp:1133
+#, c-format
+msgid "%s: the autopilot answered %s."
+msgstr ""
+
+#: src/ap_panel.cpp:1136
+msgid ""
+"No answer from the autopilot: the setting may not have changed. Read again to "
+"check."
+msgstr ""
+
+#: src/ap_panel.cpp:1139
+msgid "Waiting for the autopilot..."
+msgstr ""
+
+#: src/ap_panel.cpp:1144
+msgid "No autopilot found."
+msgstr ""
+
+#: src/ap_panel.cpp:1146
+msgid ""
+"The autopilot did not answer. It may accept settings requests only from its "
+"own displays."
+msgstr ""
+
+#: src/ap_panel.cpp:1185
+msgid "Start navigation"
+msgstr ""
+
+#: src/ap_panel.cpp:1206
+msgid "Confirm"
+msgstr ""
+
+#: src/ap_panel.cpp:1228
+msgid "Steer to the waypoint?"
+msgstr ""
+
+#: src/ap_panel.cpp:1229
+#, c-format
+msgid "Steer to waypoint %s?"
+msgstr ""
+
+#: src/ap_panel.cpp:1230
+#, c-format
+msgid "The autopilot will turn to %s%s."
+msgstr ""
+
+#: src/ap_panel.cpp:1232
+msgid "The autopilot will turn to the waypoint."
+msgstr ""
+
+#: src/ap_panel.cpp:1233
+#, c-format
+msgid "%d s left to confirm"
+msgstr ""
+
+#: src/ap_panel.cpp:1260
+msgid "STBY"
+msgstr ""
+
+#: src/ap_panel.cpp:1261
+msgid "AUTO"
+msgstr ""
+
+#: src/ap_panel.cpp:1263
+msgid "NAV"
+msgstr ""
+
+#: src/ap_panel.cpp:1265
+msgid "TACK"
+msgstr ""
+
+#: src/ap_panel.cpp:1387
+msgid "Choose the NMEA 2000 connection in the plugin settings."
+msgstr ""
+
+#: src/ap_panel.cpp:1389
+msgid "No autopilot found"
+msgstr ""
+
+#: src/ap_panel.cpp:1391
+msgid "No data from the autopilot."
+msgstr ""
+
+#: src/ap_panel.cpp:1393
+msgid "No reply from the autopilot. Is transmitting enabled on the gateway?"
+msgstr ""
+
+#: src/ap_panel.cpp:1395
+msgid "The autopilot did not change mode."
+msgstr ""
+
+#: src/ap_panel.cpp:1405
+#, c-format
+msgid "Alarm: %s"
+msgstr ""
+
+#: src/ap_prefs.cpp:16
+msgid "Navico autopilot settings"
+msgstr ""
+
+#: src/ap_prefs.cpp:25
+msgid "NMEA 2000 connection"
+msgstr ""
+
+#: src/ap_prefs.cpp:36
+msgid "(no NMEA 2000 connection in OpenCPN)"
+msgstr ""
+
+#: src/ap_prefs.cpp:52
+msgid "Address"
+msgstr ""
+
+#: src/ap_prefs.cpp:60
+msgid "Rudder angle from"
+msgstr ""
+
+#: src/ap_prefs.cpp:70
+msgid "Boat speed"
+msgstr ""
+
+#: src/ap_prefs.cpp:72
+msgid "Speed over ground (from OpenCPN)"
+msgstr ""
+
+#: src/ap_prefs.cpp:73
+msgid "Speed through water (log)"
+msgstr ""
+
+#: src/ap_prefs.cpp:112
+#, c-format
+msgid "%s, address %d"
+msgstr ""
+
+#: src/ap_prefs.cpp:117
+#, c-format
+msgid "%s, unique number %u"
+msgstr ""
+
+#: src/ap_prefs.cpp:120
+msgid "Unknown device"
+msgstr ""
+
+#: src/ap_prefs.cpp:121
+#, c-format
+msgid "%s, address %d: %.1f deg"
+msgstr ""
+
+#: src/ap_prefs.cpp:134
+msgid "Automatic: no autopilot found yet"
+msgstr ""
+
+#: src/ap_prefs.cpp:137 src/ap_prefs.cpp:180
+#, c-format
+msgid "%s (automatic)"
+msgstr ""
+
+#: src/ap_prefs.cpp:146
+msgid "Fixed address"
+msgstr ""
+
+#: src/ap_prefs.cpp:177
+msgid "Automatic: no rudder sensor found yet"
+msgstr ""
+
+#: src/ap_prefs.cpp:192
+msgid "The chosen sensor (not seen now)"
+msgstr ""
+
+#: src/pilot_settings.cpp:29 src/pilot_settings.cpp:32 src/pilot_settings.cpp:33
+#: src/pilot_settings.cpp:34 src/pilot_settings.cpp:35
+msgid "Boat"
+msgstr ""
+
+#: src/pilot_settings.cpp:29
+msgid "Boat type"
+msgstr ""
+
+#: src/pilot_settings.cpp:30
+msgid "Sail"
+msgstr ""
+
+#: src/pilot_settings.cpp:30
+msgid "Outboard"
+msgstr ""
+
+#: src/pilot_settings.cpp:30
+msgid "Displacement"
+msgstr ""
+
+#: src/pilot_settings.cpp:30
+msgid "Planing"
+msgstr ""
+
+#: src/pilot_settings.cpp:32
+msgid "Boat length"
+msgstr ""
+
+#: src/pilot_settings.cpp:33
+msgid "Cruising speed"
+msgstr ""
+
+#: src/pilot_settings.cpp:34
+msgid "Transition speed"
+msgstr ""
+
+#: src/pilot_settings.cpp:35
+msgid "Low boat speed alarm below"
+msgstr ""
+
+#: src/pilot_settings.cpp:39 src/pilot_settings.cpp:41 src/pilot_settings.cpp:42
+#: src/pilot_settings.cpp:44
+msgid "Sailing"
+msgstr ""
+
+#: src/pilot_settings.cpp:39
+msgid "Wind mode"
+msgstr ""
+
+#: src/pilot_settings.cpp:40
+msgid "Apparent"
+msgstr ""
+
+#: src/pilot_settings.cpp:40
+msgid "True"
+msgstr ""
+
+#: src/pilot_settings.cpp:40 src/pilot_settings.cpp:72 src/pilot_settings.cpp:76
+msgid "Auto"
+msgstr ""
+
+#: src/pilot_settings.cpp:41
+msgid "Tack time"
+msgstr ""
+
+#: src/pilot_settings.cpp:42
+msgid "Tack angle"
+msgstr ""
+
+#: src/pilot_settings.cpp:44
+msgid "Manual speed"
+msgstr ""
+
+#: src/pilot_settings.cpp:49
+msgid "Turn rate"
+msgstr ""
+
+#: src/pilot_settings.cpp:51
+msgid "Rudder gain"
+msgstr ""
+
+#: src/pilot_settings.cpp:53
+msgid "Counter rudder"
+msgstr ""
+
+#: src/pilot_settings.cpp:55
+msgid "Autotrim"
+msgstr ""
+
+#: src/pilot_settings.cpp:57
+msgid "Init rudder"
+msgstr ""
+
+#: src/pilot_settings.cpp:58
+msgid "Actual"
+msgstr ""
+
+#: src/pilot_settings.cpp:58
+msgid "Midships"
+msgstr ""
+
+#: src/pilot_settings.cpp:59
+msgid "Rudder limit"
+msgstr ""
+
+#: src/pilot_settings.cpp:62
+msgid "Off heading limit"
+msgstr ""
+
+#: src/pilot_settings.cpp:63 src/pilot_settings.cpp:69
+msgid "Off"
+msgstr ""
+
+#: src/pilot_settings.cpp:64
+msgid "Track response"
+msgstr ""
+
+#: src/pilot_settings.cpp:66
+msgid "Track approach angle"
+msgstr ""
+
+#: src/pilot_settings.cpp:68
+msgid "Course change confirm angle"
+msgstr ""
+
+#: src/pilot_settings.cpp:71 src/pilot_settings.cpp:73 src/pilot_settings.cpp:76
+#: src/pilot_settings.cpp:77 src/pilot_settings.cpp:78 src/pilot_settings.cpp:79
+msgid "Drive"
+msgstr ""
+
+#: src/pilot_settings.cpp:71
+msgid "Rudder deadband"
+msgstr ""
+
+#: src/pilot_settings.cpp:73
+msgid "Drive voltage"
+msgstr ""
+
+#: src/pilot_settings.cpp:76
+msgid "Drive engage"
+msgstr ""
+
+#: src/pilot_settings.cpp:76
+msgid "Clutch"
+msgstr ""
+
+#: src/pilot_settings.cpp:77
+msgid "Minimum rudder"
+msgstr ""
+
+#: src/pilot_settings.cpp:78
+msgid "Minimum power"
+msgstr ""
+
+#: src/pilot_settings.cpp:79
+msgid "Maximum power"
+msgstr ""
+
+#: src/pilot_settings.cpp:80 src/pilot_settings.cpp:82
+msgid "Rudder"
+msgstr ""
+
+#: src/pilot_settings.cpp:80
+msgid "Calibration, starboard"
+msgstr ""
+
+#: src/pilot_settings.cpp:82
+msgid "Calibration, port"
+msgstr ""
+
+#: src/pilot_settings.cpp:124
+msgid "Low speed"
+msgstr ""
+
+#: src/pilot_settings.cpp:124
+msgid "High speed"
+msgstr ""

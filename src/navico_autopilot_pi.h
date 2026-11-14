@@ -27,6 +27,7 @@
 #include "pilot_settings.h"
 #include "route_info.h"
 #include "simnet.h"
+#include "translate.h"
 
 class ApPanel;
 

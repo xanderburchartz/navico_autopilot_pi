@@ -5,6 +5,7 @@ build-*
 !build-deps
 ide_setup.cmake
 po/*.pot
+!po/navico_autopilot_pi.pot
 .DS_Store
 *humbs.db
 cache

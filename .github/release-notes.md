@@ -8,6 +8,11 @@ Fixed:
   before the plugin is unloaded.
 - The catalog metadata (.xml) was invalid XML because of the "&" in "B&G".
   This release has metadata files for each tarball.
+- Translations come from the plugin's own catalog only. Before, a common word
+  such as "Cancel" or "True" could take OpenCPN's translation, and the
+  plugin's Dutch catalog could change texts elsewhere in OpenCPN. All texts
+  of the settings window are now in the translation template
+  (`po/navico_autopilot_pi.pot`).
 
 Panel:
 - Display in the style of a Navico pilot: mode, heading, set heading or

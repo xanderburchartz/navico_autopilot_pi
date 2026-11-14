@@ -24,6 +24,7 @@
 #include "ap_panel.h"
 #include "ap_prefs.h"
 #include "config.h"
+#include "translate.h"  // after config.h: PKG_SUMMARY uses _()
 #include "pilot_settings.h"
 
 namespace {
@@ -71,7 +72,7 @@ NavicoAutopilotPi::NavicoAutopilotPi(void* ppimgr)
 NavicoAutopilotPi::~NavicoAutopilotPi() = default;
 
 int NavicoAutopilotPi::Init() {
-  AddLocaleCatalog("opencpn-" PKG_NAME);
+  AddLocaleCatalog(NAVICO_AP_CATALOG);
   LoadConfig();
 
   wxString icon = PluginIcon("navico_autopilot_pi");
