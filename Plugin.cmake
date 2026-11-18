@@ -66,6 +66,12 @@ set(SRC
     src/ap_prefs.cpp
     src/simnet.h
     src/simnet.cpp
+    src/wrap0183.h
+    src/wrap0183.cpp
+    src/sk_bridge.h
+    src/sk_bridge.cpp
+    src/signalk_client.h
+    src/signalk_client.cpp
     src/pilot_state.h
     src/pilot_state.cpp
     src/pilot_settings.h
@@ -104,10 +110,27 @@ macro(late_init)
     target_include_directories(test_simnet PRIVATE ${CMAKE_SOURCE_DIR}/src)
     target_compile_features(test_simnet PRIVATE cxx_std_17)
     add_test(NAME simnet COMMAND test_simnet)
+    add_executable(test_wrap0183 EXCLUDE_FROM_ALL
+      test/test_wrap0183.cpp src/wrap0183.cpp src/simnet.cpp)
+    target_include_directories(test_wrap0183 PRIVATE ${CMAKE_SOURCE_DIR}/src)
+    target_compile_features(test_wrap0183 PRIVATE cxx_std_17)
+    add_test(NAME wrap0183 COMMAND test_wrap0183)
+    add_executable(test_sk_bridge EXCLUDE_FROM_ALL
+      test/test_sk_bridge.cpp src/sk_bridge.cpp src/simnet.cpp src/pilot_state.cpp
+      src/pilot_settings.cpp)
+    target_include_directories(test_sk_bridge PRIVATE ${CMAKE_SOURCE_DIR}/src)
+    target_compile_features(test_sk_bridge PRIVATE cxx_std_17)
+    add_test(NAME sk_bridge COMMAND test_sk_bridge)
   endif ()
 endmacro ()
 
 macro(add_plugin_libraries)
-  # No extra libraries: only the plugin API and wxWidgets.
+  # wxJSON for the Signal K answers.
+  add_subdirectory("${CMAKE_SOURCE_DIR}/opencpn-libs/wxJSON")
+  target_link_libraries(${PACKAGE_NAME} ocpn::wxjson)
+  # The Signal K client uses plain sockets.
+  if (WIN32)
+    target_link_libraries(${PACKAGE_NAME} ws2_32)
+  endif ()
 endmacro ()
 

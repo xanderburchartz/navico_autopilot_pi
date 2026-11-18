@@ -28,14 +28,28 @@
 #include "route_info.h"
 #include "simnet.h"
 #include "translate.h"
+#include "wrap0183.h"
+#include "signalk_client.h"
+#include "sk_bridge.h"
 
 class ApPanel;
 
-/** One NMEA 2000 connection of OpenCPN, as offered in the settings. */
+/**
+ * One way to the pilot, as offered in the settings: an NMEA 2000 connection
+ * of OpenCPN, or an NMEA 0183 connection that carries NMEA 2000 wrapped in
+ * $PCDIN or $MXPGN sentences.
+ */
 struct N2kDriver {
+  enum class Link { kN2k, kPcdin, kMxpgn, kSignalK };
   DriverHandle handle;
   std::string label;  ///< address/port or device, plus user comment
-  bool network = false;  ///< TCP/UDP gateway (OpenCPN keeps 126996 to itself)
+  /** Not a direct NMEA 2000 bus: a TCP/UDP gateway (OpenCPN keeps 126996 to
+   *  itself) or wrapped sentences (no directed requests). */
+  bool network = false;
+  Link link = Link::kN2k;
+  /** What the settings store: the handle, with "pcdin:" or "mxpgn:" before
+   *  it for the wrapped ways, or "signalk". */
+  std::string key;
 };
 
 // API 1.20 (OpenCPN 5.12) has notifications; the Android build stays on 1.18.
@@ -138,10 +152,52 @@ public:
   wxString LastMessage() const { return m_last_message; }
   void ApplySettings(const std::string& driver, std::optional<uint8_t> address,
                      uint64_t rudder_name, bool use_stw);
+  // ---- Signal K ----
+  /** Server as "host:port" (empty if not set). */
+  std::string SignalKServer() const;
+  void SetSignalKServer(const std::string& host_port);
+  /** Ask the server for a token; the server's administrator approves it. */
+  void RequestSignalKAccess();
+  /** Short state of the access for the settings ("token present", ...). */
+  wxString SignalKAccessText() const;
+  /** True when the chosen way is the Signal K server. */
+  bool UsingSignalK() const;
+  /** When the current way to the pilot was chosen or came up (Now() time). */
+  double LinkSince() const { return m_link_since; }
   void PanelClosed();
 
 private:
   void OnN2k(int pgn, ObservedEvt& ev);
+  /** A $PCDIN or $MXPGN sentence from an NMEA 0183 connection. */
+  void On0183(const char* id, ObservedEvt& ev);
+  /** A received message, whichever way it came. */
+  void HandleMessage(const simnet::Message& msg);
+  /** Send one NMEA 2000 message the chosen way. */
+  CommDriverResult SendN2k(const N2kDriver& driver, int pgn, uint8_t destination,
+                           int priority, const std::vector<uint8_t>& data);
+  wrap0183::Assembler m_mxpgn_in;
+  std::string m_link_key;     ///< key of the way seen at the last timer tick
+  double m_link_since = 0;
+  // Signal K way.
+  std::unique_ptr<SignalKClient> m_sk;
+  std::string m_sk_host;
+  int m_sk_port = 3000;
+  std::string m_sk_token;
+  std::string m_sk_client_id;
+  /** The server has signalk-simnet-pilot-state (actions.command and .nfu);
+   *  else the plugin falls back to signalk-autopilot. */
+  bool m_sk_simnet = true;
+  std::string m_sk_state_time;  ///< timestamp of the last state seen
+  std::string m_sk_request;     ///< href of a pending access request
+  wxString m_sk_access;         ///< last access state, for the settings
+  bool m_sk_polling = false;
+  bool m_sk_access_polling = false;
+  double m_sk_access_last = 0;
+  void PollSignalK();
+  void OnSignalKStatus(const std::string& body);
+  void PollAccessRequest();
+  void SkPut(const sk_bridge::Put& put, simnet::Command c, bool fallback_tried);
+  uint8_t m_mxpgn_sequence = 0;
   void OnTimer(wxTimerEvent&);
   void LoadConfig();
   void SaveConfig();

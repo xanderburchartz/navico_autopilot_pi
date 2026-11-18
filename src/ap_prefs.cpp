@@ -22,22 +22,50 @@ ApPrefs::ApPrefs(wxWindow* parent, NavicoAutopilotPi* plugin)
   grid->AddGrowableCol(1);
 
   // Connection.
-  grid->Add(new wxStaticText(this, wxID_ANY, _("NMEA 2000 connection")), 0,
+  grid->Add(new wxStaticText(this, wxID_ANY, _("Connection")), 0,
             wxALIGN_CENTRE_VERTICAL);
   m_connection = new wxChoice(this, wxID_ANY);
   auto current = plugin->Driver();
   for (const auto& d : plugin->Drivers()) {
     m_connection->Append(wxString::FromUTF8(d.label.c_str()));
-    m_handles.push_back(d.handle);
-    if (current && current->handle == d.handle)
+    m_handles.push_back(d.key);
+    if (current && current->key == d.key)
       m_connection->SetSelection(m_connection->GetCount() - 1);
   }
-  if (m_handles.empty()) {
-    m_connection->Append(_("(no NMEA 2000 connection in OpenCPN)"));
-    m_connection->SetSelection(0);
-    m_connection->Disable();
-  }
   grid->Add(m_connection, 1, wxEXPAND);
+
+  // Signal K server: the plugin talks to it itself (OpenCPN's own Signal K
+  // connection only reads).
+  grid->Add(new wxStaticText(this, wxID_ANY, _("Signal K server")), 0, wxALIGN_CENTRE_VERTICAL);
+  m_sk_server = new wxTextCtrl(this, wxID_ANY, wxString::FromUTF8(plugin->SignalKServer().c_str()));
+  m_sk_server->SetHint(_("address:3000"));
+  grid->Add(m_sk_server, 1, wxEXPAND);
+  grid->Add(new wxStaticText(this, wxID_ANY, _("Signal K access")), 0, wxALIGN_CENTRE_VERTICAL);
+  auto* access = new wxBoxSizer(wxHORIZONTAL);
+  auto* request = new wxButton(this, wxID_ANY, _("Request access"));
+  request->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
+    m_plugin->SetSignalKServer(std::string(m_sk_server->GetValue().utf8_str()));
+    m_plugin->RequestSignalKAccess();
+    m_sk_access->SetLabel(m_plugin->SignalKAccessText());
+    m_sk_access->Wrap(GetCharWidth() * 45);
+    m_sk_timer.Start(1000);
+  });
+  access->Add(request, 0, wxALIGN_CENTRE_VERTICAL);
+  grid->Add(access, 1, wxEXPAND);
+  // The state below the button, wrapped, so a long text stays readable.
+  grid->AddSpacer(0);
+  m_sk_access = new wxStaticText(this, wxID_ANY, plugin->SignalKAccessText());
+  m_sk_access->Wrap(GetCharWidth() * 45);
+  grid->Add(m_sk_access, 1, wxEXPAND);
+  m_sk_timer.SetOwner(this);
+  Bind(wxEVT_TIMER, [this](wxTimerEvent&) {
+    wxString text = m_plugin->SignalKAccessText();
+    if (m_sk_access->GetLabel() != text) {
+      m_sk_access->SetLabel(text);
+      m_sk_access->Wrap(GetCharWidth() * 45);
+      Fit();
+    }
+  }, m_sk_timer.GetId());
 
   // Pilot and rudder sensor: the most likely device is used automatically and
   // named in the first entry; choosing another entry overrules it. The
@@ -85,7 +113,7 @@ ApPrefs::ApPrefs(wxWindow* parent, NavicoAutopilotPi* plugin)
     FillPilotList();
     FillRudderList();
     if (++m_refreshes < 3) m_refresh.StartOnce(1200);
-  });
+  }, m_refresh.GetId());
   m_refresh.StartOnce(1200);
 
   top->Add(CreateButtonSizer(wxOK | wxCANCEL), 0, wxEXPAND | wxALL, 10);
@@ -163,6 +191,7 @@ void ApPrefs::OnOk(wxCommandEvent& ev) {
     address = static_cast<uint8_t>(a);
   else if (a == kFixed)
     address = static_cast<uint8_t>(m_address->GetValue());
+  m_plugin->SetSignalKServer(std::string(m_sk_server->GetValue().utf8_str()));
   m_plugin->ApplySettings(handle, address, m_rudder_choice, m_speed->GetSelection() == 1);
   ev.Skip();  // closes the dialog
 }

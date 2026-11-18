@@ -67,6 +67,37 @@ any CAN hardware of its own: any NMEA 2000 connection through which OpenCPN
 can transmit works, for example a Yacht Devices or Actisense gateway on the
 network, an Actisense NGT-1, or SocketCAN on Linux.
 
+### Other ways to the pilot
+
+The connection in the settings can also be one of these (development
+version, tested against simulators only):
+
+- **NMEA 0183 with NMEA 2000 wrapped in $PCDIN or $MXPGN.** Each NMEA 0183
+  connection of OpenCPN (input and output) is offered twice, as
+  "$PCDIN (SeaSmart)" and "$MXPGN (MiniPlex)". The plugin wraps and unwraps
+  the same Navico messages itself (`src/wrap0183.cpp`), so everything works,
+  settings included. It needs a gateway that passes *all* PGNs this way, such
+  as a ShipModul MiniPlex-3 ($MXPGN). Yacht Devices gateways do not: on their
+  NMEA 0183 servers they wrap only engine, transmission, tank, battery and
+  switch PGNs (tables 1 and 2 of the YDWG-02 manual), so for a Navico pilot
+  they need their RAW server, which is the NMEA 2000 way above.
+- **A Signal K server.** OpenCPN's own Signal K connection only reads, and
+  plugins cannot write through it, so the plugin talks to the server itself
+  over HTTP (address in the settings, `src/signalk_client.cpp`). It reads
+  `steering.autopilot.*` and `steering.rudderAngle` twice a second and turns
+  them into the messages the pilot sends on the bus (`src/sk_bridge.cpp`), so
+  the panel works as usual. Commands go as PUT requests:
+  - with the server plugin `signalk-simnet-pilot-state`:
+    `steering.autopilot.actions.command` and `.nfu` (NFU works);
+  - otherwise with `signalk-autopilot` (Simrad provider):
+    `steering.autopilot.state`, `actions.adjustHeading` and `actions.tack`
+    (no NFU).
+
+  Not available through Signal K: confirming NAV, the pilot settings window.
+  A server with security needs a token: "Request access" in the settings
+  sends an access request, which the server's administrator approves
+  (Security, Access Requests); the token is stored in OpenCPN's config.
+
 **Requires OpenCPN 5.14 or later** for network gateways (Yacht Devices RAW,
 Actisense RAW ASCII). In OpenCPN 5.12 the network N2K driver numbers its
 fast-packet frames wrongly, so every second command is lost: a receiver
@@ -247,7 +278,9 @@ request, for example against `Alpha` (v0.1.1-alpha: OpenCPN/plugins#1487).
 ## Testing without a boat
 
 `test/` describes testing against a simulated Yacht Devices gateway with a
-NAC-3 (a small Node.js program).
+NAC-3 (a small Node.js program), against a simulated gateway that speaks
+$PCDIN or $MXPGN (`test/sim/wrap0183_sim.js`), and against a local Signal K
+server.
 
 ## How this plugin was made
 

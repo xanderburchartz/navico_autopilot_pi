@@ -32,6 +32,9 @@ private:
 
   NavicoAutopilotPi* m_plugin;
   wxChoice* m_connection;
+  wxTextCtrl* m_sk_server;
+  wxStaticText* m_sk_access;
+  wxTimer m_sk_timer;
   std::vector<std::string> m_handles;
   wxChoice* m_pilot;
   std::vector<int> m_pilot_addresses;  // -1 automatic, -2 fixed (spin)

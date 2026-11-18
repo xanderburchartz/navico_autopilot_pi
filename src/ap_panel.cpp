@@ -119,7 +119,7 @@ struct DisplayData {
   std::optional<double> awa, set_wind, rudder;  // signed, negative = port
   bool stw = false;  // speed is through the water, not over ground
   bool nfu = false;  // non-follow-up active
-  wxString badge;    // "NAC-3 4"
+  wxString badge;    // "NAC-3" or "NAC"
   wxString waypoint;  // name of the destination waypoint, if known
 };
 
@@ -1354,7 +1354,8 @@ void ApPanel::UpdateState(double now) {
         model = wxString::FromUTF8(m.c_str());
       }
     }
-    d.badge = wxString::Format("%s %d", model, *address);
+    // Only the model: "NAC 4" read as a NAC-4. The address is in the settings.
+    d.badge = model;
   }
   m_display->Set(d);
 
@@ -1383,8 +1384,20 @@ void ApPanel::UpdateState(double now) {
   // One line of explanation, most important first; then the pilot's alarms.
   wxString msg = m_plugin->LastMessage();
   if (msg.empty()) {
-    if (!m_plugin->Driver())
+    auto drv = m_plugin->Driver();
+    bool wrapped = drv && (drv->link == N2kDriver::Link::kPcdin ||
+                           drv->link == N2kDriver::Link::kMxpgn);
+    if (!drv)
       msg = _("Choose the NMEA 2000 connection in the plugin settings.");
+    else if (wrapped && !alive && now - m_plugin->LinkSince() >= 10)
+      // Yacht Devices gateways wrap only engine, tank and battery PGNs in
+      // NMEA 0183 (YDWG-02 manual, tables 1 and 2), not the pilot's. Only
+      // after 10 s without a mode report (65305), so a working MiniPlex gets
+      // no warning while it connects; gone as soon as the pilot reports.
+      msg = _("No autopilot data through NMEA 0183. A Yacht Devices gateway does not pass the "
+              "autopilot this way: connect its RAW server as an NMEA 2000 connection.");
+    else if (drv->link == N2kDriver::Link::kSignalK && (!address || !alive))
+      msg = _("No autopilot data from the Signal K server.");
     else if (!address)
       msg = _("No autopilot found");
     else if (!alive)
