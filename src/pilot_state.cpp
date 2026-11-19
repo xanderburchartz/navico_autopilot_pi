@@ -328,6 +328,34 @@ std::vector<PilotState::Candidate> PilotState::Candidates(double now) const {
   return out;
 }
 
+void PilotState::HandleSignalK(uint8_t address, simnet::Mode mode, std::optional<double> target,
+                               std::optional<double> wind, std::optional<double> rudder,
+                               double now) {
+  Candidate& c = m_candidates[address];
+  c.address = address;
+  c.model = 0x64;
+  c.last_seen = now;
+  if (rudder) {
+    RudderSource& src = m_rudder[address];
+    src.address = address;
+    src.angle = *rudder;
+    src.last_seen = now;
+  }
+  if (!IsPilot(address, now)) return;
+  m_mode = mode;
+  m_mode_time = now;
+  if (m_pending && ExpectedMode(*m_pending) == mode) m_pending.reset();
+  m_target = mode == Mode::kStandby ? std::nullopt : target;
+  m_target_magnetic = true;
+  if (m_pending && !ExpectedMode(*m_pending) && mode != Mode::kWind &&
+      Differs(m_target, m_pending_target))
+    m_pending.reset();
+  m_wind = mode == Mode::kWind ? wind : std::nullopt;
+  if (m_pending && !ExpectedMode(*m_pending) && mode == Mode::kWind &&
+      Differs(m_wind, m_pending_wind))
+    m_pending.reset();
+}
+
 std::optional<uint8_t> PilotState::Address(double now) const {
   if (m_fixed) return m_fixed;
   return AutoPilot(now);

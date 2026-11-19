@@ -45,8 +45,9 @@ address 4 and logs every 130850 it receives, for example
 
 ## NMEA 0183 with wrapped NMEA 2000
 
-`test/sim/wrap0183_sim.js` is a simulated gateway with a NAC-3 at address 4
-that speaks `$PCDIN` or `$MXPGN` over TCP and logs every command:
+`test/sim/wrap0183_sim.js` (optional, needs Node.js; not part of the build)
+is a simulated gateway with a NAC-3 at address 4 that speaks `$PCDIN` or
+`$MXPGN` over TCP and logs every command:
 
 ```
 node test/sim/wrap0183_sim.js mxpgn 10112

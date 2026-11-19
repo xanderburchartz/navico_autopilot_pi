@@ -5,10 +5,8 @@
 
 /**
  * \file sk_bridge.h
- * The Signal K way: what a Signal K server reports about the pilot, turned
- * into the NMEA 2000 messages the pilot itself sends, so PilotState and the
- * panel work the same as on the bus; and the commands as Signal K PUT
- * requests.
+ * The Signal K way: the pilot's state as a Signal K server reports it, and
+ * the commands as Signal K PUT requests.
  *
  * Two kinds of server plugins are understood:
  *  - signalk-simnet-pilot-state: PUT steering.autopilot.actions.command
@@ -27,36 +25,19 @@
 #include <cstdint>
 #include <optional>
 #include <string>
-#include <vector>
 
 #include "simnet.h"
 
 namespace sk_bridge {
 
-/** What the server says about the pilot (values in SI units: radians). */
-struct Status {
-  std::optional<std::string> state;          ///< steering.autopilot.state
-  std::optional<double> target_heading;      ///< steering.autopilot.target.headingMagnetic
-  std::optional<double> target_wind;         ///< steering.autopilot.target.windAngleApparent
-  std::optional<double> rudder;              ///< steering.rudderAngle
-  std::optional<uint8_t> source;             ///< NMEA 2000 address in the state's $source
-};
-
 /**
- * The mode for a Signal K state. \p auto_is_nodrift: the server reports
- * Simnet's No Drift as "auto" (signalk-simnet-pilot-state, older n2k-signalk).
+ * The mode for a Signal K state. \p auto_is_nodrift: the value comes from
+ * signalk-simnet-pilot-state, which reports Simnet's No Drift as "auto".
  */
 simnet::Mode ModeOf(const std::string& state, bool auto_is_nodrift);
 
 /** The address at the end of a $source such as "can0.4" or "simnet-pilot-state.4". */
 std::optional<uint8_t> SourceAddress(const std::string& source);
-
-/**
- * Messages as the pilot at \p address would send them: 65305 (mode),
- * 127237 (heading to steer, magnetic), 65341 (wind angle, in WIND only) and
- * 127245 (rudder). Nothing for a value the server did not report.
- */
-std::vector<simnet::Message> ToMessages(const Status& s, uint8_t address, bool auto_is_nodrift);
 
 /** One PUT request: the path below /signalk/v1/api/vessels/self/ and its JSON value. */
 struct Put {
@@ -66,8 +47,12 @@ struct Put {
 
 /** The request for \p c with signalk-simnet-pilot-state; none if it has no such command. */
 std::optional<Put> SimnetPut(simnet::Command c);
-/** The request for \p c with signalk-autopilot; none if it has no such command. */
-std::optional<Put> AutopilotPut(simnet::Command c);
+/**
+ * The request for \p c with signalk-autopilot; none if it has no such
+ * command. A tack needs the side: from the wind angle held (\p wind, rad,
+ * negative = wind from port, so the bow turns to port).
+ */
+std::optional<Put> AutopilotPut(simnet::Command c, std::optional<double> wind);
 /** Non-follow-up (signalk-simnet-pilot-state only). */
 Put NfuPut(simnet::NfuSide side);
 

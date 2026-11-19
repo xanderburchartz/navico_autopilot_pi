@@ -5,8 +5,9 @@
  *   Talks to the pilot computer through OpenCPN's own connections: an
  *   NMEA 2000 connection (GetActiveDrivers, RegisterTXPGNs, WriteCommDriverN2K
  *   and listeners), or an NMEA 0183 connection to a gateway that passes
- *   NMEA 2000 wrapped in $PCDIN or $MXPGN sentences (wrap0183.h). It sends
- *   one PGN 130850 per button press and nothing else.
+ *   NMEA 2000 wrapped in $PCDIN or $MXPGN sentences (wrap0183.h). Or through
+ *   a Signal K server, with its own HTTP requests (signalk_client.h). It sends
+ *   one command per button press and nothing else.
  ***************************************************************************/
 
 #include "navico_autopilot_pi.h"
@@ -15,22 +16,21 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <random>
 
 #include <wx/aui/aui.h>
 #include <wx/fileconf.h>
 #include <wx/dir.h>
 #include <wx/file.h>
 #include <wx/filename.h>
+#include <wx/jsonreader.h>
+#include <wx/jsonval.h>
 
 #include "ap_panel.h"
 #include "ap_prefs.h"
 #include "config.h"
 #include "translate.h"  // after config.h: PKG_SUMMARY uses _()
 #include "pilot_settings.h"
-
-#include <random>
-#include <wx/jsonreader.h>
-#include <wx/jsonval.h>
 
 namespace {
 
@@ -44,6 +44,13 @@ wxString PluginIcon(const char* base) {
   f.SetName(base);
   f.SetExt("svg");
   return f.GetFullPath();
+}
+
+std::optional<double> JsonNumber(const wxJSONValue& v) {
+  if (v.IsDouble()) return v.AsDouble();
+  if (v.IsInt()) return static_cast<double>(v.AsInt());
+  if (v.IsLong()) return static_cast<double>(v.AsLong());
+  return std::nullopt;
 }
 
 }  // namespace
@@ -82,6 +89,8 @@ int NavicoAutopilotPi::Init() {
   AddLocaleCatalog(NAVICO_AP_CATALOG);
   LoadConfig();
   m_sk = std::make_unique<SignalKClient>(this);
+  m_sk_polling = false;  // results of an earlier client are dropped
+  m_sk_access_polling = false;
   m_sk->SetServer(m_sk_host, m_sk_port, m_sk_token);
 
   wxString icon = PluginIcon("navico_autopilot_pi");
@@ -189,9 +198,10 @@ void NavicoAutopilotPi::OnN2k(int pgn, ObservedEvt& ev) {
 }
 
 void NavicoAutopilotPi::On0183(const char* id, ObservedEvt& ev) {
-  auto d = Driver();
+  // The chosen way as the timer last saw it: a gateway passing every PGN sends
+  // hundreds of sentences a second, too many to look up the connections for.
   bool mxpgn = std::string(id) == "MXPGN";
-  if (!d || d->link != (mxpgn ? N2kDriver::Link::kMxpgn : N2kDriver::Link::kPcdin)) return;
+  if (m_link != (mxpgn ? N2kDriver::Link::kMxpgn : N2kDriver::Link::kPcdin)) return;
   std::string sentence = GetN0183Payload(NMEA0183Id(id), ev);
   std::optional<simnet::Message> msg;
   if (mxpgn) {
@@ -205,18 +215,17 @@ void NavicoAutopilotPi::On0183(const char* id, ObservedEvt& ev) {
   if (msg) HandleMessage(*msg);
 }
 
-void NavicoAutopilotPi::HandleMessage(const simnet::Message& message) {
-  const simnet::Message* msg = &message;
-  int pgn = msg->pgn;
+void NavicoAutopilotPi::HandleMessage(const simnet::Message& msg) {
+  int pgn = msg.pgn;
   simnet::Mode before = m_state.Mode();
   auto target_before = m_state.TargetHeading();
   auto wind_before = m_state.TargetWindAngle();
   double now = Now();
-  m_state.Handle(*msg, now);
+  m_state.Handle(msg, now);
   // Once per connection, ask the devices for their NAME, as the Triton app
   // does when it connects: one request, one frame back from each device.
-  if (auto d = Driver(); d && d->key != m_claims_driver) {
-    m_claims_driver = d->key;
+  if (!m_link_key.empty() && m_link_key != m_claims_driver) {
+    m_claims_driver = m_link_key;
     RequestAddressClaims();
   }
   // Shortly after the address claim request: ask pilots and rudder sensors
@@ -224,14 +233,15 @@ void NavicoAutopilotPi::HandleMessage(const simnet::Message& message) {
   // its virtual one. Not on network connections: OpenCPN's network driver
   // keeps 126996 to itself (HandleMgntMsg in comm_drv_n2k_net.cpp), so the
   // answers would never reach the plugin.
-  auto drv = Driver();
-  if (pgn == simnet::kPgnAddressClaim && now < m_discover_until && drv && !drv->network) {
-    auto name = simnet::ParseAddressClaim(msg->data);
-    if (name && (name->function == simnet::kFunctionAutopilot ||
-                 name->function == simnet::kFunctionRudder) &&
-        !m_product_asked.count(msg->source)) {
-      m_product_asked.insert(msg->source);
-      SendIsoRequest(simnet::kPgnProductInfo, msg->source);
+  if (pgn == simnet::kPgnAddressClaim && now < m_discover_until) {
+    auto drv = Driver();
+    auto name = simnet::ParseAddressClaim(msg.data);
+    if (drv && !drv->network && name &&
+        (name->function == simnet::kFunctionAutopilot ||
+         name->function == simnet::kFunctionRudder) &&
+        !m_product_asked.count(msg.source)) {
+      m_product_asked.insert(msg.source);
+      SendIsoRequest(simnet::kPgnProductInfo, msg.source);
     }
   }
   if (m_state.Mode() != before)
@@ -358,18 +368,17 @@ bool NavicoAutopilotPi::SendCommand(simnet::Command c) {
     return false;
   }
   if (driver->link == N2kDriver::Link::kSignalK) {
-    auto put = m_sk_simnet ? sk_bridge::SimnetPut(c) : sk_bridge::AutopilotPut(c);
-    if (!put && m_sk_simnet) {
-      // No Drift is not in signalk-simnet-pilot-state; signalk-autopilot has it.
-      put = sk_bridge::AutopilotPut(c);
-    }
+    std::optional<sk_bridge::Put> put;
+    if (m_sk_simnet) put = sk_bridge::SimnetPut(c);
+    // No Drift is not in signalk-simnet-pilot-state; signalk-autopilot has it.
+    if (!put) put = sk_bridge::AutopilotPut(c, m_state.TargetWindAngle());
     if (!put) {
       m_last_message = c == simnet::Command::kConfirm
                            ? _("Confirm NAV on the pilot display: not possible through Signal K.")
                            : _("Not possible through Signal K.");
       return false;
     }
-    SkPut(*put, c, false);
+    SkPut(*put, c);
     m_state.CommandSent(c, simnet::CommandData(c, *address), now);
     m_last_message.clear();
     return true;
@@ -429,9 +438,10 @@ bool NavicoAutopilotPi::SendNfu(simnet::NfuSide side, bool log) {
                       m_last_message = _("NFU through Signal K needs the server plugin signalk-simnet-pilot-state.");
                     else if (r.status == 401 || r.status == 403)
                       m_last_message = _("Signal K: no access. Request it in the settings.");
-                  },
-                  true);
-    if (log) wxLogMessage("navico_autopilot_pi: NFU via Signal K: PUT %s %s", put.path, put.value);
+                  });
+    if (log)
+      wxLogMessage("navico_autopilot_pi: NFU via Signal K: PUT %s %s", put.path.c_str(),
+                   put.value.c_str());
     return true;
   }
   auto data = simnet::NfuData(side, *address);
@@ -812,12 +822,13 @@ void NavicoAutopilotPi::OnTimer(wxTimerEvent&) {
   RememberPilotName();
   NotifyAlarms();
   auto link = Driver();
+  m_link = link ? link->link : N2kDriver::Link::kN2k;
   std::string key = link ? link->key : std::string();
   if (key != m_link_key) {
     m_link_key = key;
     m_link_since = Now();
   }
-  if (UsingSignalK()) PollSignalK();
+  if (m_link == N2kDriver::Link::kSignalK) PollSignalK();
   if (!m_sk_request.empty()) PollAccessRequest();
 }
 
@@ -962,7 +973,7 @@ void NavicoAutopilotPi::SetSignalKServer(const std::string& host_port) {
   }
   if (host != m_sk_host || port != m_sk_port) {
     m_sk_state_time.clear();
-    m_sk_simnet = true;
+    m_sk_simnet = false;
   }
   m_sk_host = host;
   m_sk_port = port;
@@ -994,58 +1005,62 @@ void NavicoAutopilotPi::PollSignalK() {
                 });
 }
 
-namespace {
-
-std::optional<double> JsonNumber(const wxJSONValue& v) {
-  if (v.IsDouble()) return v.AsDouble();
-  if (v.IsInt()) return static_cast<double>(v.AsInt());
-  if (v.IsLong()) return static_cast<double>(v.AsLong());
-  return std::nullopt;
-}
-
-}  // namespace
-
 void NavicoAutopilotPi::OnSignalKStatus(const std::string& body) {
   wxJSONReader reader;
   wxJSONValue root;
   if (reader.Parse(wxString::FromUTF8(body.c_str()), &root) > 0) return;
-  sk_bridge::Status st;
   wxJSONValue ap = root["autopilot"];
   wxJSONValue state = ap["state"];
+  // signalk-simnet-pilot-state reports the state as source
+  // "simnet-pilot-state.<address>". If it is there, take its value (it names
+  // No Drift "auto") and send the commands to it; else to signalk-autopilot.
+  wxString source = state["$source"].IsString() ? state["$source"].AsString() : wxString();
+  wxJSONValue values = state["values"];
+  wxArrayString names = values.GetMemberNames();
+  for (const auto& name : names)
+    if (name.StartsWith("simnet-pilot-state.")) source = name;
+  m_sk_simnet = source.StartsWith("simnet-pilot-state.");
+  wxJSONValue chosen = values.HasMember(source) ? values[source] : state;
+  if (!chosen["value"].IsString()) return;
   // Only a state the server got again since the last poll: the REST API keeps
   // the last value forever, also when the pilot is gone.
-  if (state["value"].IsString()) {
-    std::string time = std::string(state["timestamp"].AsString().utf8_str());
-    if (time != m_sk_state_time) {
-      m_sk_state_time = time;
-      st.state = std::string(state["value"].AsString().utf8_str());
-      if (state["$source"].IsString())
-        st.source = sk_bridge::SourceAddress(std::string(state["$source"].AsString().utf8_str()));
-    }
+  std::string time = std::string(chosen["timestamp"].AsString().utf8_str());
+  if (time == m_sk_state_time) return;
+  m_sk_state_time = time;
+  auto address = sk_bridge::SourceAddress(std::string(source.utf8_str()));
+  // signalk-autopilot reports as "simrad", without an address: take it from
+  // the bus source of the same state, e.g. "can0.4".
+  for (size_t i = 0; !address && i < names.size(); i++)
+    address = sk_bridge::SourceAddress(std::string(names[i].utf8_str()));
+  simnet::Mode mode =
+      sk_bridge::ModeOf(std::string(chosen["value"].AsString().utf8_str()), m_sk_simnet);
+  if (mode == simnet::Mode::kUnknown) return;  // e.g. "dodge"
+  simnet::Mode before = m_state.Mode();
+  auto target_before = m_state.TargetHeading();
+  m_state.HandleSignalK(address.value_or(0), mode,
+                        JsonNumber(ap["target"]["headingMagnetic"]["value"]),
+                        JsonNumber(ap["target"]["windAngleApparent"]["value"]),
+                        JsonNumber(root["rudderAngle"]["value"]), Now());
+  if (m_state.Mode() != before)
+    wxLogMessage("navico_autopilot_pi: pilot mode %s -> %s (Signal K)", simnet::ModeName(before),
+                 simnet::ModeName(m_state.Mode()));
+  // Target changes as in HandleMessage, so a course change can be checked afterwards.
+  if (m_state.TargetHeading() && m_state.Mode() != simnet::Mode::kStandby) {
+    long t0 = target_before ? std::lround(*target_before * 57.29577951308232) : -1;
+    long t1 = std::lround(*m_state.TargetHeading() * 57.29577951308232);
+    if (t0 != t1)
+      wxLogMessage("navico_autopilot_pi: target heading %s -> %ld M",
+                   t0 < 0 ? wxString("---") : wxString::Format("%ld", t0), t1);
   }
-  if (!st.state) return;
-  st.target_heading = JsonNumber(ap["target"]["headingMagnetic"]["value"]);
-  st.target_wind = JsonNumber(ap["target"]["windAngleApparent"]["value"]);
-  st.rudder = JsonNumber(root["rudderAngle"]["value"]);
-  for (const auto& m : sk_bridge::ToMessages(st, st.source.value_or(0), m_sk_simnet))
-    HandleMessage(m);
 }
 
-void NavicoAutopilotPi::SkPut(const sk_bridge::Put& put, simnet::Command c, bool fallback_tried) {
+void NavicoAutopilotPi::SkPut(const sk_bridge::Put& put, simnet::Command c) {
   std::string body = "{\"value\":" + put.value + "}";
   wxLogMessage("navico_autopilot_pi: %s via Signal K %s: PUT %s %s", simnet::CommandName(c),
                SignalKServer().c_str(), put.path.c_str(), put.value.c_str());
   m_sk->Request("PUT", "/signalk/v1/api/vessels/self/" + put.path, body,
-                [this, c, fallback_tried, put](const SignalKClient::Response& r) {
+                [this, put](const SignalKClient::Response& r) {
                   if (r.status >= 200 && r.status < 300) return;
-                  if ((r.status == 405 || r.status == 404) && m_sk_simnet && !fallback_tried) {
-                    // No signalk-simnet-pilot-state: use signalk-autopilot from now on.
-                    m_sk_simnet = false;
-                    wxLogMessage("navico_autopilot_pi: Signal K: no simnet-pilot-state (%d), "
-                                 "using signalk-autopilot", r.status);
-                    if (auto alt = sk_bridge::AutopilotPut(c)) SkPut(*alt, c, true);
-                    return;
-                  }
                   if (r.status == 401 || r.status == 403)
                     m_last_message = _("Signal K: no access. Request it in the settings.");
                   else if (r.status == 0)
@@ -1054,8 +1069,7 @@ void NavicoAutopilotPi::SkPut(const sk_bridge::Put& put, simnet::Command c, bool
                     m_last_message = wxString::Format(_("Signal K refused the command (%d)."), r.status);
                   wxLogMessage("navico_autopilot_pi: Signal K answered %d to PUT %s: %s", r.status,
                                put.path.c_str(), r.body.substr(0, 200).c_str());
-                },
-                true);
+                });
 }
 
 void NavicoAutopilotPi::RequestSignalKAccess() {
@@ -1064,18 +1078,11 @@ void NavicoAutopilotPi::RequestSignalKAccess() {
     return;
   }
   if (m_sk_client_id.empty()) {
-    // A random UUID (version 4), so the server knows it is the same client.
+    // A random id in UUID form, so the server knows it is the same client.
     std::random_device rd;
-    std::mt19937_64 gen(rd());
-    uint64_t a = gen(), b = gen();
-    a = (a & 0xFFFFFFFFFFFF0FFFULL) | 0x0000000000004000ULL;
-    b = (b & 0x3FFFFFFFFFFFFFFFULL) | 0x8000000000000000ULL;
-    m_sk_client_id = std::string(wxString::Format("%08llx-%04llx-%04llx-%04llx-%012llx",
-                                                  (unsigned long long)(a >> 32),
-                                                  (unsigned long long)((a >> 16) & 0xFFFF),
-                                                  (unsigned long long)(a & 0xFFFF),
-                                                  (unsigned long long)(b >> 48),
-                                                  (unsigned long long)(b & 0xFFFFFFFFFFFFULL))
+    m_sk_client_id = std::string(wxString::Format("%08x-%04x-4%03x-a%03x-%04x%08x", rd(),
+                                                  rd() & 0xFFFF, rd() & 0xFFF, rd() & 0xFFF,
+                                                  rd() & 0xFFFF, rd())
                                      .utf8_str());
     SaveConfig();
   }
@@ -1102,8 +1109,7 @@ void NavicoAutopilotPi::RequestSignalKAccess() {
 }
 
 void NavicoAutopilotPi::PollAccessRequest() {
-  // Every 2 s, one request at a time (the status polls keep the queue busy,
-  // so the queue length cannot be used for this).
+  // Every 2 s, one request at a time (the status polls keep the client busy).
   if (!m_sk || m_sk_access_polling) return;
   double now = Now();
   if (now - m_sk_access_last < 2) return;

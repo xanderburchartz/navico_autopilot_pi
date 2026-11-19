@@ -19,6 +19,7 @@
 using SocketHandle = SOCKET;
 static void CloseSocket(SocketHandle s) { closesocket(s); }
 static const SocketHandle kNoSocket = INVALID_SOCKET;
+static const int kShutBoth = SD_BOTH;
 #else
 #include <fcntl.h>
 #include <netdb.h>
@@ -29,6 +30,7 @@ static const SocketHandle kNoSocket = INVALID_SOCKET;
 using SocketHandle = int;
 static void CloseSocket(SocketHandle s) { close(s); }
 static const SocketHandle kNoSocket = -1;
+static const int kShutBoth = SHUT_RDWR;
 #endif
 
 namespace {
@@ -55,11 +57,14 @@ SocketHandle Connect(const std::string& host, int port, int seconds) {
     int r = connect(s, ai->ai_addr, static_cast<int>(ai->ai_addrlen));
     bool ok = r == 0;
     if (!ok) {
-      fd_set w;
+      // Windows reports a failed connect in the except set, others in the write set.
+      fd_set w, e;
       FD_ZERO(&w);
       FD_SET(s, &w);
+      FD_ZERO(&e);
+      FD_SET(s, &e);
       timeval tv{seconds, 0};
-      if (select(static_cast<int>(s) + 1, nullptr, &w, nullptr, &tv) == 1) {
+      if (select(static_cast<int>(s) + 1, nullptr, &w, &e, &tv) > 0 && FD_ISSET(s, &w)) {
         int err = 0;
         socklen_t len = sizeof err;
         getsockopt(s, SOL_SOCKET, SO_ERROR, reinterpret_cast<char*>(&err), &len);
@@ -107,10 +112,6 @@ bool SendAll(SocketHandle s, const std::string& data) {
 
 SignalKClient::SignalKClient(wxEvtHandler* owner)
     : m_owner(owner), m_alive(std::make_shared<std::atomic<bool>>(true)) {
-#ifdef _WIN32
-  WSADATA wsa;
-  WSAStartup(MAKEWORD(2, 2), &wsa);
-#endif
   m_thread = std::thread([this] { Run(); });
 }
 
@@ -120,6 +121,8 @@ SignalKClient::~SignalKClient() {
     std::lock_guard<std::mutex> lock(m_mutex);
     m_stop = true;
     m_jobs.clear();
+    // Break off a request waiting for the server.
+    if (m_socket != -1) shutdown(static_cast<SocketHandle>(m_socket), kShutBoth);
   }
   m_cv.notify_all();
   if (m_thread.joinable()) m_thread.join();
@@ -132,81 +135,60 @@ void SignalKClient::SetServer(const std::string& host, int port, const std::stri
   m_token = token;
 }
 
-std::string SignalKClient::Host() const {
-  std::lock_guard<std::mutex> lock(m_mutex);
-  return m_host;
-}
-
-int SignalKClient::Port() const {
-  std::lock_guard<std::mutex> lock(m_mutex);
-  return m_port;
-}
-
-bool SignalKClient::HasToken() const {
-  std::lock_guard<std::mutex> lock(m_mutex);
-  return !m_token.empty();
-}
-
 void SignalKClient::Request(const std::string& method, const std::string& path,
-                            const std::string& body, Callback done, bool urgent) {
-  {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    Job job{method, path, body, std::move(done), urgent};
-    if (urgent) {
-      auto it = m_jobs.begin();
-      while (it != m_jobs.end() && it->urgent) ++it;
-      m_jobs.insert(it, std::move(job));
-    } else {
-      m_jobs.push_back(std::move(job));
-    }
-  }
+                            const std::string& body, Callback done) {
+  std::lock_guard<std::mutex> lock(m_mutex);
+  m_jobs.push_back({method, path, body, std::move(done)});
   m_cv.notify_one();
 }
 
-size_t SignalKClient::Pending() const {
-  std::lock_guard<std::mutex> lock(m_mutex);
-  return m_jobs.size() + m_running;
-}
-
 void SignalKClient::Run() {
+#ifdef _WIN32
+  WSADATA wsa;
+  WSAStartup(MAKEWORD(2, 2), &wsa);
+#endif
   for (;;) {
     Job job;
+    std::string host, token;
+    int port;
     {
       std::unique_lock<std::mutex> lock(m_mutex);
       m_cv.wait(lock, [this] { return m_stop || !m_jobs.empty(); });
-      if (m_stop) return;
+      if (m_stop) break;
       job = std::move(m_jobs.front());
       m_jobs.pop_front();
-      m_running = 1;
+      host = m_host;
+      port = m_port;
+      token = m_token;
     }
-    Response r = Perform(job);
-    {
-      std::lock_guard<std::mutex> lock(m_mutex);
-      m_running = 0;
-    }
-    auto alive = m_alive;
-    if (job.done && alive->load()) {
+    Response r = Perform(job, host, port, token);
+    if (job.done && m_alive->load()) {
+      auto alive = m_alive;
       Callback done = job.done;
       m_owner->CallAfter([alive, done, r] {
         if (alive->load()) done(r);
       });
     }
   }
+#ifdef _WIN32
+  WSACleanup();
+#endif
 }
 
-SignalKClient::Response SignalKClient::Perform(const Job& job) {
-  std::string host, token;
-  int port;
-  {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    host = m_host;
-    port = m_port;
-    token = m_token;
-  }
+SignalKClient::Response SignalKClient::Perform(const Job& job, const std::string& host,
+                                               int port, const std::string& token) {
   Response r;
   if (host.empty()) return r;
-  SocketHandle s = Connect(host, port, 3);
+  SocketHandle s = Connect(host, port, 1);
   if (s == kNoSocket) return r;
+  {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    if (m_stop) {
+      CloseSocket(s);
+      return r;
+    }
+    m_socket = static_cast<intptr_t>(s);
+  }
 #if defined(SO_NOSIGPIPE)
   int one = 1;
   setsockopt(s, SOL_SOCKET, SO_NOSIGPIPE, &one, sizeof one);
@@ -223,17 +205,18 @@ SignalKClient::Response SignalKClient::Perform(const Job& job) {
   }
   req += "Connection: close\r\n\r\n";
   if (job.method != "GET") req += job.body;
-  if (!SendAll(s, req)) {
-    CloseSocket(s);
-    return r;
-  }
+  bool sent = SendAll(s, req);
   std::string answer;
   char buf[4096];
-  for (;;) {
+  while (sent) {
     auto n = recv(s, buf, sizeof buf, 0);
     if (n <= 0) break;
     answer.append(buf, static_cast<size_t>(n));
     if (answer.size() > 1000000) break;  // a pilot status is never this big
+  }
+  {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_socket = -1;
   }
   CloseSocket(s);
   // "HTTP/1.1 200 OK\r\n...\r\n\r\nbody"

@@ -77,6 +77,10 @@ public:
   uint64_t PilotName() const { return m_pilot_name; }
 
   void Handle(const simnet::Message& m, double now);
+  /** The pilot as a Signal K server reports it: same effect as its own
+   *  messages on the bus. Signal K does not say the model; NAC is assumed. */
+  void HandleSignalK(uint8_t address, simnet::Mode mode, std::optional<double> target,
+                     std::optional<double> wind, std::optional<double> rudder, double now);
 
   /** The pilot to talk to: the fixed one, else the most likely one found. */
   std::optional<uint8_t> Address(double now) const;

@@ -36,8 +36,9 @@ class ApPanel;
 
 /**
  * One way to the pilot, as offered in the settings: an NMEA 2000 connection
- * of OpenCPN, or an NMEA 0183 connection that carries NMEA 2000 wrapped in
- * $PCDIN or $MXPGN sentences.
+ * of OpenCPN, an NMEA 0183 connection that carries NMEA 2000 wrapped in
+ * $PCDIN or $MXPGN sentences, or the Signal K server from the plugin's own
+ * settings (no OpenCPN connection, so no handle).
  */
 struct N2kDriver {
   enum class Link { kN2k, kPcdin, kMxpgn, kSignalK };
@@ -177,6 +178,7 @@ private:
                            int priority, const std::vector<uint8_t>& data);
   wrap0183::Assembler m_mxpgn_in;
   std::string m_link_key;     ///< key of the way seen at the last timer tick
+  N2kDriver::Link m_link = N2kDriver::Link::kN2k;  ///< its kind
   double m_link_since = 0;
   // Signal K way.
   std::unique_ptr<SignalKClient> m_sk;
@@ -184,9 +186,9 @@ private:
   int m_sk_port = 3000;
   std::string m_sk_token;
   std::string m_sk_client_id;
-  /** The server has signalk-simnet-pilot-state (actions.command and .nfu);
-   *  else the plugin falls back to signalk-autopilot. */
-  bool m_sk_simnet = true;
+  /** The server has signalk-simnet-pilot-state (actions.command and .nfu),
+   *  seen in the state's sources; else commands go to signalk-autopilot. */
+  bool m_sk_simnet = false;
   std::string m_sk_state_time;  ///< timestamp of the last state seen
   std::string m_sk_request;     ///< href of a pending access request
   wxString m_sk_access;         ///< last access state, for the settings
@@ -196,7 +198,7 @@ private:
   void PollSignalK();
   void OnSignalKStatus(const std::string& body);
   void PollAccessRequest();
-  void SkPut(const sk_bridge::Put& put, simnet::Command c, bool fallback_tried);
+  void SkPut(const sk_bridge::Put& put, simnet::Command c);
   uint8_t m_mxpgn_sequence = 0;
   void OnTimer(wxTimerEvent&);
   void LoadConfig();
