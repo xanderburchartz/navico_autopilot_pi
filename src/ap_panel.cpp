@@ -623,13 +623,14 @@ private:
 
 class TackDialog : public PluginDialog {
 public:
+  /** \p wind: angle held (deg), to tell a gybe from a tack. As on a pilot
+   *  display: only the question; the pilot chooses the side. */
   TackDialog(wxWindow* parent, NavicoAutopilotPi* plugin, const Theme& theme,
-             std::optional<double> heading, std::optional<double> wind, bool magnetic)
-      : PluginDialog(parent, _("Tack or gybe"), wxCAPTION | wxSTAY_ON_TOP),
-        m_plugin(plugin) {
+             std::optional<double> wind)
+      : PluginDialog(parent, "", wxCAPTION | wxSTAY_ON_TOP), m_plugin(plugin) {
     SetBackgroundColour(theme.back);
     bool gybe = wind && std::fabs(*wind) > 90;
-    wxString unit = magnetic ? L"\u00B0M" : L"\u00B0T";
+    SetTitle(gybe ? _("Gybe") : _("Tack"));
     auto* top = new wxBoxSizer(wxVERTICAL);
     auto text = [&](const wxString& t, bool bold) {
       auto* st = new wxStaticText(this, wxID_ANY, t);
@@ -643,20 +644,9 @@ public:
       top->Add(st, 0, wxLEFT | wxRIGHT | wxTOP, 12);
     };
     text(gybe ? _("Gybe?") : _("Tack?"), true);
-    std::optional<double> next;
-    if (heading && wind) next = std::fmod(*heading + 2 * *wind + 720.0, 360.0);
-    text(wxString::Format(_("Heading now %s%s, after the maneuver about %s%s."), Three(heading), unit,
-                          Three(next), unit), false);
-    if (wind)
-      text(wxString::Format(_("Wind angle %s %s becomes %s %s."),
-                            wxString::Format(L"%.0f\u00B0", std::fabs(*wind)),
-                            *wind < 0 ? _("port") : _("starboard"),
-                            wxString::Format(L"%.0f\u00B0", std::fabs(*wind)),
-                            *wind < 0 ? _("starboard") : _("port")),
-           false);
     auto* buttons = new wxBoxSizer(wxHORIZONTAL);
     auto* cancel = new ApButton(this, _("Cancel"));
-    auto* confirm = new ApButton(this, gybe ? _("Gybe") : _("Tack"));
+    auto* confirm = new ApButton(this, _("OK"));
     for (ApButton* b : {cancel, confirm}) {
       b->SetTheme(theme);
       b->SetMinSize(wxSize(GetCharWidth() * 14, GetCharHeight() * 3));
@@ -809,9 +799,6 @@ public:
         pg->Add(unit, 0, wxALIGN_CENTRE_VERTICAL);
       }
       right->Add(pg, 0, wxEXPAND | wxTOP, 8);
-      auto* about = new wxStaticText(this, wxID_ANY, _("Press a value to change it."));
-      about->SetForegroundColour(theme.label);
-      right->Add(about, 0, wxTOP, 12);
     }
     top->AddSpacer(12);
     m_note = new wxStaticText(this, wxID_ANY, "");
@@ -898,18 +885,15 @@ private:
       choices.Add(wxString::Format(_("%s, %s (%zu values)"), wxString::FromUTF8(snap.time.c_str()),
                                    wxString::FromUTF8(snap.reason.c_str()),
                                    snap.entries.size()));
-    wxSingleChoiceDialog pick(this, _("Take a snapshot of the settings now, or choose one to go back to."),
-                              _("Snapshots"), choices);
+    wxSingleChoiceDialog pick(this, _("Snapshots"), _("Snapshots"), choices);
     if (pick.ShowModal() != wxID_OK) return;
     int missing = 0;
     if (pick.GetSelection() == 0) {
       auto snap = m_plugin->TakeSnapshot(std::string(wxString(_("Taken by hand")).utf8_str()), &missing);
       bool ok = m_plugin->SaveSnapshot(snap);
-      SetNote(!ok ? _("The snapshot could not be saved.")
-                  : missing ? wxString::Format(_("Snapshot saved: %zu values, %d not read. Read again "
-                                                 "and take another for a complete one."),
-                                               snap.entries.size(), missing)
-                            : wxString::Format(_("Snapshot saved: %zu values."), snap.entries.size()));
+      SetNote(!ok ? _("Snapshot not saved")
+                  : missing ? wxString::Format(_("Snapshot saved, %d not read"), missing)
+                            : wxString(_("Snapshot saved")));
       return;
     }
     const auto& snap = list[static_cast<size_t>(pick.GetSelection() - 1)];
@@ -919,6 +903,7 @@ private:
     auto rudder = m_plugin->RudderNode();
     std::vector<NavicoAutopilotPi::SettingWrite> writes;
     wxString lines;
+    int unread = 0;
     for (const auto& e : snap.entries) {
       const auto* d = pilot_settings::Find(e.key);
       if (!d || !pilot_settings::Editable(e.key)) continue;
@@ -928,20 +913,34 @@ private:
       std::optional<uint32_t> now;
       if (kv) now = kv->Unsigned(static_cast<size_t>(d->bytes));
       if (now && *now == e.raw) continue;
+      // Not read now: nothing to compare with, so not sent back.
+      if (!now) {
+        unread++;
+        continue;
+      }
       wxString name = Tr(d->name);
       for (const auto& prof : pilot_settings::Profiles())
         if (d->per_profile && prof.instance == e.instance)
           name += " (" + Tr(prof.name) + ")";
-      lines += wxString::Format("%s: %s -> %s\n", name, now ? Describe(*d, *now) : wxString("?"),
-                                Describe(*d, e.raw));
+      lines += wxString::Format("%s: %s -> %s\n", name, Describe(*d, *now), Describe(*d, e.raw));
       writes.push_back({*a, e.key, e.raw, d->bytes, d->per_profile ? e.instance : uint8_t{0xFF}});
     }
+    if (unread)
+      lines += "\n" + wxString::Format(_("%d not read, skipped"), unread) + "\n";
     if (writes.empty()) {
-      SetNote(_("The settings are the same as in that snapshot."));
+      SetNote(unread ? _("Nothing to restore") : _("No differences"));
       return;
     }
-    wxString question = wxString::Format(_("Go back to the snapshot of %s?\n\n%s"),
-                                         wxString::FromUTF8(snap.time.c_str()), lines);
+    // A snapshot belongs to one pilot computer (its NAME).
+    wxString warning;
+    std::optional<simnet::Name> current;
+    if (pilot) current = s.NameOf(*pilot);
+    if (snap.pilot && current && current->raw != snap.pilot)
+      warning = _("Other autopilot!") + "\n\n";
+    else if (!current || !snap.pilot)
+      warning = _("Autopilot unknown") + "\n\n";
+    wxString question = warning + wxString::Format(_("Restore %s?"), wxString::FromUTF8(snap.time.c_str())) +
+                        "\n\n" + lines;
     if (wxMessageBox(question, _("Snapshots"), wxYES_NO | wxICON_QUESTION, this) != wxYES) return;
     auto before = m_plugin->TakeSnapshot(
         std::string(wxString::Format(_("Before going back to %s"),
@@ -949,13 +948,12 @@ private:
                         .utf8_str()),
         &missing);
     if (!m_plugin->SaveSnapshot(before) &&
-        wxMessageBox(_("The snapshot of the current settings could not be saved. Change anyway?"),
+        wxMessageBox(_("Snapshot not saved. Change anyway?"),
                      _("Snapshots"), wxYES_NO | wxICON_WARNING, this) != wxYES)
       return;
     m_snapshot_taken = true;
     m_plugin->WritePilotSettings(writes);
-    SetNote(wxString::Format(_("Values sent: %zu. The window shows what the autopilot answers."),
-                             writes.size()));
+    SetNote(wxString::Format(_("%zu values sent"), writes.size()));
   }
 
   void InstallationPressed() {
@@ -965,14 +963,12 @@ private:
       m_install_presses = 0;
     }
     if (++m_install_presses < 3) {
-      SetNote(wxString::Format(_("Press %d more times to show the installation settings."),
-                               3 - m_install_presses));
+      SetNote(wxString::Format(_("%d more"), 3 - m_install_presses));
       return;
     }
     for (wxWindow* w : m_installation) w->Show();
     m_install_button->Hide();
-    SetNote(_("Installation settings: boat, drive and rudder. Change them only if you know "
-              "what they do."));
+    SetNote(_("Installation"));
     GetSizer()->SetSizeHints(this);
     Fit();
   }
@@ -1047,7 +1043,7 @@ private:
       auto snap = m_plugin->TakeSnapshot(
           std::string(wxString::Format(_("Before changing %s"), title).utf8_str()), &missing);
       if (!m_plugin->SaveSnapshot(snap) &&
-          wxMessageBox(_("The snapshot of the current settings could not be saved. Change anyway?"),
+          wxMessageBox(_("Snapshot not saved. Change anyway?"),
                        _("Change autopilot setting"), wxYES_NO | wxICON_WARNING, this) != wxYES)
         return;
       m_snapshot_taken = true;
@@ -1057,7 +1053,7 @@ private:
     m_write = WriteState{*address, &d, v, instance, title};
     if (!m_plugin->WritePilotSetting(*address, d.key, raw, d.bytes, instance)) {
       m_write.reset();
-      SetNote(_("Sending failed."));
+      SetNote(_("Send error"));
     }
   }
 
@@ -1130,20 +1126,20 @@ private:
         if (v && std::fabs(*v - w.value) <= std::max(step, std::fabs(w.value) * 0.02))
           SetNote(wxString::Format(_("%s set to %s."), name, got));
         else
-          SetNote(wxString::Format(_("%s: the autopilot answered %s."), name, got));
+          SetNote(wxString::Format("%s: %s", name, got));
         m_write.reset();
       } else if (now - m_write_sent > 3) {
-        SetNote(_("No answer from the autopilot: the setting may not have changed. Read again to check."));
+        SetNote(_("Unconfirmed"));
         m_write.reset();
       } else {
-        SetNote(_("Waiting for the autopilot..."));
+        SetNote(_("Waiting..."));
       }
       return;
     }
     if (!pilot)
-      SetNote(_("No autopilot found."));
+      SetNote(_("No autopilot"));
     else if (answered == 0 && !m_plugin->ReadingSettings() && m_plugin->Now() - m_asked > 3)
-      SetNote(_("The autopilot did not answer. It may accept settings requests only from its own displays."));
+      SetNote(_("No response"));
   }
 
   struct WriteState {
@@ -1182,7 +1178,7 @@ private:
 class NavConfirmDialog : public PluginDialog {
 public:
   NavConfirmDialog(wxWindow* parent, NavicoAutopilotPi* plugin, const Theme& theme)
-      : PluginDialog(parent, _("Start navigation"), wxCAPTION | wxSTAY_ON_TOP),
+      : PluginDialog(parent, _("NAV"), wxCAPTION | wxSTAY_ON_TOP),
         m_plugin(plugin) {
     SetBackgroundColour(theme.back);
     SetForegroundColour(theme.text);
@@ -1203,7 +1199,7 @@ public:
 
     auto* buttons = new wxBoxSizer(wxHORIZONTAL);
     auto* cancel = new ApButton(this, _("Cancel"));
-    auto* confirm = new ApButton(this, _("Confirm"));
+    auto* confirm = new ApButton(this, _("OK"));
     for (ApButton* b : {cancel, confirm}) {
       b->SetTheme(theme);
       b->SetMinSize(wxSize(GetCharWidth() * 14, GetCharHeight() * 3));
@@ -1225,12 +1221,10 @@ public:
   /** Update texts; seconds_left counts down the pilot's 10 s. */
   void SetInfo(const wxString& waypoint, std::optional<double> bearing, bool magnetic,
               int seconds_left) {
-    wxString q = waypoint.empty() ? wxString(_("Steer to the waypoint?"))
-                                  : wxString::Format(_("Steer to waypoint %s?"), waypoint);
-    wxString d = bearing ? wxString::Format(_("The autopilot will turn to %s%s."), Three(bearing),
-                                            magnetic ? L"°M" : L"°T")
-                         : wxString(_("The autopilot will turn to the waypoint."));
-    wxString c = wxString::Format(_("%d s left to confirm"), std::max(0, seconds_left));
+    wxString q = waypoint.empty() ? wxString(_("To waypoint?"))
+                                  : wxString::Format(_("To %s?"), waypoint);
+    wxString d = bearing ? Three(bearing) + (magnetic ? L"°M" : L"°T") : wxString();
+    wxString c = wxString::Format("%d s", std::max(0, seconds_left));
     bool resize = false;
     if (m_question->GetLabel() != q) { m_question->SetLabel(q); resize = true; }
     if (m_detail->GetLabel() != d) { m_detail->SetLabel(d); resize = true; }
@@ -1368,6 +1362,8 @@ void ApPanel::UpdateState(double now) {
     }
     // Only the model: "NAC 4" read as a NAC-4. The address is in the settings.
     d.badge = model;
+    // Signal K does not say the model; the server names its provider.
+    if (m_plugin->UsingSignalK()) d.badge = m_plugin->SignalKPilotLabel();
   }
   m_display->Set(d);
 
@@ -1394,30 +1390,33 @@ void ApPanel::UpdateState(double now) {
   if (m_plugin->NfuActive() && !nfu_buttons) m_plugin->StopNfu();
 
   // One line of explanation, most important first; then the pilot's alarms.
-  wxString msg = m_plugin->LastMessage();
+  // A chosen connection that is gone goes before an older message: nothing
+  // can be sent until it is back or another one is chosen.
+  wxString msg = m_plugin->ChosenMissing()
+                     ? _("Connection lost")
+                     : m_plugin->LastMessage();
   if (msg.empty()) {
     auto drv = m_plugin->Driver();
     bool wrapped = drv && (drv->link == N2kDriver::Link::kPcdin ||
                            drv->link == N2kDriver::Link::kMxpgn);
     if (!drv)
-      msg = _("Choose the NMEA 2000 connection in the plugin settings.");
+      msg = _("No connection");
     else if (wrapped && !alive && now - m_plugin->LinkSince() >= 10)
       // Yacht Devices gateways wrap only engine, tank and battery PGNs in
       // NMEA 0183 (YDWG-02 manual, tables 1 and 2), not the pilot's. Only
       // after 10 s without a mode report (65305), so a working MiniPlex gets
       // no warning while it connects; gone as soon as the pilot reports.
-      msg = _("No autopilot data through NMEA 0183. A Yacht Devices gateway does not pass the "
-              "autopilot this way: connect its RAW server as an NMEA 2000 connection.");
+      msg = _("No data");
     else if (drv->link == N2kDriver::Link::kSignalK && (!address || !alive))
-      msg = _("No autopilot data from the Signal K server.");
+      msg = _("No data");
     else if (!address)
-      msg = _("No autopilot found");
+      msg = _("No autopilot");
     else if (!alive)
-      msg = _("No data from the autopilot.");
+      msg = _("No data");
     else if (s.Unconfirmed(now))
-      msg = _("No reply from the autopilot. Is transmitting enabled on the gateway?");
+      msg = _("No response");
     else if (s.NotFollowed(now))
-      msg = _("The autopilot did not change mode.");
+      msg = _("Mode not changed");
   }
   wxString note = m_plugin->RouteNote();
   if (!note.empty()) {
@@ -1487,18 +1486,18 @@ void ApPanel::SetNfuButtons(bool nfu) {
 }
 
 void ApPanel::OpenTackDialog() {
+  // One window at a time: two confirmed windows would tack twice.
+  if (m_tack) {
+    m_tack->Raise();
+    return;
+  }
   const PilotState& s = m_plugin->State();
-  double now = m_plugin->Now();
-  bool magnetic = s.TargetMagnetic();
-  std::optional<double> heading;
-  double h = m_plugin->Heading(magnetic);
-  if (!std::isnan(h)) heading = h;
   auto wind = Deg(s.TargetWindAngle());
-  if (!wind) wind = Deg(s.ApparentWind(now));
-  auto* dlg = new TackDialog(wxGetTopLevelParent(this), m_plugin, ThemeFor(m_plugin->ColorScheme()),
-                             heading, wind, magnetic);
+  if (!wind) wind = Deg(s.ApparentWind(m_plugin->Now()));
+  auto* dlg = new TackDialog(wxGetTopLevelParent(this), m_plugin, ThemeFor(m_plugin->ColorScheme()), wind);
   dlg->CentreOnParent();
   dlg->Show();
+  m_tack = dlg;
 }
 
 void ApPanel::ApplyColours(PI_ColorScheme cs) {

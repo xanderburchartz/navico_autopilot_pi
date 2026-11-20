@@ -97,8 +97,8 @@ ApPrefs::ApPrefs(wxWindow* parent, NavicoAutopilotPi* plugin)
 
   grid->Add(new wxStaticText(this, wxID_ANY, _("Boat speed")), 0, wxALIGN_CENTRE_VERTICAL);
   m_speed = new wxChoice(this, wxID_ANY);
-  m_speed->Append(_("Speed over ground (from OpenCPN)"));
-  m_speed->Append(_("Speed through water (log)"));
+  m_speed->Append(_("SOG"));
+  m_speed->Append(_("STW"));
   m_speed->SetSelection(plugin->UseStw() ? 1 : 0);
   grid->Add(m_speed, 1, wxEXPAND);
   top->Add(grid, 0, wxEXPAND | wxALL, 10);
@@ -159,7 +159,7 @@ void ApPrefs::FillPilotList() {
   auto best = state.AutoPilot(now);
   m_pilot->Clear();
   m_pilot_addresses.clear();
-  wxString automatic = _("Automatic: no autopilot found yet");
+  wxString automatic = _("Automatic");
   for (const auto& c : list)
     if (best && c.address == *best)
       automatic = wxString::Format(_("%s (automatic)"), PilotLabel(c));
@@ -203,7 +203,7 @@ void ApPrefs::FillRudderList() {
   auto best = state.AutoRudder(now);
   m_rudder->Clear();
   m_rudder_names.clear();
-  wxString automatic = _("Automatic: no rudder sensor found yet");
+  wxString automatic = _("Automatic");
   for (const auto& r : list)
     if (best && r.address == *best)
       automatic = wxString::Format(_("%s (automatic)"), RudderLabel(r));
@@ -218,7 +218,7 @@ void ApPrefs::FillRudderList() {
   }
   if (m_rudder_choice && sel == 0) {
     // Chosen sensor not on the bus right now: keep the choice.
-    m_rudder->Append(_("The chosen sensor (not seen now)"));
+    m_rudder->Append(_("Chosen sensor (not seen)"));
     m_rudder_names.push_back(m_rudder_choice);
     sel = m_rudder->GetCount() - 1;
   }
