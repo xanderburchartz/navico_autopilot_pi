@@ -93,6 +93,11 @@ public:
 
   // Used by the panel and the settings dialog.
   bool SendCommand(simnet::Command c);
+  /** Active pilot alarms not yet acknowledged; none through Signal K. */
+  std::vector<PilotState::ActiveAlarm> AlarmsToAcknowledge() const;
+  /** Acknowledge each of them on the pilot, as a Triton2 keypad does. Only
+   *  on a user's action. */
+  bool AcknowledgeAlarms();
   /** Confirm a pending NAV, as a Triton2 keypad does: 0x1C, then NAV. */
   void ConfirmNav();
   /** Ask all devices once for their NAME (ISO request for 60928). */

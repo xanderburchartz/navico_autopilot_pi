@@ -220,6 +220,14 @@ std::optional<Alarm> ParseAlarm(const std::vector<uint8_t>& d) {
   return a;
 }
 
+std::vector<uint8_t> AlarmAckData(uint16_t id, uint8_t f) {
+  // Recorded on 20 Nov 2026: a Triton2 answered "41 9F FF FF 01 FF 39 00 3F
+  // 00 03 00" with "41 9F FF FF 01 FF 38 00 3F 00 03 00"; the pilot then
+  // cleared the alarm (0x3A) about 1 s later.
+  return {kHeader0, kHeader1, 0xFF, 0xFF, 0x01, 0xFF, 0x38, 0x00,
+          static_cast<uint8_t>(id & 0xFF), static_cast<uint8_t>(id >> 8), f, 0x00};
+}
+
 std::optional<AlarmText> ParseAlarmText(const std::vector<uint8_t>& d) {
   if (d.size() < 6 || !HasSimnetHeader(d) || d[5] != 0x01) return std::nullopt;
   AlarmText t;

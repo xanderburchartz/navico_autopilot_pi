@@ -404,6 +404,35 @@ bool NavicoAutopilotPi::SendCommand(simnet::Command c) {
   return true;
 }
 
+std::vector<PilotState::ActiveAlarm> NavicoAutopilotPi::AlarmsToAcknowledge() const {
+  std::vector<PilotState::ActiveAlarm> out;
+  auto driver = Driver();
+  if (!driver || driver->link == N2kDriver::Link::kSignalK) return out;
+  for (const auto& a : m_state.Alarms(Now()))
+    if (a.state == 0x39) out.push_back(a);
+  return out;
+}
+
+bool NavicoAutopilotPi::AcknowledgeAlarms() {
+  auto driver = Driver();
+  auto alarms = AlarmsToAcknowledge();
+  if (!driver || alarms.empty()) return false;
+  bool ok = true;
+  for (const auto& a : alarms) {
+    auto data = simnet::AlarmAckData(a.id, a.f);
+    CommDriverResult r =
+        SendN2k(*driver, simnet::kPgnCommand, 255, simnet::kCommandPriority, data);
+    wxLogMessage("navico_autopilot_pi: acknowledge alarm %d (%s) via %s: 130850 %s (result %d)",
+                 a.id, a.text.c_str(), driver->label.c_str(), simnet::Hex(data).c_str(), r);
+    if (r != RESULT_COMM_NO_ERROR) {
+      m_last_message = wxString::Format(_("Sending failed (error %d)."), r);
+      ok = false;
+    }
+  }
+  if (ok) m_last_message.clear();
+  return ok;
+}
+
 void NavicoAutopilotPi::Register(const std::string& handle) {
   if (m_registered.count(handle)) return;
   std::vector<int> pgns = {simnet::kPgnCommand, simnet::kPgnIsoRequest, simnet::kPgnKeyValue};
@@ -849,7 +878,7 @@ void NavicoAutopilotPi::NotifyAlarms() {
   // Each alarm of the pilot once as an OpenCPN notification (the bell on the
   // chart), taken back when the pilot has not sent it for 30 s (an alarm that
   // comes and goes stays one notification). Acknowledging it in OpenCPN does
-  // not acknowledge it on the pilot.
+  // not acknowledge it on the pilot; the panel's button does.
   std::set<uint16_t> active;
   std::map<uint16_t, std::string> texts;
   for (const auto& a : m_state.Alarms(Now())) {

@@ -268,6 +268,15 @@ static void TestNavAndSensors() {
   s.Handle(Rx(130850, 2, "41 9f ff ff 01 ff 39 00 22 00 01 00"), t0 + 60);
   auto al = s.Alarms(t0 + 61);
   CHECK(al.size() == 1 && al[0].id == 0x4D && al[0].text == "Drive computer missing");
+  CHECK(al[0].state == 0x39 && al[0].f == 4);
+  // Acknowledged as a Triton2 does (recorded 20 Nov 2026): same message, state 0x38.
+  CheckEq(AlarmAckData(0x3F, 3), "41 9F FF FF 01 FF 38 00 3F 00 03 00", "ack rudder limit");
+  CheckEq(AlarmAckData(0x17, 2), "41 9F FF FF 01 FF 38 00 17 00 02 00", "ack off heading");
+  CheckEq(AlarmAckData(al[0].id, al[0].f), "41 9F FF FF 01 FF 38 00 4D 00 04 00", "ack from alarm");
+  // Acknowledged on the pilot: still shown, but not acknowledged again.
+  s.Handle(Rx(130850, 4, "41 9f ff ff 01 ff 38 00 4d 00 04 00"), t0 + 61.5);
+  al = s.Alarms(t0 + 61.6);
+  CHECK(al.size() == 1 && al[0].state == 0x38);
   s.Handle(Rx(130850, 4, "41 9f ff ff 01 ff 3a 00 4d 00 04 00"), t0 + 62);
   CHECK(s.Alarms(t0 + 63).empty());
 

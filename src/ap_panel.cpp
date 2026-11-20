@@ -1283,8 +1283,20 @@ ApPanel::ApPanel(wxWindow* parent, NavicoAutopilotPi* plugin)
 
   m_message = new wxStaticText(this, wxID_ANY, "", wxDefaultPosition, wxSize(-1, -1),
                                wxST_NO_AUTORESIZE);
-  m_message->SetMinSize(wxSize(GetCharWidth() * 34, GetCharHeight() * 2));
-  top->Add(m_message, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 6);
+  m_message->SetMinSize(wxSize(GetCharWidth() * 24, GetCharHeight() * 2));
+  auto* message_row = new wxBoxSizer(wxHORIZONTAL);
+  message_row->Add(m_message, 1, wxEXPAND);
+  // Sends nothing by itself: only a press acknowledges the alarms.
+  auto* ack = new ApButton(this, _("ACK"));
+  ack->SetMinSize(wxSize(GetCharWidth() * 9, GetCharHeight() * 2));
+  ack->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
+    m_plugin->AcknowledgeAlarms();
+    UpdateState(m_plugin->Now());
+  });
+  ack->Hide();
+  m_ack = ack;
+  message_row->Add(ack, 0, wxEXPAND | wxLEFT, 4);
+  top->Add(message_row, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 6);
 
   SetSizerAndFit(top);
   ApplyColours(m_plugin->ColorScheme());
@@ -1417,6 +1429,12 @@ void ApPanel::UpdateState(double now) {
     if (!msg.empty()) msg += "\n";
     msg += wxString::Format(_("Alarm: %s"), wxString::FromUTF8(a.text.c_str()));
   }
+  bool ack = !m_plugin->AlarmsToAcknowledge().empty();
+  if (m_ack->IsShown() != ack) {
+    m_ack->Show(ack);
+    Layout();
+    m_message->SetLabel("");  // wrapped again below for the new width
+  }
   if (m_message->GetLabel() != msg) {
     m_message->SetLabel(msg);
     m_message->Wrap(m_message->GetSize().GetWidth());
@@ -1490,5 +1508,6 @@ void ApPanel::ApplyColours(PI_ColorScheme cs) {
   m_message->SetForegroundColour(t.text);
   m_display->SetTheme(t);
   for (auto& [c, b] : m_buttons) static_cast<ApButton*>(b)->SetTheme(t);
+  static_cast<ApButton*>(m_ack)->SetTheme(t);
   Refresh();
 }

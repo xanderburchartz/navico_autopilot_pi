@@ -68,6 +68,8 @@ public:
   struct ActiveAlarm {
     uint16_t id = 0;
     std::string text;  ///< empty until 130856 arrived
+    uint8_t state = 0;  ///< 0x39 active, 0x38 acknowledged
+    uint8_t f = 0;      ///< byte 10, repeated in an acknowledgement
   };
 
   /** Fixed pilot address from the settings, or none for automatic. */
@@ -167,6 +169,7 @@ private:
 
   struct AlarmEntry {
     uint8_t state = 0;
+    uint8_t f = 0;
     double last_seen = 0;
     std::string text;
   };

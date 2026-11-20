@@ -135,6 +135,7 @@ void PilotState::Handle(const simnet::Message& m, double now) {
       if (!a) return;
       AlarmEntry& e = m_alarms[a->id];
       e.state = a->state;
+      e.f = a->f;
       e.last_seen = now;
       return;
     }
@@ -310,7 +311,7 @@ std::vector<PilotState::ActiveAlarm> PilotState::Alarms(double now) const {
   for (const auto& [id, e] : m_alarms) {
     if (e.state == 0x3A || now - e.last_seen > kAlarmTimeout) continue;
     if (e.state != 0x39 && e.state != 0x38) continue;
-    out.push_back({id, e.text});
+    out.push_back({id, e.text, e.state, e.f});
   }
   return out;
 }

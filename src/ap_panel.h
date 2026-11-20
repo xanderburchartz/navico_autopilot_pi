@@ -44,6 +44,7 @@ private:
   NavicoAutopilotPi* m_plugin;
   ApDisplay* m_display;
   wxStaticText* m_message;
+  wxWindow* m_ack = nullptr;  ///< acknowledges the pilot's alarms, shown with one
   std::map<simnet::Command, wxWindow*> m_buttons;
   NavConfirmDialog* m_confirm = nullptr;
   double m_confirm_handled = -1e9;  ///< AwaitingSince() of the last shown request

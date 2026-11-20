@@ -169,7 +169,10 @@ Alarm: ...::
 An alarm the pilot reports, with its own text, as long as it is active. It also appears once
 under OpenCPN's notification bell; an alarm that comes and goes keeps that
 one notification, which is taken back 30 seconds after the pilot stopped
-reporting it. Acknowledging it there does not acknowledge it on the pilot.
+reporting it. Acknowledging it there does not acknowledge it on the pilot;
+the *ACK* button next to the message does, the way a Triton2 keypad does.
+*ACK* is only shown while the pilot reports an alarm that is not yet
+acknowledged, and not through Signal K.
 Not on Android, where the OpenCPN library has no notifications.
 The autopilot did not answer. It may accept settings requests only from its own displays.::
 None of the settings requests got an answer. The NAC-3 answers through a

@@ -150,6 +150,9 @@ struct Alarm {
   uint8_t f = 0;      ///< meaning unknown, 1..4 seen
 };
 std::optional<Alarm> ParseAlarm(const std::vector<uint8_t>& d);
+/** Acknowledge an alarm, as a Triton2 keypad does: the pilot's alarm message
+ *  with state 0x38 (acknowledged), id and f copied, broadcast. */
+std::vector<uint8_t> AlarmAckData(uint16_t id, uint8_t f);
 
 /** 130856: text of an alarm. */
 struct AlarmText {
