@@ -150,8 +150,21 @@ static void TestPilotState() {
 
   // No answer: unconfirmed after the timeout.
   s.CommandSent(Command::kWind, CommandData(Command::kWind, 4), t + 4);
-  CHECK(!s.Unconfirmed(t + 4.5));
-  CHECK(s.Unconfirmed(t + 6));
+  CHECK(!s.Unconfirmed(t + 7.5));  // data from a gateway can come in bursts
+  CHECK(s.Unconfirmed(t + 8.5));
+
+  // The echo (130851) can be lost on a gateway: in WIND, -1 counts as
+  // answered when the wind angle to hold (65341) changes, without an echo.
+  {
+    PilotState w;
+    w.Handle(Rx(65305, 4, "41 9F 64 0A 00 04 00 00"), t);
+    CHECK(w.Mode() == Mode::kWind);
+    w.Handle(Rx(65341, 4, "41 9F FF FF 03 FF 10 27"), t + 0.1);
+    w.CommandSent(Command::kPort1, CommandData(Command::kPort1, 4), t + 0.2);
+    CHECK(w.Unconfirmed(t + 5));  // nothing yet
+    w.Handle(Rx(65341, 4, "41 9F FF FF 03 FF C4 26"), t + 1);
+    CHECK(!w.Unconfirmed(t + 5) && !w.NotFollowed(t + 6));
+  }
 
   // Silence: not alive after kAliveTimeout (10 s).
   CHECK(s.Alive(t + 9) && !s.Alive(t + 11));
@@ -242,11 +255,12 @@ static void TestNavAndSensors() {
   s.CommandSent(Command::kNav, CommandData(Command::kNav, 4), t0 + 40);
   s.Handle(Rx(130851, 4, "41 9f 04 ff ff 0a 0a 00 ff ff ff a3"), t0 + 40.3);
   s.Handle(Rx(65305, 4, "41 9F 64 0A 08 00 00 40"), t0 + 41);
-  CHECK(!s.NotFollowed(t0 + 42) && !s.Unconfirmed(t0 + 42));  // 3 s, as the app
-  CHECK(s.NotFollowed(t0 + 44) && !s.Unconfirmed(t0 + 44));
+  CHECK(!s.NotFollowed(t0 + 44.5) && !s.Unconfirmed(t0 + 44.5));  // 5 s
+  CHECK(s.NotFollowed(t0 + 45.5) && !s.Unconfirmed(t0 + 45.5));
   // No echo at all: unconfirmed.
   s.CommandSent(Command::kAuto, CommandData(Command::kAuto, 4), t0 + 50);
-  CHECK(s.Unconfirmed(t0 + 52) && !s.NotFollowed(t0 + 52));
+  CHECK(!s.Unconfirmed(t0 + 53.5));  // 4 s
+  CHECK(s.Unconfirmed(t0 + 54.5) && !s.NotFollowed(t0 + 54.5));
 
   // Alarms from the pilot only.
   s.Handle(Rx(130850, 4, "41 9f ff ff 01 ff 39 00 4d 00 04 00"), t0 + 60);

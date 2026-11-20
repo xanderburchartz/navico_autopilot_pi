@@ -40,10 +40,12 @@ public:
   static constexpr double kAliveTimeout = 10.0;
   /** Candidates not heard from for this long are forgotten. */
   static constexpr double kCandidateTimeout = 30.0;
-  /** A command without a matching report within this time: "not confirmed". */
-  static constexpr double kConfirmTimeout = 1.5;
+  /** A command without a matching report within this time: "not confirmed".
+   *  The pilot answers within 50 ms on the bus, but a Wi-Fi gateway can pass
+   *  data on in bursts, up to about 2 s late. */
+  static constexpr double kConfirmTimeout = 4.0;
   /** Echoed command without a matching report after this: "not followed". */
-  static constexpr double kFollowTimeout = 3.0;
+  static constexpr double kFollowTimeout = 5.0;
   /** How long the pilot waits for a NAV confirmation (measured on a NAC-3). */
   static constexpr double kNavConfirmWindow = 10.0;
   /** Rudder and wind values older than this are not shown. */

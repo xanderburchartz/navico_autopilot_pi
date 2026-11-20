@@ -160,10 +160,10 @@ connection receives NMEA 2000 data and that the pilot computer is on.
 Choose the NMEA 2000 connection in the plugin settings::
 OpenCPN has no NMEA 2000 connection, or more than one and none is chosen.
 No reply from the autopilot. Is transmitting enabled on the gateway?::
-The pilot did not echo the command within 1.5 seconds. Check that the
-connection has output enabled.
+Within 4 seconds the pilot neither echoed the command nor reported a new
+mode, heading or wind angle. Check that the connection has output enabled.
 The autopilot did not change mode::
-The pilot echoed the command but did not follow it within 3 seconds, for
+The pilot echoed the command but did not follow it within 5 seconds, for
 example NAV without navigation data.
 Alarm: ...::
 An alarm the pilot reports, with its own text, as long as it is active. It also appears once
