@@ -173,6 +173,8 @@ private:
   void On0183(const char* id, ObservedEvt& ev);
   /** A received message, whichever way it came. */
   void HandleMessage(const simnet::Message& msg);
+  /** Log a new target heading or wind angle while the pilot steers. */
+  void LogTargetChanges(std::optional<double> target_before, std::optional<double> wind_before);
   /** Send one NMEA 2000 message the chosen way. */
   CommDriverResult SendN2k(const N2kDriver& driver, int pgn, uint8_t destination,
                            int priority, const std::vector<uint8_t>& data);
@@ -194,6 +196,7 @@ private:
   wxString m_sk_access;         ///< last access state, for the settings
   bool m_sk_polling = false;
   bool m_sk_access_polling = false;
+  int m_sk_nfu_pending = 0;  ///< NFU requests sent, not yet answered
   double m_sk_access_last = 0;
   void PollSignalK();
   void OnSignalKStatus(const std::string& body);

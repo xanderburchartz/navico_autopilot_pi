@@ -37,6 +37,7 @@ namespace {
 const char* const kConfigPath = "/PlugIns/NavicoAutopilot";
 const char* const kPaneName = "NavicoAutopilot";
 constexpr int kToolPosition = -1;
+constexpr double kRadToDeg = 57.29577951308232;
 
 wxString PluginIcon(const char* base) {
   wxFileName f(GetPluginDataDir(PKG_NAME), "");
@@ -89,8 +90,9 @@ int NavicoAutopilotPi::Init() {
   AddLocaleCatalog(NAVICO_AP_CATALOG);
   LoadConfig();
   m_sk = std::make_unique<SignalKClient>(this);
-  m_sk_polling = false;  // results of an earlier client are dropped
+  m_sk_polling = false;  // the callbacks of an earlier client never ran
   m_sk_access_polling = false;
+  m_sk_nfu_pending = 0;
   m_sk->SetServer(m_sk_host, m_sk_port, m_sk_token);
 
   wxString icon = PluginIcon("navico_autopilot_pi");
@@ -247,8 +249,13 @@ void NavicoAutopilotPi::HandleMessage(const simnet::Message& msg) {
   if (m_state.Mode() != before)
     wxLogMessage("navico_autopilot_pi: pilot mode %s -> %s",
                  simnet::ModeName(before), simnet::ModeName(m_state.Mode()));
+  LogTargetChanges(target_before, wind_before);
+}
+
+void NavicoAutopilotPi::LogTargetChanges(std::optional<double> target_before,
+                                         std::optional<double> wind_before) {
   // Log target changes, so a course change can be checked afterwards.
-  auto deg = [](std::optional<double> r) { return r ? *r * 57.29577951308232 : NAN; };
+  auto deg = [](std::optional<double> r) { return r ? *r * kRadToDeg : NAN; };
   // Only while the pilot steers, and only when the whole degrees differ.
   bool steering = m_state.Mode() != simnet::Mode::kStandby &&
                   m_state.Mode() != simnet::Mode::kUnknown;
@@ -432,8 +439,10 @@ bool NavicoAutopilotPi::SendNfu(simnet::NfuSide side, bool log) {
   if (driver->link == N2kDriver::Link::kSignalK) {
     if (!m_sk_simnet) return false;  // signalk-autopilot has no NFU
     auto put = sk_bridge::NfuPut(side);
+    m_sk_nfu_pending++;
     m_sk->Request("PUT", "/signalk/v1/api/vessels/self/" + put.path, "{\"value\":" + put.value + "}",
                   [this](const SignalKClient::Response& r) {
+                    m_sk_nfu_pending--;
                     if (r.status == 405 || r.status == 404)
                       m_last_message = _("NFU through Signal K needs the server plugin signalk-simnet-pilot-state.");
                     else if (r.status == 401 || r.status == 403)
@@ -480,6 +489,9 @@ void NavicoAutopilotPi::StopNfu() {
 
 void NavicoAutopilotPi::OnNfuTimer(wxTimerEvent&) {
   if (m_nfu != simnet::NfuSide::kStop) {
+    // Signal K: no repeat while one is unanswered, so a stop never waits
+    // behind a queue of repeats on a slow server.
+    if (m_sk_nfu_pending > 0) return;
     if (!SendNfu(m_nfu, false)) StopNfu();
     return;
   }
@@ -1037,6 +1049,7 @@ void NavicoAutopilotPi::OnSignalKStatus(const std::string& body) {
   if (mode == simnet::Mode::kUnknown) return;  // e.g. "dodge"
   simnet::Mode before = m_state.Mode();
   auto target_before = m_state.TargetHeading();
+  auto wind_before = m_state.TargetWindAngle();
   m_state.HandleSignalK(address.value_or(0), mode,
                         JsonNumber(ap["target"]["headingMagnetic"]["value"]),
                         JsonNumber(ap["target"]["windAngleApparent"]["value"]),
@@ -1044,14 +1057,7 @@ void NavicoAutopilotPi::OnSignalKStatus(const std::string& body) {
   if (m_state.Mode() != before)
     wxLogMessage("navico_autopilot_pi: pilot mode %s -> %s (Signal K)", simnet::ModeName(before),
                  simnet::ModeName(m_state.Mode()));
-  // Target changes as in HandleMessage, so a course change can be checked afterwards.
-  if (m_state.TargetHeading() && m_state.Mode() != simnet::Mode::kStandby) {
-    long t0 = target_before ? std::lround(*target_before * 57.29577951308232) : -1;
-    long t1 = std::lround(*m_state.TargetHeading() * 57.29577951308232);
-    if (t0 != t1)
-      wxLogMessage("navico_autopilot_pi: target heading %s -> %ld M",
-                   t0 < 0 ? wxString("---") : wxString::Format("%ld", t0), t1);
-  }
+  LogTargetChanges(target_before, wind_before);
 }
 
 void NavicoAutopilotPi::SkPut(const sk_bridge::Put& put, simnet::Command c) {

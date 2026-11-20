@@ -50,7 +50,8 @@ std::optional<Put> SimnetPut(simnet::Command c);
 /**
  * The request for \p c with signalk-autopilot; none if it has no such
  * command. A tack needs the side: from the wind angle held (\p wind, rad,
- * negative = wind from port, so the bow turns to port).
+ * negative = wind from port, so the bow turns to port). No gybe: none with
+ * the wind abaft the beam.
  */
 std::optional<Put> AutopilotPut(simnet::Command c, std::optional<double> wind);
 /** Non-follow-up (signalk-simnet-pilot-state only). */

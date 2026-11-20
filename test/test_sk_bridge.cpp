@@ -96,6 +96,9 @@ static void TestPuts() {
   auto stb = AutopilotPut(simnet::Command::kTack, 0.7);
   CHECK(stb && stb->value == "\"starboard\"");
   CHECK(!AutopilotPut(simnet::Command::kTack, std::nullopt));
+  // A gybe (wind abaft the beam) is not sent: the side would be wrong.
+  CHECK(!AutopilotPut(simnet::Command::kTack, -2.6));
+  CHECK(!AutopilotPut(simnet::Command::kTack, 2.6));
   CHECK(NfuPut(simnet::NfuSide::kStarboard).value == "\"starboard\"");
   CHECK(NfuPut(simnet::NfuSide::kStop).path == "steering/autopilot/actions/nfu");
 }

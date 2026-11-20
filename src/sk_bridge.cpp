@@ -6,11 +6,14 @@
 #include "sk_bridge.h"
 
 #include <cctype>
+#include <cmath>
 #include <cstdlib>
 
 namespace sk_bridge {
 
 namespace {
+
+constexpr double kPi = 3.14159265358979323846;
 
 std::string Lower(std::string s) {
   for (auto& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
@@ -67,8 +70,8 @@ std::optional<Put> AutopilotPut(simnet::Command c, std::optional<double> wind) {
     case simnet::Command::kNav: return Put{state, "\"route\""};
     case simnet::Command::kNoDrift: return Put{state, "\"noDrift\""};
     case simnet::Command::kTack:
-      // The Simrad provider lets the pilot choose the side; others need it.
-      if (!wind) return std::nullopt;
+      // Only a tack: with the wind abaft the beam the bow would turn the wrong way.
+      if (!wind || std::fabs(*wind) > kPi / 2) return std::nullopt;
       return Put{"steering/autopilot/actions/tack", *wind < 0 ? "\"port\"" : "\"starboard\""};
     case simnet::Command::kPort1: return Put{adjust, "-1"};
     case simnet::Command::kPort10: return Put{adjust, "-10"};
