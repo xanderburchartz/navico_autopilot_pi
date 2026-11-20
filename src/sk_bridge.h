@@ -57,6 +57,20 @@ std::optional<Put> AutopilotPut(simnet::Command c, std::optional<double> wind);
 /** Non-follow-up (signalk-simnet-pilot-state only). */
 Put NfuPut(simnet::NfuSide side);
 
+/** The heading to steer and whether it is magnetic. */
+struct Heading {
+  std::optional<double> value;  ///< rad
+  bool magnetic = true;
+};
+/**
+ * Of steering.autopilot.target.headingMagnetic and .headingTrue, the one the
+ * server got last (ISO 8601 timestamps): the REST API keeps a value forever,
+ * so an old magnetic one must not win over a new true one. Equal or unknown
+ * times: magnetic.
+ */
+Heading ChooseHeading(std::optional<double> magnetic, const std::string& magnetic_time,
+                      std::optional<double> true_heading, const std::string& true_time);
+
 }  // namespace sk_bridge
 
 #endif  // NAVICO_AP_SK_BRIDGE_H

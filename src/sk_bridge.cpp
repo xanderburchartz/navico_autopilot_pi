@@ -81,6 +81,15 @@ std::optional<Put> AutopilotPut(simnet::Command c, std::optional<double> wind) {
   }
 }
 
+Heading ChooseHeading(std::optional<double> magnetic, const std::string& magnetic_time,
+                      std::optional<double> true_heading, const std::string& true_time) {
+  if (!true_heading) return {magnetic, true};
+  if (!magnetic) return {true_heading, false};
+  // "2026-11-20T14:46:08.723Z": text order is time order for this format.
+  if (true_time > magnetic_time) return {true_heading, false};
+  return {magnetic, true};
+}
+
 Put NfuPut(simnet::NfuSide side) {
   const std::string path = "steering/autopilot/actions/nfu";
   switch (side) {

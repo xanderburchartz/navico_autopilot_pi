@@ -43,6 +43,25 @@ static void TestModes() {
   CHECK(!SourceAddress("x.300"));
 }
 
+static void TestChooseHeading() {
+  using sk_bridge::ChooseHeading;
+  const std::string old_t = "2026-11-20T10:00:00.000Z", new_t = "2026-11-20T14:46:08.723Z";
+  // Only one of the two.
+  auto h = ChooseHeading(std::nullopt, "", 4.3284, new_t);
+  CHECK(Near(h.value, 4.3284) && !h.magnetic);
+  h = ChooseHeading(1.5, old_t, std::nullopt, "");
+  CHECK(Near(h.value, 1.5) && h.magnetic);
+  // An old magnetic value kept by the server does not win over a new true one.
+  h = ChooseHeading(1.5, old_t, 4.3284, new_t);
+  CHECK(Near(h.value, 4.3284) && !h.magnetic);
+  h = ChooseHeading(1.5, new_t, 4.3284, old_t);
+  CHECK(Near(h.value, 1.5) && h.magnetic);
+  // Equal or unknown times: magnetic.
+  h = ChooseHeading(1.5, "", 4.3284, "");
+  CHECK(h.magnetic);
+  CHECK(!ChooseHeading(std::nullopt, "", std::nullopt, "").value);
+}
+
 static void TestPilotState() {
   PilotState s;
   double t = 100;
@@ -116,6 +135,7 @@ int main() {
   TestModes();
   TestPilotState();
   TestPuts();
+  TestChooseHeading();
   if (failures) {
     std::printf("%d failure(s)\n", failures);
     return 1;
