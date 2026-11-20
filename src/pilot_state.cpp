@@ -311,7 +311,7 @@ std::vector<PilotState::ActiveAlarm> PilotState::Alarms(double now) const {
   for (const auto& [id, e] : m_alarms) {
     if (e.state == 0x3A || now - e.last_seen > kAlarmTimeout) continue;
     if (e.state != 0x39 && e.state != 0x38) continue;
-    out.push_back({id, e.text, e.state, e.f});
+    out.push_back({id, e.text, e.state, e.f, id == 0x10});
   }
   return out;
 }

@@ -276,7 +276,12 @@ static void TestNavAndSensors() {
   // Acknowledged on the pilot: still shown, but not acknowledged again.
   s.Handle(Rx(130850, 4, "41 9f ff ff 01 ff 38 00 4d 00 04 00"), t0 + 61.5);
   al = s.Alarms(t0 + 61.6);
-  CHECK(al.size() == 1 && al[0].state == 0x38);
+  CHECK(al.size() == 1 && al[0].state == 0x38 && !al[0].quiet);
+  // 0x10 "Low boat speed" is a notice, not an alarm (20 Nov 2026).
+  s.Handle(Rx(130850, 4, "41 9f ff ff 01 ff 39 00 10 00 03 00"), t0 + 61.7);
+  al = s.Alarms(t0 + 61.8);
+  CHECK(al.size() == 2 && al[0].id == 0x10 && al[0].quiet && !al[1].quiet);
+  s.Handle(Rx(130850, 4, "41 9f ff ff 01 ff 3a 00 10 00 03 00"), t0 + 61.9);
   s.Handle(Rx(130850, 4, "41 9f ff ff 01 ff 3a 00 4d 00 04 00"), t0 + 62);
   CHECK(s.Alarms(t0 + 63).empty());
 

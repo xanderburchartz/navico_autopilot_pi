@@ -1427,7 +1427,8 @@ void ApPanel::UpdateState(double now) {
   for (const auto& a : s.Alarms(now)) {
     if (a.text.empty()) continue;
     if (!msg.empty()) msg += "\n";
-    msg += wxString::Format(_("Alarm: %s"), wxString::FromUTF8(a.text.c_str()));
+    wxString text = wxString::FromUTF8(a.text.c_str());
+    msg += a.quiet ? text : wxString::Format(_("Alarm: %s"), text);
   }
   bool ack = !m_plugin->AlarmsToAcknowledge().empty();
   if (m_ack->IsShown() != ack) {

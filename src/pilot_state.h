@@ -70,6 +70,9 @@ public:
     std::string text;  ///< empty until 130856 arrived
     uint8_t state = 0;  ///< 0x39 active, 0x38 acknowledged
     uint8_t f = 0;      ///< byte 10, repeated in an acknowledgement
+    /** A notice, not an alarm: a Triton2 does not show it, and the pilot
+     *  keeps sending it after an acknowledgement (0x10 "Low boat speed"). */
+    bool quiet = false;
   };
 
   /** Fixed pilot address from the settings, or none for automatic. */

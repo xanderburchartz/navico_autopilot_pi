@@ -409,7 +409,7 @@ std::vector<PilotState::ActiveAlarm> NavicoAutopilotPi::AlarmsToAcknowledge() co
   auto driver = Driver();
   if (!driver || driver->link == N2kDriver::Link::kSignalK) return out;
   for (const auto& a : m_state.Alarms(Now()))
-    if (a.state == 0x39) out.push_back(a);
+    if (a.state == 0x39 && !a.quiet) out.push_back(a);
   return out;
 }
 
@@ -882,7 +882,7 @@ void NavicoAutopilotPi::NotifyAlarms() {
   std::set<uint16_t> active;
   std::map<uint16_t, std::string> texts;
   for (const auto& a : m_state.Alarms(Now())) {
-    if (a.text.empty()) continue;  // wait for the text (130856)
+    if (a.text.empty() || a.quiet) continue;  // wait for the text (130856)
     active.insert(a.id);
     texts[a.id] = a.text;
   }

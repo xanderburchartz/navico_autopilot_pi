@@ -173,7 +173,11 @@ reporting it. Acknowledging it there does not acknowledge it on the pilot;
 the *ACK* button next to the message does, the way a Triton2 keypad does.
 *ACK* is only shown while the pilot reports an alarm that is not yet
 acknowledged, and not through Signal K.
-Not on Android, where the OpenCPN library has no notifications.
+The notification is not shown on Android, where the OpenCPN library has none.
++
+"Low boat speed" is a notice, not an alarm: a Triton2 does not show it and
+the pilot keeps sending it after an acknowledgement. The panel shows it as a
+plain line, without "Alarm:", no notification and no *ACK*.
 The autopilot did not answer. It may accept settings requests only from its own displays.::
 None of the settings requests got an answer. The NAC-3 answers through a
 Yacht Devices gateway; other pilots or gateways may not.
