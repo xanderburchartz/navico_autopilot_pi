@@ -6,6 +6,7 @@
 #include "pilot_settings.h"
 
 #include <cstdio>
+#include <cstdlib>
 #include <sstream>
 
 // N_ marks a text for translation (xgettext --keyword=N_); the panel
@@ -145,6 +146,11 @@ std::string Serialize(const Snapshot& s) {
   std::string out = "# navico_autopilot_pi snapshot of the pilot settings\n";
   out += "time=" + s.time + "\n";
   out += "reason=" + s.reason + "\n";
+  if (s.pilot) {
+    char name[40];
+    std::snprintf(name, sizeof name, "pilot=%016llX\n", static_cast<unsigned long long>(s.pilot));
+    out += name;
+  }
   char line[64];
   for (const auto& e : s.entries) {
     std::snprintf(line, sizeof line, "%s %02X/%04X %02X %u\n",
@@ -172,6 +178,10 @@ std::optional<Snapshot> ParseSnapshot(const std::string& text) {
     }
     if (line.rfind("reason=", 0) == 0) {
       s.reason = line.substr(7);
+      continue;
+    }
+    if (line.rfind("pilot=", 0) == 0) {  // older snapshots do not have it
+      s.pilot = std::strtoull(line.c_str() + 6, nullptr, 16);
       continue;
     }
     char node[16];

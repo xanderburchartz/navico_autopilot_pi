@@ -42,6 +42,7 @@ bool Differs(std::optional<double> a, std::optional<double> b) {
 void PilotState::SetFixedAddress(std::optional<uint8_t> address) {
   if (address == m_fixed) return;
   m_fixed = address;
+  m_state_pilot = address;
   m_mode = Mode::kUnknown;
   m_mode_time = -1e9;
   m_engaged.reset();
@@ -49,8 +50,28 @@ void PilotState::SetFixedAddress(std::optional<uint8_t> address) {
   m_wind.reset();
 }
 
+void PilotState::FollowPilot(double now) {
+  auto a = Address(now);
+  if (a == m_state_pilot) return;
+  if (m_state_pilot) {
+    // Another pilot now (automatic choice after a NAME, or one went quiet):
+    // nothing of the previous one may be shown or confirm a command.
+    m_mode = Mode::kUnknown;
+    m_mode_time = -1e9;
+    m_mode_bits = 0;
+    m_awaiting_since = -1e9;
+    m_engaged.reset();
+    m_target.reset();
+    m_wind.reset();
+    m_pending.reset();
+    m_alarms.clear();
+  }
+  m_state_pilot = a;
+}
+
 void PilotState::Handle(const simnet::Message& m, double now) {
   if (m.own) return;
+  FollowPilot(now);
   switch (m.pgn) {
     case simnet::kPgnAddressClaim: {
       auto name = simnet::ParseAddressClaim(m.data);
@@ -70,6 +91,7 @@ void PilotState::Handle(const simnet::Message& m, double now) {
           *m_fixed != m.source) {
         m_fixed = m.source;
       }
+      FollowPilot(now);  // a NAME can change the automatic choice
       return;
     }
     case simnet::kPgnDeviceStatus: {
@@ -78,6 +100,7 @@ void PilotState::Handle(const simnet::Message& m, double now) {
         c.address = m.source;
         c.model = pm->model;
         c.last_seen = now;
+        FollowPilot(now);  // a new candidate can change the automatic choice
         if (IsPilot(m.source, now)) {
           m_mode = pm->mode;
           m_mode_time = now;
@@ -342,6 +365,7 @@ void PilotState::HandleSignalK(uint8_t address, simnet::Mode mode, std::optional
     src.angle = *rudder;
     src.last_seen = now;
   }
+  FollowPilot(now);
   if (!IsPilot(address, now)) return;
   m_mode = mode;
   m_mode_time = now;

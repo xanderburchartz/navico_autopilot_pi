@@ -237,7 +237,20 @@ std::optional<AlarmText> ParseAlarmText(const std::vector<uint8_t>& d) {
   t.text.assign(d.begin() + 6, d.begin() + 6 + len);
   while (!t.text.empty() && (t.text.back() == '\0' || t.text.back() == ' '))
     t.text.pop_back();
+  t.text = StripDeviceLabel(t.text);
   return t;
+}
+
+std::string StripDeviceLabel(const std::string& text) {
+  // A NAC-3 ends some alarm texts with the device it is about, as in
+  // "Rudder data missing, NAC--0"; a Triton2 shows the text without it.
+  size_t comma = text.rfind(", ");
+  if (comma == std::string::npos || comma == 0 || comma + 2 >= text.size()) return text;
+  for (size_t i = comma + 2; i < text.size(); i++) {
+    char c = text[i];
+    if (!((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-')) return text;
+  }
+  return text.substr(0, comma);
 }
 
 std::vector<uint8_t> KeyValueRead(uint8_t address, SettingKey key, uint8_t instance) {

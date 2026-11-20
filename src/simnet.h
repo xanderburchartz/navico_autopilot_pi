@@ -160,6 +160,9 @@ struct AlarmText {
   std::string text;
 };
 std::optional<AlarmText> ParseAlarmText(const std::vector<uint8_t>& d);
+/** \p text without a trailing device label such as ", NAC--0": a last part
+ *  after ", " of only capitals, digits and hyphens. */
+std::string StripDeviceLabel(const std::string& text);
 
 /** 128259: speed through the water (m/s), none if not available. */
 std::optional<double> ParseSpeedThroughWater(const std::vector<uint8_t>& d);

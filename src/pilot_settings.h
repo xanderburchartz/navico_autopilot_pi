@@ -75,6 +75,7 @@ struct Snapshot {
   };
   std::string time;    ///< "2026-11-13 16:30:05", local time
   std::string reason;  ///< e.g. "Before changing Rudder deadband"
+  uint64_t pilot = 0;  ///< NAME (60928) of the pilot it was taken from, 0 if unknown
   std::vector<Entry> entries;
 };
 std::string Serialize(const Snapshot& s);

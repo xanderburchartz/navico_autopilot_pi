@@ -194,6 +194,22 @@ static void TestPilotState() {
   s.Handle(Rx(60928, 9, hex), u + 2);
   CHECK(s.FixedAddress() == 9);
 
+  // The automatic choice changes when a NAME arrives: the state of the
+  // previous pilot is cleared until the new one reports.
+  {
+    PilotState w;
+    double v = 300;
+    w.Handle(Rx(65305, 4, "41 9F 64 0A 10 00 00 00"), v);           // NAC at 4, Auto
+    w.Handle(Rx(127237, 4, "00 3F FF FF 7F 00 50 FF FF FF FF FF FF FF FF FF FF FF FF FF FF"), v);
+    w.Handle(Rx(65305, 6, "41 9F 00 0A 08 00 00 00"), v);           // AC at 6, Standby
+    CHECK(w.Address(v) == 4 && w.Mode() == Mode::kAuto && w.TargetHeading());
+    w.Handle(Rx(60928, 6, hex), v + 1);                              // 6 claims a Navico NAME
+    CHECK(w.Address(v + 1) == 6 && w.Mode() == Mode::kUnknown && !w.TargetHeading() &&
+          !w.Alive(v + 1));
+    w.Handle(Rx(65305, 6, "41 9F 00 0A 08 00 00 00"), v + 1.5);
+    CHECK(w.Mode() == Mode::kStandby && w.Alive(v + 1.5));
+  }
+
   // Own messages are ignored.
   PilotState o;
   std::vector<uint8_t> own = {0x94, 0x13, 7, 0x19, 0xFF, 0x00, 255, 255, 0x41, 0x9F, 0x64, 0x0A, 0x08, 0, 0, 0, 0x55};
@@ -228,6 +244,13 @@ static void TestNavAndSensors() {
   CHECK(!ParseAlarm(CommandData(Command::kNav, 4)));
   auto t = ParseAlarmText(Bytes("41 9f 4d 00 18 01 44 72 69 76 65 20 63 6f 6d 70 75 74 65 72 20 6d 69 73 73 69 6e 67"));
   CHECK(t && t->id == 0x4D && t->text == "Drive computer missing");
+  // The NAC-3's device label after the text is left out, as a Triton2 does.
+  CHECK(StripDeviceLabel("Rudder data missing, NAC--0") == "Rudder data missing");
+  CHECK(StripDeviceLabel("Rudder limit") == "Rudder limit");
+  CHECK(StripDeviceLabel("Low battery, check supply") == "Low battery, check supply");
+  CHECK(StripDeviceLabel("Off heading, ") == "Off heading, ");
+  auto tl = ParseAlarmText(Bytes("41 9f 18 00 1d 01 52 75 64 64 65 72 20 64 61 74 61 20 6d 69 73 73 69 6e 67 2c 20 4e 41 43 2d 2d 30"));
+  CHECK(tl && tl->id == 0x18 && tl->text == "Rudder data missing");
 
   PilotState s;
   double t0 = 1000;
@@ -421,8 +444,14 @@ static void TestKeyValue() {
   snap.entries.push_back({pilot_settings::Node::kPilot, {0x14, 0x06}, 0, 0});
   snap.entries.push_back({pilot_settings::Node::kPilot, {0x1A, 0x0E}, 1, 328});
   snap.entries.push_back({pilot_settings::Node::kRudder, {0x09, 0x02}, 0, 0xEA06});
+  snap.pilot = 0xC0507800231D19DDull;
   auto back = pilot_settings::ParseSnapshot(pilot_settings::Serialize(snap));
   CHECK(back && back->time == snap.time && back->reason == snap.reason && back->entries.size() == 3);
+  CHECK(back->pilot == snap.pilot);
+  // An older snapshot without the pilot line still reads, pilot unknown.
+  auto older = pilot_settings::ParseSnapshot(
+      "# navico_autopilot_pi snapshot of the pilot settings\ntime=x\nreason=y\npilot 14/0006 00 0\n");
+  CHECK(older && older->pilot == 0 && older->entries.size() == 1);
   CHECK((back->entries[1].key == SettingKey{0x1A, 0x0E}) && back->entries[1].instance == 1 &&
         back->entries[1].raw == 328 && back->entries[2].node == pilot_settings::Node::kRudder);
   CHECK(!pilot_settings::ParseSnapshot("hello"));

@@ -80,6 +80,12 @@ public:
   std::optional<uint8_t> FixedAddress() const { return m_fixed; }
 
   /** NAME of the chosen pilot, used to follow it when its address changes. */
+  /** The NAME (60928) last seen from \p address. */
+  std::optional<simnet::Name> NameOf(uint8_t address) const {
+    auto it = m_names.find(address);
+    if (it == m_names.end()) return std::nullopt;
+    return it->second;
+  }
   void SetPilotName(uint64_t name) { m_pilot_name = name; }
   uint64_t PilotName() const { return m_pilot_name; }
 
@@ -159,6 +165,10 @@ private:
   uint64_t m_pilot_name = 0;
   std::map<uint8_t, Candidate> m_candidates;
   std::map<uint8_t, simnet::Name> m_names;  // address -> NAME from 60928
+  /** The pilot the state belongs to; when the choice changes, the state of
+   *  the previous pilot is cleared ("?" until the new one reports). */
+  std::optional<uint8_t> m_state_pilot;
+  void FollowPilot(double now);
   std::map<uint8_t, std::string> m_models;  // address -> model ID from 126996
   std::string ModelId(uint8_t address) const;
 
