@@ -6,8 +6,15 @@
  *   NMEA 2000 connection (GetActiveDrivers, RegisterTXPGNs, WriteCommDriverN2K
  *   and listeners), or an NMEA 0183 connection to a gateway that passes
  *   NMEA 2000 wrapped in $PCDIN or $MXPGN sentences (wrap0183.h). Or through
- *   a Signal K server, with its own HTTP requests (signalk_client.h). It sends
- *   one command per button press and nothing else.
+ *   a Signal K server, with its own HTTP requests (signalk_client.h).
+ *
+ *   Commands and setting changes only on a user's action (one command per
+ *   press; NFU repeats while held). Without one it sends only requests: once
+ *   per connection, at start, an ISO request for the devices' NAMEs (on
+ *   serial/SocketCAN also for the model ID of pilots and rudder sensors);
+ *   never repeated by itself. The pilot settings are read while that window
+ *   is open.
+ *   It listens on all NMEA 2000 connections, but sends only on the chosen one.
  ***************************************************************************/
 
 #include "navico_autopilot_pi.h"
@@ -317,9 +324,12 @@ std::optional<N2kDriver> NavicoAutopilotPi::Driver() const {
   auto list = Drivers();
   for (const auto& d : list)
     if (d.key == m_driver) return d;
-  // Not chosen (or no longer there): only when there is exactly one NMEA 2000
-  // connection, so a command never goes out twice over two connections to the
-  // same bus. A wrapped way is never chosen on its own.
+  // A chosen connection that is gone is not replaced by another one: that
+  // could be a way to another bus. The panel says so (ChosenMissing).
+  if (!m_driver.empty()) return std::nullopt;
+  // Not chosen: only when there is exactly one NMEA 2000 connection, so a
+  // command never goes out twice over two connections to the same bus. A
+  // wrapped way is never chosen on its own.
   std::optional<N2kDriver> only;
   for (const auto& d : list) {
     if (d.link != N2kDriver::Link::kN2k) continue;
@@ -366,12 +376,19 @@ bool NavicoAutopilotPi::SendCommand(simnet::Command c) {
   double now = Now();
   auto driver = Driver();
   if (!driver) {
-    m_last_message = _("No NMEA 2000 connection chosen.");
+    m_last_message = _("No connection");
     return false;
   }
   auto address = m_state.Address(now);
   if (!address) {
-    m_last_message = _("No autopilot selected.");
+    m_last_message = _("No autopilot");
+    return false;
+  }
+  // A tack window stays open for 10 s: check again when it is confirmed, as
+  // a pilot in Auto would take 0x11 as a course change by the tack angle.
+  if (c == simnet::Command::kTack &&
+      (!m_state.Alive(now) || m_state.Mode() != simnet::Mode::kWind)) {
+    m_last_message = _("Not in Wind");
     return false;
   }
   if (driver->link == N2kDriver::Link::kSignalK) {
@@ -381,8 +398,8 @@ bool NavicoAutopilotPi::SendCommand(simnet::Command c) {
     if (!put) put = sk_bridge::AutopilotPut(c, m_state.TargetWindAngle());
     if (!put) {
       m_last_message = c == simnet::Command::kConfirm
-                           ? _("Confirm NAV on the pilot display: not possible through Signal K.")
-                           : _("Not possible through Signal K.");
+                           ? _("Confirm on pilot")
+                           : _("Not via Signal K");
       return false;
     }
     SkPut(*put, c);
@@ -396,7 +413,7 @@ bool NavicoAutopilotPi::SendCommand(simnet::Command c) {
                simnet::CommandName(c), *address, driver->label.c_str(),
                simnet::Hex(data).c_str(), r);
   if (r != RESULT_COMM_NO_ERROR) {
-    m_last_message = wxString::Format(_("Sending failed (error %d)."), r);
+    m_last_message = _("Send error");
     return false;
   }
   m_state.CommandSent(c, data, now);
@@ -409,7 +426,8 @@ std::vector<PilotState::ActiveAlarm> NavicoAutopilotPi::AlarmsToAcknowledge() co
   auto driver = Driver();
   if (!driver || driver->link == N2kDriver::Link::kSignalK) return out;
   for (const auto& a : m_state.Alarms(Now()))
-    if (a.state == 0x39 && !a.quiet) out.push_back(a);
+    // Not before its text (130856): the panel shows only alarms with a text.
+    if (a.state == 0x39 && !a.quiet && !a.text.empty()) out.push_back(a);
   return out;
 }
 
@@ -425,7 +443,7 @@ bool NavicoAutopilotPi::AcknowledgeAlarms() {
     wxLogMessage("navico_autopilot_pi: acknowledge alarm %d (%s) via %s: 130850 %s (result %d)",
                  a.id, a.text.c_str(), driver->label.c_str(), simnet::Hex(data).c_str(), r);
     if (r != RESULT_COMM_NO_ERROR) {
-      m_last_message = wxString::Format(_("Sending failed (error %d)."), r);
+      m_last_message = _("Send error");
       ok = false;
     }
   }
@@ -469,14 +487,21 @@ bool NavicoAutopilotPi::SendNfu(simnet::NfuSide side, bool log) {
     if (!m_sk_simnet) return false;  // signalk-autopilot has no NFU
     auto put = sk_bridge::NfuPut(side);
     m_sk_nfu_pending++;
-    m_sk->Request("PUT", "/signalk/v1/api/vessels/self/" + put.path, "{\"value\":" + put.value + "}",
-                  [this](const SignalKClient::Response& r) {
-                    m_sk_nfu_pending--;
-                    if (r.status == 405 || r.status == 404)
-                      m_last_message = _("NFU through Signal K needs the server plugin signalk-simnet-pilot-state.");
-                    else if (r.status == 401 || r.status == 403)
-                      m_last_message = _("Signal K: no access. Request it in the settings.");
-                  });
+    std::string path = "/signalk/v1/api/vessels/self/" + put.path;
+    std::string body = "{\"value\":" + put.value + "}";
+    auto done = [this](const SignalKClient::Response& r) {
+      m_sk_nfu_pending--;
+      if (r.status == 405 || r.status == 404)
+        m_last_message = _("NFU not available");
+      else if (r.status == 401 || r.status == 403)
+        m_last_message = _("No access");
+    };
+    // A stop goes ahead of polls and of the movement it stops; one queued
+    // direction is dropped, so the rudder does not move on after release.
+    if (side == simnet::NfuSide::kStop)
+      m_sk->RequestFirst("PUT", path, body, done);
+    else
+      m_sk->Request("PUT", path, body, done);
     if (log)
       wxLogMessage("navico_autopilot_pi: NFU via Signal K: PUT %s %s", put.path.c_str(),
                    put.value.c_str());
@@ -499,7 +524,7 @@ void NavicoAutopilotPi::StartNfu(simnet::NfuSide side) {
   // repeated every 0.5 s while the button is held.
   SendNfu(simnet::NfuSide::kStop, false);
   if (!SendNfu(side, true)) {
-    m_last_message = _("NFU could not be sent.");
+    m_last_message = _("NFU failed");
     return;
   }
   m_nfu = side;
@@ -548,7 +573,7 @@ std::optional<uint8_t> NavicoAutopilotPi::RudderNode() const {
 void NavicoAutopilotPi::ReadPilotSettings() {
   if (UsingSignalK()) {
     // The settings are Simnet key values (130845); no Signal K plugin passes them.
-    m_last_message = _("The pilot settings are not available through Signal K.");
+    m_last_message = _("Not via Signal K");
     return;
   }
   // Reading changes nothing on the pilot. Spread the requests so the bus and
@@ -609,6 +634,8 @@ pilot_settings::Snapshot NavicoAutopilotPi::TakeSnapshot(const std::string& reas
   int lacking = 0;
   auto pilot = m_state.Address(Now());
   auto rudder = RudderNode();
+  if (pilot)
+    if (auto name = m_state.NameOf(*pilot)) snap.pilot = name->raw;
   for (const auto& d : pilot_settings::All()) {
     auto a = d.node == pilot_settings::Node::kPilot ? pilot : rudder;
     std::vector<uint8_t> instances;
@@ -782,11 +809,11 @@ wxString NavicoAutopilotPi::RouteNote() const {
   const auto& r = m_ocpn_route;
   if (Now() - r.event_time > 30) return "";
   if (!r.ended.empty())
-    return wxString::Format(_("OpenCPN: route %s ended."), wxString::FromUTF8(r.ended.c_str()));
+    return wxString::Format(_("Route %s ended"), wxString::FromUTF8(r.ended.c_str()));
   if (!r.arrived.empty())
     return r.waypoint.empty()
-               ? wxString::Format(_("OpenCPN: arrived at %s."), wxString::FromUTF8(r.arrived.c_str()))
-               : wxString::Format(_("OpenCPN: arrived at %s, next %s."),
+               ? wxString::Format(_("%s reached"), wxString::FromUTF8(r.arrived.c_str()))
+               : wxString::Format(_("%s reached, next %s"),
                                   wxString::FromUTF8(r.arrived.c_str()),
                                   wxString::FromUTF8(r.waypoint.c_str()));
   return "";
@@ -1028,7 +1055,7 @@ bool NavicoAutopilotPi::UsingSignalK() const {
 
 wxString NavicoAutopilotPi::SignalKAccessText() const {
   if (!m_sk_access.empty()) return m_sk_access;
-  return m_sk_token.empty() ? _("No token (fine if the server has no security).")
+  return m_sk_token.empty() ? _("No token (needed only with security)")
                             : _("Token present.");
 }
 
@@ -1041,7 +1068,7 @@ void NavicoAutopilotPi::PollSignalK() {
                   if (r.status == 200) {
                     OnSignalKStatus(r.body);
                   } else if (r.status == 401 || r.status == 403) {
-                    m_sk_access = _("The server wants a token: request access.");
+                    m_sk_access = _("Token needed: request access");
                   }
                 });
 }
@@ -1081,10 +1108,22 @@ void NavicoAutopilotPi::OnSignalKStatus(const std::string& body) {
   auto wind_before = m_state.TargetWindAngle();
   // A NAC-3 sends its heading to steer (127237) as true or magnetic, as the
   // compass is set up; the server has it under headingTrue or headingMagnetic.
-  auto target = JsonNumber(ap["target"]["headingMagnetic"]["value"]);
-  bool magnetic = target.has_value();
-  if (!target) target = JsonNumber(ap["target"]["headingTrue"]["value"]);
-  m_state.HandleSignalK(address.value_or(0), mode, target, magnetic,
+  auto stamp = [](wxJSONValue v) {  // operator[] is not const
+    return v["timestamp"].IsString() ? std::string(v["timestamp"].AsString().utf8_str())
+                                     : std::string();
+  };
+  wxJSONValue mag = ap["target"]["headingMagnetic"], tru = ap["target"]["headingTrue"];
+  auto target = sk_bridge::ChooseHeading(JsonNumber(mag["value"]), stamp(mag),
+                                         JsonNumber(tru["value"]), stamp(tru));
+  // Which pilot: signalk-simnet-pilot-state speaks Simnet; signalk-autopilot
+  // names its provider (simrad, raymarine, pypilot, ...).
+  if (m_sk_simnet)
+    m_sk_provider = "Simnet";
+  else if (ap["defaultPilot"]["value"].IsString())
+    m_sk_provider = std::string(ap["defaultPilot"]["value"].AsString().utf8_str());
+  else
+    m_sk_provider.clear();
+  m_state.HandleSignalK(address.value_or(0), mode, target.value, target.magnetic,
                         JsonNumber(ap["target"]["windAngleApparent"]["value"]),
                         JsonNumber(root["rudderAngle"]["value"]), Now());
   if (m_state.Mode() != before)
@@ -1101,11 +1140,15 @@ void NavicoAutopilotPi::SkPut(const sk_bridge::Put& put, simnet::Command c) {
                 [this, put](const SignalKClient::Response& r) {
                   if (r.status >= 200 && r.status < 300) return;
                   if (r.status == 401 || r.status == 403)
-                    m_last_message = _("Signal K: no access. Request it in the settings.");
+                    m_last_message = _("No access");
                   else if (r.status == 0)
-                    m_last_message = _("Signal K server not reachable.");
+                    m_last_message = _("Server not reachable");
+                  else if (r.status == SignalKClient::kNoAnswer)
+                    // Sent, but no answer in time: pressing again could give
+                    // the command twice (+10 becoming +20).
+                    m_last_message = _("Unconfirmed");
                   else
-                    m_last_message = wxString::Format(_("Signal K refused the command (%d)."), r.status);
+                    m_last_message = wxString::Format(_("Refused (%d)"), r.status);
                   wxLogMessage("navico_autopilot_pi: Signal K answered %d to PUT %s: %s", r.status,
                                put.path.c_str(), r.body.substr(0, 200).c_str());
                 });
@@ -1113,7 +1156,7 @@ void NavicoAutopilotPi::SkPut(const sk_bridge::Put& put, simnet::Command c) {
 
 void NavicoAutopilotPi::RequestSignalKAccess() {
   if (!m_sk || m_sk_host.empty()) {
-    m_sk_access = _("Enter the Signal K server first.");
+    m_sk_access = _("Enter server first");
     return;
   }
   if (m_sk_client_id.empty()) {
@@ -1136,11 +1179,11 @@ void NavicoAutopilotPi::RequestSignalKAccess() {
                   reader.Parse(wxString::FromUTF8(r.body.c_str()), &v);
                   if ((r.status == 202 || r.status == 200) && v["href"].IsString()) {
                     m_sk_request = std::string(v["href"].AsString().utf8_str());
-                    m_sk_access = _("Waiting for approval in the server's admin page (Security, Access Requests).");
-                  } else if (r.status == 0) {
-                    m_sk_access = _("Signal K server not reachable.");
+                    m_sk_access = _("Approve in server: Security, Access Requests");
+                  } else if (r.status <= 0) {
+                    m_sk_access = _("Server not reachable");
                   } else {
-                    m_sk_access = wxString::Format(_("The server refused the request (%d)."), r.status);
+                    m_sk_access = wxString::Format(_("Refused (%d)"), r.status);
                   }
                   wxLogMessage("navico_autopilot_pi: Signal K access request: %d %s", r.status,
                                r.body.substr(0, 200).c_str());
@@ -1163,7 +1206,7 @@ void NavicoAutopilotPi::PollAccessRequest() {
     reader.Parse(wxString::FromUTF8(r.body.c_str()), &v);
     if (r.status == 404) {
       m_sk_request.clear();
-      m_sk_access = _("The request expired. Ask again.");
+      m_sk_access = _("Expired, ask again");
       return;
     }
     if (!v["state"].IsString() || v["state"].AsString() != "COMPLETED") return;
@@ -1173,11 +1216,11 @@ void NavicoAutopilotPi::PollAccessRequest() {
         ar["token"].IsString()) {
       m_sk_token = std::string(ar["token"].AsString().utf8_str());
       m_sk->SetServer(m_sk_host, m_sk_port, m_sk_token);
-      m_sk_access = _("Access granted, token stored.");
+      m_sk_access = _("Access granted");
       SaveConfig();
       wxLogMessage("navico_autopilot_pi: Signal K access granted");
     } else {
-      m_sk_access = _("The server denied access.");
+      m_sk_access = _("Access denied");
       wxLogMessage("navico_autopilot_pi: Signal K access denied");
     }
   });

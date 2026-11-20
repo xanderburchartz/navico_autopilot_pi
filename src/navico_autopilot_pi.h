@@ -151,6 +151,13 @@ public:
   std::vector<N2kDriver> Drivers() const;
   /** The connection commands go to, if any. */
   std::optional<N2kDriver> Driver() const;
+  /** A connection was chosen in the settings but OpenCPN no longer has it. */
+  bool ChosenMissing() const {
+    if (m_driver.empty()) return false;
+    for (const auto& d : Drivers())
+      if (d.key == m_driver) return false;
+    return true;
+  }
   /** Actual heading from OpenCPN (deg), magnetic or true, NaN if unknown. */
   double Heading(bool magnetic) const;
   /** Speed over ground (kn) from OpenCPN, NaN if unknown. */
@@ -168,6 +175,11 @@ public:
   wxString SignalKAccessText() const;
   /** True when the chosen way is the Signal K server. */
   bool UsingSignalK() const;
+  /** The pilot as the Signal K server names it ("Simnet", "simrad", ...),
+   *  else "pilot": the server does not say the model. */
+  wxString SignalKPilotLabel() const {
+    return m_sk_provider.empty() ? wxString("pilot") : wxString::FromUTF8(m_sk_provider.c_str());
+  }
   /** When the current way to the pilot was chosen or came up (Now() time). */
   double LinkSince() const { return m_link_since; }
   void PanelClosed();
@@ -196,6 +208,7 @@ private:
   /** The server has signalk-simnet-pilot-state (actions.command and .nfu),
    *  seen in the state's sources; else commands go to signalk-autopilot. */
   bool m_sk_simnet = false;
+  std::string m_sk_provider;  ///< "Simnet", or signalk-autopilot's defaultPilot
   std::string m_sk_state_time;  ///< timestamp of the last state seen
   std::string m_sk_request;     ///< href of a pending access request
   wxString m_sk_access;         ///< last access state, for the settings
