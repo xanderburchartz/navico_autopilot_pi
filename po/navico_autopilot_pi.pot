@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: navico_autopilot_pi 0.1.2\n"
+"Project-Id-Version: navico_autopilot_pi 0.1.3\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-20 17:14+0100\n"
+"POT-Creation-Date: 2026-11-20 20:06+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,121 +17,119 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/navico_autopilot_pi.cpp:100 src/navico_autopilot_pi.cpp:826
+#: src/navico_autopilot_pi.cpp:107 src/navico_autopilot_pi.cpp:853
 #: src/ap_prefs.cpp:73
 msgid "Autopilot"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:101
+#: src/navico_autopilot_pi.cpp:108
 msgid "Navico autopilot"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:369
-msgid "No NMEA 2000 connection chosen."
+#: src/navico_autopilot_pi.cpp:379 src/ap_panel.cpp:1403
+msgid "No connection"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:374
-msgid "No autopilot selected."
+#: src/navico_autopilot_pi.cpp:384 src/ap_panel.cpp:1140 src/ap_panel.cpp:1413
+msgid "No autopilot"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:384
-msgid "Confirm NAV on the pilot display: not possible through Signal K."
+#: src/navico_autopilot_pi.cpp:391
+msgid "Not in Wind"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:385
-msgid "Not possible through Signal K."
+#: src/navico_autopilot_pi.cpp:401
+msgid "Confirm on pilot"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:399 src/navico_autopilot_pi.cpp:428
+#: src/navico_autopilot_pi.cpp:402 src/navico_autopilot_pi.cpp:576
+msgid "Not via Signal K"
+msgstr ""
+
+#: src/navico_autopilot_pi.cpp:416 src/navico_autopilot_pi.cpp:446
+#: src/ap_panel.cpp:1056
+msgid "Send error"
+msgstr ""
+
+#: src/navico_autopilot_pi.cpp:495
+msgid "NFU not available"
+msgstr ""
+
+#: src/navico_autopilot_pi.cpp:497 src/navico_autopilot_pi.cpp:1143
+msgid "No access"
+msgstr ""
+
+#: src/navico_autopilot_pi.cpp:527
+msgid "NFU failed"
+msgstr ""
+
+#: src/navico_autopilot_pi.cpp:812
 #, c-format
-msgid "Sending failed (error %d)."
+msgid "Route %s ended"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:476
-msgid "NFU through Signal K needs the server plugin signalk-simnet-pilot-state."
-msgstr ""
-
-#: src/navico_autopilot_pi.cpp:478 src/navico_autopilot_pi.cpp:1104
-msgid "Signal K: no access. Request it in the settings."
-msgstr ""
-
-#: src/navico_autopilot_pi.cpp:502
-msgid "NFU could not be sent."
-msgstr ""
-
-#: src/navico_autopilot_pi.cpp:551
-msgid "The pilot settings are not available through Signal K."
-msgstr ""
-
-#: src/navico_autopilot_pi.cpp:785
+#: src/navico_autopilot_pi.cpp:815
 #, c-format
-msgid "OpenCPN: route %s ended."
+msgid "%s reached"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:788
+#: src/navico_autopilot_pi.cpp:816
 #, c-format
-msgid "OpenCPN: arrived at %s."
+msgid "%s reached, next %s"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:789
-#, c-format
-msgid "OpenCPN: arrived at %s, next %s."
-msgstr ""
-
-#: src/navico_autopilot_pi.cpp:891
+#: src/navico_autopilot_pi.cpp:918
 #, c-format
 msgid "Autopilot: %s"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:1031
-msgid "No token (fine if the server has no security)."
+#: src/navico_autopilot_pi.cpp:1058
+msgid "No token (needed only with security)"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:1032
+#: src/navico_autopilot_pi.cpp:1059
 msgid "Token present."
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:1044
-msgid "The server wants a token: request access."
+#: src/navico_autopilot_pi.cpp:1071
+msgid "Token needed: request access"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:1106 src/navico_autopilot_pi.cpp:1141
-msgid "Signal K server not reachable."
+#: src/navico_autopilot_pi.cpp:1145 src/navico_autopilot_pi.cpp:1184
+msgid "Server not reachable"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:1108
+#: src/navico_autopilot_pi.cpp:1149 src/ap_panel.cpp:1132
+msgid "Unconfirmed"
+msgstr ""
+
+#: src/navico_autopilot_pi.cpp:1151 src/navico_autopilot_pi.cpp:1186
 #, c-format
-msgid "Signal K refused the command (%d)."
+msgid "Refused (%d)"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:1116
-msgid "Enter the Signal K server first."
+#: src/navico_autopilot_pi.cpp:1159
+msgid "Enter server first"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:1131
+#: src/navico_autopilot_pi.cpp:1174
 msgid "Asking the server..."
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:1139
-msgid ""
-"Waiting for approval in the server's admin page (Security, Access Requests)."
+#: src/navico_autopilot_pi.cpp:1182
+msgid "Approve in server: Security, Access Requests"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:1143
-#, c-format
-msgid "The server refused the request (%d)."
+#: src/navico_autopilot_pi.cpp:1209
+msgid "Expired, ask again"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:1166
-msgid "The request expired. Ask again."
+#: src/navico_autopilot_pi.cpp:1219
+msgid "Access granted"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:1176
-msgid "Access granted, token stored."
-msgstr ""
-
-#: src/navico_autopilot_pi.cpp:1180
-msgid "The server denied access."
+#: src/navico_autopilot_pi.cpp:1223
+msgid "Access denied"
 msgstr ""
 
 #: src/ap_panel.cpp:328
@@ -146,7 +144,7 @@ msgstr ""
 msgid "HEADING HOLD"
 msgstr ""
 
-#: src/ap_panel.cpp:331 src/ap_panel.cpp:1262
+#: src/ap_panel.cpp:331 src/ap_panel.cpp:1256
 msgid "WIND"
 msgstr ""
 
@@ -154,7 +152,7 @@ msgstr ""
 msgid "NAVIGATION"
 msgstr ""
 
-#: src/ap_panel.cpp:333 src/ap_panel.cpp:1264
+#: src/ap_panel.cpp:333 src/ap_panel.cpp:1258
 msgid "NO DRIFT"
 msgstr ""
 
@@ -203,297 +201,215 @@ msgstr ""
 msgid "Heading"
 msgstr ""
 
-#: src/ap_panel.cpp:628
-msgid "Tack or gybe"
-msgstr ""
-
-#: src/ap_panel.cpp:645
-msgid "Gybe?"
-msgstr ""
-
-#: src/ap_panel.cpp:645
-msgid "Tack?"
-msgstr ""
-
-#: src/ap_panel.cpp:648
-#, c-format
-msgid "Heading now %s%s, after the maneuver about %s%s."
-msgstr ""
-
-#: src/ap_panel.cpp:651
-#, c-format
-msgid "Wind angle %s %s becomes %s %s."
-msgstr ""
-
-#: src/ap_panel.cpp:653 src/ap_panel.cpp:655
-msgid "port"
-msgstr ""
-
-#: src/ap_panel.cpp:653 src/ap_panel.cpp:655
-msgid "starboard"
-msgstr ""
-
-#: src/ap_panel.cpp:658 src/ap_panel.cpp:1205
-msgid "Cancel"
-msgstr ""
-
-#: src/ap_panel.cpp:659
+#: src/ap_panel.cpp:633
 msgid "Gybe"
 msgstr ""
 
-#: src/ap_panel.cpp:659
+#: src/ap_panel.cpp:633
 msgid "Tack"
 msgstr ""
 
-#: src/ap_panel.cpp:694
+#: src/ap_panel.cpp:646
+msgid "Gybe?"
+msgstr ""
+
+#: src/ap_panel.cpp:646
+msgid "Tack?"
+msgstr ""
+
+#: src/ap_panel.cpp:648 src/ap_panel.cpp:1201
+msgid "Cancel"
+msgstr ""
+
+#: src/ap_panel.cpp:649 src/ap_panel.cpp:1202
+msgid "OK"
+msgstr ""
+
+#: src/ap_panel.cpp:684
 msgid "Autopilot settings"
 msgstr ""
 
-#: src/ap_panel.cpp:739
+#: src/ap_panel.cpp:729
 msgid "Change"
 msgstr ""
 
-#: src/ap_panel.cpp:764 src/pilot_settings.cpp:49 src/pilot_settings.cpp:51
-#: src/pilot_settings.cpp:53 src/pilot_settings.cpp:55 src/pilot_settings.cpp:57
-#: src/pilot_settings.cpp:59 src/pilot_settings.cpp:62 src/pilot_settings.cpp:64
-#: src/pilot_settings.cpp:66 src/pilot_settings.cpp:68
+#: src/ap_panel.cpp:754 src/pilot_settings.cpp:50 src/pilot_settings.cpp:52
+#: src/pilot_settings.cpp:54 src/pilot_settings.cpp:56 src/pilot_settings.cpp:58
+#: src/pilot_settings.cpp:60 src/pilot_settings.cpp:63 src/pilot_settings.cpp:65
+#: src/pilot_settings.cpp:67 src/pilot_settings.cpp:69
 msgid "Steering profiles"
 msgstr ""
 
-#: src/ap_panel.cpp:812
-msgid "Press a value to change it."
-msgstr ""
-
-#: src/ap_panel.cpp:824
+#: src/ap_panel.cpp:811 src/ap_panel.cpp:971
 msgid "Installation"
 msgstr ""
 
-#: src/ap_panel.cpp:830
+#: src/ap_panel.cpp:817
 msgid "Snapshots..."
 msgstr ""
 
-#: src/ap_panel.cpp:835
+#: src/ap_panel.cpp:822
 msgid "Read again"
 msgstr ""
 
-#: src/ap_panel.cpp:836
+#: src/ap_panel.cpp:823
 msgid "Close"
 msgstr ""
 
-#: src/ap_panel.cpp:896
+#: src/ap_panel.cpp:883
 msgid "Take a snapshot now"
 msgstr ""
 
-#: src/ap_panel.cpp:898
+#: src/ap_panel.cpp:885
 #, c-format
 msgid "%s, %s (%zu values)"
 msgstr ""
 
-#: src/ap_panel.cpp:901
-msgid "Take a snapshot of the settings now, or choose one to go back to."
-msgstr ""
-
-#: src/ap_panel.cpp:902 src/ap_panel.cpp:945 src/ap_panel.cpp:953
+#: src/ap_panel.cpp:888 src/ap_panel.cpp:944 src/ap_panel.cpp:952
 msgid "Snapshots"
 msgstr ""
 
-#: src/ap_panel.cpp:906
+#: src/ap_panel.cpp:892
 msgid "Taken by hand"
 msgstr ""
 
-#: src/ap_panel.cpp:908
-msgid "The snapshot could not be saved."
+#: src/ap_panel.cpp:894
+msgid "Snapshot not saved"
 msgstr ""
 
-#: src/ap_panel.cpp:909
+#: src/ap_panel.cpp:895
 #, c-format
-msgid ""
-"Snapshot saved: %zu values, %d not read. Read again and take another for a "
-"complete one."
+msgid "Snapshot saved, %d not read"
 msgstr ""
 
-#: src/ap_panel.cpp:912
+#: src/ap_panel.cpp:896
+msgid "Snapshot saved"
+msgstr ""
+
+#: src/ap_panel.cpp:929
 #, c-format
-msgid "Snapshot saved: %zu values."
+msgid "%d not read, skipped"
 msgstr ""
 
-#: src/ap_panel.cpp:940
-msgid "The settings are the same as in that snapshot."
+#: src/ap_panel.cpp:931
+msgid "Nothing to restore"
 msgstr ""
 
-#: src/ap_panel.cpp:943
+#: src/ap_panel.cpp:931
+msgid "No differences"
+msgstr ""
+
+#: src/ap_panel.cpp:939
+msgid "Other autopilot!"
+msgstr ""
+
+#: src/ap_panel.cpp:941
+msgid "Autopilot unknown"
+msgstr ""
+
+#: src/ap_panel.cpp:942
 #, c-format
-msgid ""
-"Go back to the snapshot of %s?\n"
-"\n"
-"%s"
+msgid "Restore %s?"
 msgstr ""
 
-#: src/ap_panel.cpp:947
+#: src/ap_panel.cpp:946
 #, c-format
 msgid "Before going back to %s"
 msgstr ""
 
-#: src/ap_panel.cpp:952 src/ap_panel.cpp:1050
-msgid "The snapshot of the current settings could not be saved. Change anyway?"
+#: src/ap_panel.cpp:951 src/ap_panel.cpp:1046
+msgid "Snapshot not saved. Change anyway?"
 msgstr ""
 
-#: src/ap_panel.cpp:957
+#: src/ap_panel.cpp:956
 #, c-format
-msgid "Values sent: %zu. The window shows what the autopilot answers."
+msgid "%zu values sent"
 msgstr ""
 
-#: src/ap_panel.cpp:968
+#: src/ap_panel.cpp:966
 #, c-format
-msgid "Press %d more times to show the installation settings."
+msgid "%d more"
 msgstr ""
 
-#: src/ap_panel.cpp:974
-msgid ""
-"Installation settings: boat, drive and rudder. Change them only if you know "
-"what they do."
-msgstr ""
-
-#: src/ap_panel.cpp:1011
+#: src/ap_panel.cpp:1007
 #, c-format
 msgid "Between %g and %g %s."
 msgstr ""
 
-#: src/ap_panel.cpp:1013
+#: src/ap_panel.cpp:1009
 #, c-format
 msgid "0 = %s."
 msgstr ""
 
-#: src/ap_panel.cpp:1037
+#: src/ap_panel.cpp:1033
 #, c-format
 msgid "Change %s from %s to %s?"
 msgstr ""
 
-#: src/ap_panel.cpp:1040 src/ap_panel.cpp:1051
+#: src/ap_panel.cpp:1036 src/ap_panel.cpp:1047
 msgid "Change autopilot setting"
 msgstr ""
 
-#: src/ap_panel.cpp:1048
+#: src/ap_panel.cpp:1044
 #, c-format
 msgid "Before changing %s"
 msgstr ""
 
-#: src/ap_panel.cpp:1060
-msgid "Sending failed."
-msgstr ""
-
-#: src/ap_panel.cpp:1131
+#: src/ap_panel.cpp:1127
 #, c-format
 msgid "%s set to %s."
 msgstr ""
 
-#: src/ap_panel.cpp:1133
-#, c-format
-msgid "%s: the autopilot answered %s."
+#: src/ap_panel.cpp:1135
+msgid "Waiting..."
 msgstr ""
 
-#: src/ap_panel.cpp:1136
-msgid ""
-"No answer from the autopilot: the setting may not have changed. Read again to "
-"check."
+#: src/ap_panel.cpp:1142 src/ap_panel.cpp:1417
+msgid "No response"
 msgstr ""
 
-#: src/ap_panel.cpp:1139
-msgid "Waiting for the autopilot..."
-msgstr ""
-
-#: src/ap_panel.cpp:1144
-msgid "No autopilot found."
-msgstr ""
-
-#: src/ap_panel.cpp:1146
-msgid ""
-"The autopilot did not answer. It may accept settings requests only from its "
-"own displays."
-msgstr ""
-
-#: src/ap_panel.cpp:1185
-msgid "Start navigation"
-msgstr ""
-
-#: src/ap_panel.cpp:1206
-msgid "Confirm"
-msgstr ""
-
-#: src/ap_panel.cpp:1228
-msgid "Steer to the waypoint?"
-msgstr ""
-
-#: src/ap_panel.cpp:1229
-#, c-format
-msgid "Steer to waypoint %s?"
-msgstr ""
-
-#: src/ap_panel.cpp:1230
-#, c-format
-msgid "The autopilot will turn to %s%s."
-msgstr ""
-
-#: src/ap_panel.cpp:1232
-msgid "The autopilot will turn to the waypoint."
-msgstr ""
-
-#: src/ap_panel.cpp:1233
-#, c-format
-msgid "%d s left to confirm"
-msgstr ""
-
-#: src/ap_panel.cpp:1260
-msgid "STBY"
-msgstr ""
-
-#: src/ap_panel.cpp:1261
-msgid "AUTO"
-msgstr ""
-
-#: src/ap_panel.cpp:1263
+#: src/ap_panel.cpp:1181 src/ap_panel.cpp:1257
 msgid "NAV"
 msgstr ""
 
-#: src/ap_panel.cpp:1265
+#: src/ap_panel.cpp:1224
+msgid "To waypoint?"
+msgstr ""
+
+#: src/ap_panel.cpp:1225
+#, c-format
+msgid "To %s?"
+msgstr ""
+
+#: src/ap_panel.cpp:1254
+msgid "STBY"
+msgstr ""
+
+#: src/ap_panel.cpp:1255
+msgid "AUTO"
+msgstr ""
+
+#: src/ap_panel.cpp:1259
 msgid "TACK"
 msgstr ""
 
-#: src/ap_panel.cpp:1290
+#: src/ap_panel.cpp:1284
 msgid "ACK"
 msgstr ""
 
-#: src/ap_panel.cpp:1403
-msgid "Choose the NMEA 2000 connection in the plugin settings."
+#: src/ap_panel.cpp:1396
+msgid "Connection lost"
 msgstr ""
 
-#: src/ap_panel.cpp:1409
-msgid ""
-"No autopilot data through NMEA 0183. A Yacht Devices gateway does not pass "
-"the autopilot this way: connect its RAW server as an NMEA 2000 connection."
+#: src/ap_panel.cpp:1409 src/ap_panel.cpp:1411 src/ap_panel.cpp:1415
+msgid "No data"
 msgstr ""
 
-#: src/ap_panel.cpp:1412
-msgid "No autopilot data from the Signal K server."
+#: src/ap_panel.cpp:1419
+msgid "Mode not changed"
 msgstr ""
 
-#: src/ap_panel.cpp:1414
-msgid "No autopilot found"
-msgstr ""
-
-#: src/ap_panel.cpp:1416
-msgid "No data from the autopilot."
-msgstr ""
-
-#: src/ap_panel.cpp:1418
-msgid "No reply from the autopilot. Is transmitting enabled on the gateway?"
-msgstr ""
-
-#: src/ap_panel.cpp:1420
-msgid "The autopilot did not change mode."
-msgstr ""
-
-#: src/ap_panel.cpp:1431
+#: src/ap_panel.cpp:1430
 #, c-format
 msgid "Alarm: %s"
 msgstr ""
@@ -535,11 +451,11 @@ msgid "Boat speed"
 msgstr ""
 
 #: src/ap_prefs.cpp:100
-msgid "Speed over ground (from OpenCPN)"
+msgid "SOG"
 msgstr ""
 
 #: src/ap_prefs.cpp:101
-msgid "Speed through water (log)"
+msgid "STW"
 msgstr ""
 
 #: src/ap_prefs.cpp:140
@@ -561,8 +477,8 @@ msgstr ""
 msgid "%s, address %d: %.1f deg"
 msgstr ""
 
-#: src/ap_prefs.cpp:162
-msgid "Automatic: no autopilot found yet"
+#: src/ap_prefs.cpp:162 src/ap_prefs.cpp:206
+msgid "Automatic"
 msgstr ""
 
 #: src/ap_prefs.cpp:165 src/ap_prefs.cpp:209
@@ -574,189 +490,185 @@ msgstr ""
 msgid "Fixed address"
 msgstr ""
 
-#: src/ap_prefs.cpp:206
-msgid "Automatic: no rudder sensor found yet"
-msgstr ""
-
 #: src/ap_prefs.cpp:221
-msgid "The chosen sensor (not seen now)"
+msgid "Chosen sensor (not seen)"
 msgstr ""
 
-#: src/pilot_settings.cpp:29 src/pilot_settings.cpp:32 src/pilot_settings.cpp:33
-#: src/pilot_settings.cpp:34 src/pilot_settings.cpp:35
+#: src/pilot_settings.cpp:30 src/pilot_settings.cpp:33 src/pilot_settings.cpp:34
+#: src/pilot_settings.cpp:35 src/pilot_settings.cpp:36
 msgid "Boat"
 msgstr ""
 
-#: src/pilot_settings.cpp:29
+#: src/pilot_settings.cpp:30
 msgid "Boat type"
 msgstr ""
 
-#: src/pilot_settings.cpp:30
+#: src/pilot_settings.cpp:31
 msgid "Sail"
 msgstr ""
 
-#: src/pilot_settings.cpp:30
+#: src/pilot_settings.cpp:31
 msgid "Outboard"
 msgstr ""
 
-#: src/pilot_settings.cpp:30
+#: src/pilot_settings.cpp:31
 msgid "Displacement"
 msgstr ""
 
-#: src/pilot_settings.cpp:30
+#: src/pilot_settings.cpp:31
 msgid "Planing"
 msgstr ""
 
-#: src/pilot_settings.cpp:32
+#: src/pilot_settings.cpp:33
 msgid "Boat length"
 msgstr ""
 
-#: src/pilot_settings.cpp:33
+#: src/pilot_settings.cpp:34
 msgid "Cruising speed"
 msgstr ""
 
-#: src/pilot_settings.cpp:34
+#: src/pilot_settings.cpp:35
 msgid "Transition speed"
 msgstr ""
 
-#: src/pilot_settings.cpp:35
+#: src/pilot_settings.cpp:36
 msgid "Low boat speed alarm below"
 msgstr ""
 
-#: src/pilot_settings.cpp:39 src/pilot_settings.cpp:41 src/pilot_settings.cpp:42
-#: src/pilot_settings.cpp:44
+#: src/pilot_settings.cpp:40 src/pilot_settings.cpp:42 src/pilot_settings.cpp:43
+#: src/pilot_settings.cpp:45
 msgid "Sailing"
 msgstr ""
 
-#: src/pilot_settings.cpp:39
+#: src/pilot_settings.cpp:40
 msgid "Wind mode"
 msgstr ""
 
-#: src/pilot_settings.cpp:40
+#: src/pilot_settings.cpp:41
 msgid "Apparent"
 msgstr ""
 
-#: src/pilot_settings.cpp:40
+#: src/pilot_settings.cpp:41
 msgid "True"
 msgstr ""
 
-#: src/pilot_settings.cpp:40 src/pilot_settings.cpp:72 src/pilot_settings.cpp:76
+#: src/pilot_settings.cpp:41 src/pilot_settings.cpp:73 src/pilot_settings.cpp:77
 msgid "Auto"
 msgstr ""
 
-#: src/pilot_settings.cpp:41
+#: src/pilot_settings.cpp:42
 msgid "Tack time"
 msgstr ""
 
-#: src/pilot_settings.cpp:42
+#: src/pilot_settings.cpp:43
 msgid "Tack angle"
 msgstr ""
 
-#: src/pilot_settings.cpp:44
+#: src/pilot_settings.cpp:45
 msgid "Manual speed"
 msgstr ""
 
-#: src/pilot_settings.cpp:49
+#: src/pilot_settings.cpp:50
 msgid "Turn rate"
 msgstr ""
 
-#: src/pilot_settings.cpp:51
+#: src/pilot_settings.cpp:52
 msgid "Rudder gain"
 msgstr ""
 
-#: src/pilot_settings.cpp:53
+#: src/pilot_settings.cpp:54
 msgid "Counter rudder"
 msgstr ""
 
-#: src/pilot_settings.cpp:55
+#: src/pilot_settings.cpp:56
 msgid "Autotrim"
 msgstr ""
 
-#: src/pilot_settings.cpp:57
+#: src/pilot_settings.cpp:58
 msgid "Init rudder"
 msgstr ""
 
-#: src/pilot_settings.cpp:58
+#: src/pilot_settings.cpp:59
 msgid "Actual"
 msgstr ""
 
-#: src/pilot_settings.cpp:58
+#: src/pilot_settings.cpp:59
 msgid "Midships"
 msgstr ""
 
-#: src/pilot_settings.cpp:59
+#: src/pilot_settings.cpp:60
 msgid "Rudder limit"
 msgstr ""
 
-#: src/pilot_settings.cpp:62
+#: src/pilot_settings.cpp:63
 msgid "Off heading limit"
 msgstr ""
 
-#: src/pilot_settings.cpp:63 src/pilot_settings.cpp:69
+#: src/pilot_settings.cpp:64 src/pilot_settings.cpp:70
 msgid "Off"
 msgstr ""
 
-#: src/pilot_settings.cpp:64
+#: src/pilot_settings.cpp:65
 msgid "Track response"
 msgstr ""
 
-#: src/pilot_settings.cpp:66
+#: src/pilot_settings.cpp:67
 msgid "Track approach angle"
 msgstr ""
 
-#: src/pilot_settings.cpp:68
+#: src/pilot_settings.cpp:69
 msgid "Course change confirm angle"
 msgstr ""
 
-#: src/pilot_settings.cpp:71 src/pilot_settings.cpp:73 src/pilot_settings.cpp:76
-#: src/pilot_settings.cpp:77 src/pilot_settings.cpp:78 src/pilot_settings.cpp:79
+#: src/pilot_settings.cpp:72 src/pilot_settings.cpp:74 src/pilot_settings.cpp:77
+#: src/pilot_settings.cpp:78 src/pilot_settings.cpp:79 src/pilot_settings.cpp:80
 msgid "Drive"
 msgstr ""
 
-#: src/pilot_settings.cpp:71
+#: src/pilot_settings.cpp:72
 msgid "Rudder deadband"
 msgstr ""
 
-#: src/pilot_settings.cpp:73
+#: src/pilot_settings.cpp:74
 msgid "Drive voltage"
 msgstr ""
 
-#: src/pilot_settings.cpp:76
+#: src/pilot_settings.cpp:77
 msgid "Drive engage"
 msgstr ""
 
-#: src/pilot_settings.cpp:76
+#: src/pilot_settings.cpp:77
 msgid "Clutch"
 msgstr ""
 
-#: src/pilot_settings.cpp:77
+#: src/pilot_settings.cpp:78
 msgid "Minimum rudder"
 msgstr ""
 
-#: src/pilot_settings.cpp:78
+#: src/pilot_settings.cpp:79
 msgid "Minimum power"
 msgstr ""
 
-#: src/pilot_settings.cpp:79
+#: src/pilot_settings.cpp:80
 msgid "Maximum power"
 msgstr ""
 
-#: src/pilot_settings.cpp:80 src/pilot_settings.cpp:82
+#: src/pilot_settings.cpp:81 src/pilot_settings.cpp:83
 msgid "Rudder"
 msgstr ""
 
-#: src/pilot_settings.cpp:80
+#: src/pilot_settings.cpp:81
 msgid "Calibration, starboard"
 msgstr ""
 
-#: src/pilot_settings.cpp:82
+#: src/pilot_settings.cpp:83
 msgid "Calibration, port"
 msgstr ""
 
-#: src/pilot_settings.cpp:124
+#: src/pilot_settings.cpp:125
 msgid "Low speed"
 msgstr ""
 
-#: src/pilot_settings.cpp:124
+#: src/pilot_settings.cpp:125
 msgid "High speed"
 msgstr ""

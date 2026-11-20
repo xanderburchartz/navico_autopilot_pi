@@ -85,20 +85,23 @@ In standby the course buttons work as on a Triton2: non-follow-up (NFU).
 The rudder moves as long as you hold a button, -1 and -10 to port, +1 and
 +10 to starboard, and stops when you let go. The plugin repeats the command every
 half second while held and sends stop three times on release; it also stops
-when the panel closes or OpenCPN loses focus.
+when the panel closes or OpenCPN loses focus. So the same button means a
+course change or a rudder movement depending on the mode the pilot last
+reported: just after the pilot went to standby, a press moves the rudder.
 
 === Tack and gybe
 
-In Wind mode *TACK* opens a window with the heading now, the expected
-heading after the manoeuvre and the new wind angle; with the wind further
-aft than 90 degrees it is a gybe. *Tack* or *Gybe* sends the command, the
-pilot chooses the side. The window closes by itself after 10 seconds.
+In Wind mode *TACK* opens a window that asks "Tack?", or "Gybe?" with the
+wind further aft than 90 degrees. *OK* sends the command; the pilot chooses
+the side and mirrors the wind angle. The window closes by itself after 10 seconds. Only
+one such window is open at a time, and the command is only sent if the
+pilot is still in Wind mode when you confirm.
 
 === Navigation
 
 NAV needs a confirmation, as on a pilot controller or MFD. After NAV the
-plugin opens a window with the bearing the pilot will turn to and a
-countdown: the pilot waits 10 seconds. *Confirm* starts navigation,
+plugin opens a window "To <waypoint>?" with the bearing the pilot will turn
+to and the seconds left: the pilot waits 10 seconds. *OK* starts navigation,
 *Cancel* leaves the pilot as it was. Confirming on another controller also
 works; the window then closes by itself.
 
@@ -144,7 +147,10 @@ Before the first change in the window the plugin stores the settings as
 they are, a snapshot. *Snapshots...* takes one by hand or lists the stored
 ones. Choosing one shows which values differ from now; after a confirmation
 the plugin sends those back one at a time, after first taking a snapshot of
-the current settings. Only settings the plugin may change are sent back.
+the current settings. Only settings the plugin may change are sent back,
+and only those read now: a value not read now is not sent back (read again
+first). A snapshot records which pilot computer it is from (its NAME); going
+back to a snapshot of another pilot computer asks with a warning.
 The snapshots are text files in OpenCPN's data folder, under
 `plugins/navico_autopilot_pi/snapshots`.
 
@@ -154,17 +160,56 @@ command is written to the OpenCPN log with its bytes, on lines starting with
 
 == Messages
 
-No autopilot found::
+The panel keeps its messages short, as a pilot display does. What they mean:
+
+No connection::
+No connection is chosen in the plugin settings, and OpenCPN does not have
+exactly one NMEA 2000 connection to use instead.
+Connection lost::
+OpenCPN no longer has the connection chosen in the settings (removed or
+disabled). Nothing is sent; the plugin does not switch to another
+connection by itself.
+No autopilot::
 No pilot mode reports seen on the chosen connection. Check that the
 connection receives NMEA 2000 data and that the pilot computer is on.
-Choose the NMEA 2000 connection in the plugin settings::
-OpenCPN has no NMEA 2000 connection, or more than one and none is chosen.
-No reply from the autopilot. Is transmitting enabled on the gateway?::
+No data::
+The pilot was seen, but has not reported for 10 seconds. Through NMEA 0183
+it can also mean that the gateway does not pass the pilot's messages: a
+Yacht Devices gateway wraps only engine, tank and battery PGNs in $PCDIN or
+$MXPGN; use its RAW server as an NMEA 2000 connection instead. Through
+Signal K: the server reports no autopilot state.
+No response::
 Within 4 seconds the pilot neither echoed the command nor reported a new
 mode, heading or wind angle. Check that the connection has output enabled.
-The autopilot did not change mode::
+Through Signal K: the server reported no change. In the settings window: none
+of the settings requests got an answer (the NAC-3 answers through a Yacht
+Devices gateway; other pilots or gateways may not).
+Unconfirmed::
+Through Signal K: the server took the command but did not answer within
+3 seconds. It may have been carried out: look at the panel before pressing
+again, or the command may be given twice. In the settings window: after
+*Change* the pilot did not answer within 3 seconds; read again to check.
+Mode not changed::
 The pilot echoed the command but did not follow it within 5 seconds, for
 example NAV without navigation data.
+Not in Wind::
+The pilot left Wind mode while the tack window was open; nothing was sent.
+Confirm on pilot::
+Through Signal K, NAV cannot be confirmed from the plugin; confirm it on
+the pilot's own display.
+Not via Signal K::
+This function (for example the pilot settings) is not available through
+Signal K.
+NFU not available::
+Non-follow-up through Signal K needs the server plugin
+signalk-simnet-pilot-state.
+Server not reachable, Refused (code), No access::
+The Signal K server could not be reached, refused the command with that
+HTTP code, or wants a token: request access in the plugin settings.
+Send error::
+OpenCPN could not send the command; the code is in the OpenCPN log.
+<waypoint> reached, Route <name> ended::
+OpenCPN arrived at a waypoint or ended its route; shown for half a minute.
 Alarm: ...::
 An alarm the pilot reports, with its own text, as long as it is active. It also appears once
 under OpenCPN's notification bell; an alarm that comes and goes keeps that
@@ -178,11 +223,13 @@ The notification is not shown on Android, where the OpenCPN library has none.
 "Low boat speed" is a notice, not an alarm: a Triton2 does not show it and
 the pilot keeps sending it after an acknowledgement. The panel shows it as a
 plain line, without "Alarm:", no notification and no *ACK*.
-The autopilot did not answer. It may accept settings requests only from its own displays.::
-None of the settings requests got an answer. The NAC-3 answers through a
-Yacht Devices gateway; other pilots or gateways may not.
-No answer from the autopilot: the setting may not have changed. Read again to check.::
-After *Change* the pilot did not answer within 3 seconds.
+Other autopilot!, Autopilot unknown::
+When going back to a snapshot: it was taken from another pilot computer
+(another NAME), or that cannot be checked. Values not read now are skipped
+("3 not read, skipped").
+
+The OpenCPN log has every command with its bytes and result and the Signal
+K server's answers, on lines starting with `navico_autopilot_pi:`.
 
 == How it works
 

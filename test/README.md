@@ -74,3 +74,18 @@ in the server's admin page.
 c++ -std=c++17 -Isrc $(wx-config --cxxflags base) test/sk_client_check.cpp src/signalk_client.cpp $(wx-config --libs base) -o build/sk_client_check
 build/sk_client_check 127.0.0.1 3000 GET /signalk/v1/api/vessels/self/steering
 ```
+
+`test/sk_queue_check.cpp` checks the client against a slow server
+(`test/sim/slow_sk.py <GET delay> <PUT delay> <port>`, local only): an NFU
+stop sent with `RequestFirst` goes ahead of a queued poll, the queued
+direction is dropped (status -2), and a PUT answered after the 3 s limit is
+reported as -1 (sent, no answer), not as 0 (not reachable).
+
+```
+c++ -std=c++17 -Isrc $(wx-config --cxxflags base) test/sk_queue_check.cpp src/signalk_client.cpp $(wx-config --libs base) -o build/sk_queue_check
+python3 test/sim/slow_sk.py 2 4 3999 &
+build/sk_queue_check 127.0.0.1 3999
+```
+
+Expected: `direction: status -2`, then `stop` and `poll` with -1; the server
+logs the stop before the poll. With `slow_sk.py 0.3 1.5` both give 200.

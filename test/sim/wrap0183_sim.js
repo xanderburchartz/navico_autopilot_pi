@@ -3,19 +3,26 @@
 // messages go out as $PCDIN or $MXPGN sentences over TCP, and that takes
 // 130850 commands wrapped the same way. For testing the plugin without a boat.
 //
-//   node test/sim/wrap0183_sim.js pcdin [port]
-//   node test/sim/wrap0183_sim.js mxpgn [port]
+//   node test/sim/wrap0183_sim.js pcdin [port] [alarm]
+//   node test/sim/wrap0183_sim.js mxpgn [port] [alarm]
 //
 // Sends every second: 65305 (pilot mode) and 127237 (heading to steer) from
-// address 4. Logs every command it receives and changes the mode as a NAC-3
-// does. Nothing here talks to a real bus.
+// address 4, in Wind mode also 65341 (wind angle to hold, 40 degrees to
+// starboard). With "alarm": an active "Rudder limit" alarm (130850 + 130856)
+// every 8.8 s, as a NAC-3 repeats it, until it is acknowledged (state 0x38);
+// then it is cleared (0x3A). Logs every command it receives and changes the
+// mode as a NAC-3 does. Nothing here talks to a real bus.
 
 'use strict'
 const net = require('net')
 
 const kind = process.argv[2] === 'mxpgn' ? 'mxpgn' : 'pcdin'
 const port = Number(process.argv[3] || 10111)
+const withAlarm = process.argv[4] === 'alarm'
 const PILOT = 4
+const ALARM_ID = 0x3f // Rudder limit
+const ALARM_TEXT = 'Rudder limit'
+let alarmState = withAlarm ? 0x39 : 0 // 0x39 active, 0x3A cleared, 0: none
 
 const hex2 = (n) => n.toString(16).toUpperCase().padStart(2, '0')
 const checksum = (s) => {
@@ -110,6 +117,20 @@ function status () {
   const hc = [0xff, 0x7f, 0xff, 0x7f, 0xff, raw & 0xff, raw >> 8, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]
   out.push(...encode(127237, 2, PILOT, hc, seq++ & 7))
+  if (mode === 'wind') {
+    // 65341, wind mode (3), 40 degrees = 6981 in 0.0001 rad.
+    out.push(...encode(65341, 6, PILOT, [0x41, 0x9f, 0xff, 0xff, 0x03, 0xff, 6981 & 0xff, 6981 >> 8], 0))
+  }
+  return out
+}
+
+function alarm () {
+  if (!alarmState) return []
+  const out = encode(130850, 2, PILOT,
+    [0x41, 0x9f, 0xff, 0xff, 0x01, 0xff, alarmState, 0x00, ALARM_ID, 0x00, 0x03, 0x00], seq++ & 7)
+  const text = [...ALARM_TEXT].map((c) => c.charCodeAt(0))
+  out.push(...encode(130856, 6, PILOT, [0x41, 0x9f, ALARM_ID, 0x00, text.length + 2, 0x01, ...text], seq++ & 7))
+  if (alarmState === 0x3a) alarmState = 0 // cleared once, then quiet
   return out
 }
 
@@ -117,6 +138,13 @@ function command (data) {
   // 130850: 41 9F <address> FF FF <type> <event> ...
   if (data[0] !== 0x41 || data[1] !== 0x9f) return
   const hex = data.map(hex2).join(' ')
+  // Acknowledgement of an alarm, as a Triton2 sends it: the alarm message with state 0x38.
+  if (data[2] === 0xff && data[4] === 0x01 && data[6] === 0x38) {
+    const id = data[8] | (data[9] << 8)
+    log(`alarm 0x${hex2(id)} acknowledged: ${hex}`)
+    if (id === ALARM_ID && alarmState === 0x39) alarmState = 0x3a
+    return
+  }
   if (data[2] !== PILOT) { log(`130850 for address ${data[2]}, not the pilot: ${hex}`); return }
   if (data[5] === 0x02 && data[6] === 0x0d) {
     log(`NFU ${{ 4: 'port', 5: 'starboard', 255: 'stop' }[data[8]] || data[8]}: ${hex}`)
@@ -139,7 +167,12 @@ function command (data) {
 
 net.createServer((sock) => {
   log(`client ${sock.remoteAddress}:${sock.remotePort} (${kind})`)
-  const timer = setInterval(() => status().forEach((s) => sock.write(s)), 1000)
+  const timer = setInterval(() => {
+    status().forEach((s) => sock.write(s))
+    if (alarmState === 0x3a) alarm().forEach((s) => sock.write(s)) // cleared about 1 s after the ack
+  }, 1000)
+  const alarmTimer = setInterval(() => alarm().forEach((s) => sock.write(s)), 8800)
+  alarm().forEach((s) => sock.write(s))
   let buf = ''
   sock.on('data', (d) => {
     buf += d.toString('latin1')
@@ -154,6 +187,6 @@ net.createServer((sock) => {
       else log(`received ${msg.pgn}: ${msg.data.map(hex2).join(' ')}`)
     }
   })
-  sock.on('close', () => { clearInterval(timer); log('client closed') })
-  sock.on('error', () => clearInterval(timer))
+  sock.on('close', () => { clearInterval(timer); clearInterval(alarmTimer); log('client closed') })
+  sock.on('error', () => { clearInterval(timer); clearInterval(alarmTimer) })
 }).listen(port, '127.0.0.1', () => log(`simulated ${kind} gateway on 127.0.0.1:${port}`))

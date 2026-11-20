@@ -94,7 +94,16 @@ not yet with a MiniPlex):
     `steering.autopilot.state`, `actions.adjustHeading` and `actions.tack`
     (no NFU).
 
-  Not available through Signal K: confirming NAV, the pilot settings window.
+  Not available through Signal K: confirming NAV, the pilot settings window,
+  acknowledging alarms. The server does not say the pilot's model: the panel
+  shows "Simnet" with signalk-simnet-pilot-state, else the provider of
+  signalk-autopilot (for example "simrad"); through signalk-autopilot the
+  plugin also controls pilots of other makes. Plain HTTP only (no HTTPS), so
+  the token is sent unencrypted: use it on the boat's own network. A status
+  request waits at most 1 s for the server, a command 3 s; a command without
+  an answer in time is reported as such, not as "not reachable", as the
+  server may have carried it out. A non-follow-up stop goes ahead of
+  everything still waiting to be sent.
   A server with security needs a token: "Request access" in the settings
   sends an access request, which the server's administrator approves
   (Security, Access Requests); the token is stored in OpenCPN's config.
@@ -126,8 +135,20 @@ then shows the pilot but cannot control it. Use TCP for the gateway.
   network gateways: OpenCPN's network driver keeps 126996 to itself, so the
   answer would not reach the plugin.
 - STBY can be pressed whenever a pilot is selected, even without recent data.
+- In standby the course buttons steer non-follow-up; in Auto, Wind and No
+  Drift they change course. Which of the two follows the mode the pilot last
+  reported (twice a second on a NAC-3).
+- TACK opens one window at a time and sends only if the pilot is still in
+  Wind mode when you confirm.
 - Autopilot and rudder sensor are chosen automatically (the most likely one if
-  there are several) and can be overruled in the settings.
+  there are several) and can be overruled in the settings. When the automatic
+  choice changes (for example once the devices' NAMEs are known), the panel
+  shows nothing of the previous pilot until the new one reports.
+- The plugin listens on all NMEA 2000 connections (and, when $PCDIN or
+  $MXPGN is chosen, to those sentences on all NMEA 0183 connections), but
+  sends only on the chosen one. If that
+  connection is gone, it sends nothing and says so; without a choice it uses
+  the only NMEA 2000 connection, if there is exactly one.
 - Every command and request is written to the OpenCPN log with its bytes.
 
 ## Protocol
@@ -182,7 +203,8 @@ node, not on the pilot. A set uses instance `FF` and pads a 2-byte value
 with `FF`, as a Triton2 does; the pilot replies with the value it took.
 The plugin reads the known settings when the settings window opens, one
 request at a time (the next after the answer or 1.5 s, an unanswered one is
-asked once more), and changes a setting only after a confirmation. Boat
+asked up to twice more), and changes a setting only after a confirmation;
+after a change it reads all settings again. Boat
 type, drive voltage and rudder calibration are read only.
 
 **Steering profiles.** Byte 3 of 130845 is an instance. A NAC-3 set to

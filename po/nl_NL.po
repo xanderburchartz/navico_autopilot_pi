@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 msgid ""
 msgstr ""
-"Project-Id-Version: navico_autopilot_pi 0.1.0\n"
+"Project-Id-Version: navico_autopilot_pi 0.1.3\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-11-18 15:08+0100\n"
 "PO-Revision-Date: 2026-11-10 19:00+0100\n"
@@ -15,12 +15,24 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 #
 #, c-format
-msgid "%d s left to confirm"
-msgstr "Nog %d s om te bevestigen"
+msgid "%d more"
+msgstr "Nog %d"
+#
+#, c-format
+msgid "%d not read, skipped"
+msgstr "%d niet gelezen, overgeslagen"
 #
 #, c-format
 msgid "%s (automatic)"
 msgstr "%s (automatisch)"
+#
+#, c-format
+msgid "%s reached"
+msgstr "%s bereikt"
+#
+#, c-format
+msgid "%s reached, next %s"
+msgstr "%s bereikt, volgende %s"
 #
 #, c-format
 msgid "%s set to %s."
@@ -43,18 +55,24 @@ msgid "%s, unique number %u"
 msgstr "%s, uniek nummer %u"
 #
 #, c-format
-msgid "%s: the autopilot answered %s."
-msgstr "%s: de stuurautomaat antwoordde %s."
+msgid "%zu values sent"
+msgstr "%zu waarden verzonden"
 #
 #, c-format
 msgid "0 = %s."
 msgstr "0 = %s."
 #
+msgid "ACK"
+msgstr "ACK"
+#
 msgid "AUTO"
 msgstr "AUTO"
 #
-msgid "Access granted, token stored."
-msgstr "Toegang gekregen, token bewaard."
+msgid "Access denied"
+msgstr "Toegang geweigerd"
+#
+msgid "Access granted"
+msgstr "Toegang gekregen"
 #
 msgid "Actual"
 msgstr "Werkelijk"
@@ -72,23 +90,26 @@ msgstr "Apparent"
 msgid "Apparent wind"
 msgstr "Schijnbare wind"
 #
+msgid "Approve in server: Security, Access Requests"
+msgstr "Goedkeuren in server: Security, Access Requests"
+#
 msgid "Asking the server..."
 msgstr "Bezig met vragen aan de server..."
 #
 msgid "Auto"
 msgstr "Auto"
 #
-msgid "Automatic: no autopilot found yet"
-msgstr "Automatisch: nog geen stuurautomaat gevonden"
-#
-msgid "Automatic: no rudder sensor found yet"
-msgstr "Automatisch: nog geen roersensor gevonden"
+msgid "Automatic"
+msgstr "Automatisch"
 #
 msgid "Autopilot"
 msgstr "Stuurautomaat"
 #
 msgid "Autopilot settings"
 msgstr "Instellingen stuurautomaat"
+#
+msgid "Autopilot unknown"
+msgstr "Stuurautomaat onbekend"
 #
 #, c-format
 msgid "Autopilot: %s"
@@ -147,8 +168,8 @@ msgstr "%s wijzigen van %s naar %s?"
 msgid "Change autopilot setting"
 msgstr "Instelling stuurautomaat wijzigen"
 #
-msgid "Choose the NMEA 2000 connection in the plugin settings."
-msgstr "Kies de NMEA 2000-verbinding in de instellingen van de plugin."
+msgid "Chosen sensor (not seen)"
+msgstr "Gekozen sensor (niet gezien)"
 #
 msgid "Close"
 msgstr "Sluiten"
@@ -156,14 +177,14 @@ msgstr "Sluiten"
 msgid "Clutch"
 msgstr "Koppeling"
 #
-msgid "Confirm"
-msgstr "Bevestigen"
-#
-msgid "Confirm NAV on the pilot display: not possible through Signal K."
-msgstr "Bevestig NAV op het display van de pilot: via Signal K kan dat niet."
+msgid "Confirm on pilot"
+msgstr "Bevestig op pilot"
 #
 msgid "Connection"
 msgstr "Verbinding"
+#
+msgid "Connection lost"
+msgstr "Verbinding weg"
 #
 msgid "Counter rudder"
 msgstr "Tegenroer"
@@ -189,21 +210,14 @@ msgstr "Aandrijving inschakelen"
 msgid "Drive voltage"
 msgstr "Aandrijfspanning"
 #
-msgid "Enter the Signal K server first."
-msgstr "Vul eerst de Signal K-server in."
+msgid "Enter server first"
+msgstr "Eerst server invullen"
+#
+msgid "Expired, ask again"
+msgstr "Verlopen, vraag opnieuw"
 #
 msgid "Fixed address"
 msgstr "Vast adres"
-#
-#, c-format
-msgid ""
-"Go back to the snapshot of %s?\n"
-"\n"
-"%s"
-msgstr ""
-"Terug naar de snapshot van %s?\n"
-"\n"
-"%s"
 #
 msgid "Gybe"
 msgstr "Gijpen"
@@ -217,10 +231,6 @@ msgstr "KOERS VASTHOUDEN"
 msgid "Heading"
 msgstr "Koers"
 #
-#, c-format
-msgid "Heading now %s%s, after the maneuver about %s%s."
-msgstr "Koers nu %s%s, na de manoeuvre ongeveer %s%s."
-#
 msgid "High speed"
 msgstr "High speed"
 #
@@ -229,13 +239,6 @@ msgstr "Init rudder"
 #
 msgid "Installation"
 msgstr "Installatie"
-#
-msgid ""
-"Installation settings: boat, drive and rudder. Change them only if you know "
-"what they do."
-msgstr ""
-"Installatie-instellingen: boot, aandrijving en roer. Wijzig ze alleen als je "
-"weet wat ze doen."
 #
 msgid "Low boat speed alarm below"
 msgstr "Alarm lage bootsnelheid onder"
@@ -258,17 +261,20 @@ msgstr "Minimum vermogen"
 msgid "Minimum rudder"
 msgstr "Minimum roer"
 #
+msgid "Mode not changed"
+msgstr "Stand niet gewijzigd"
+#
 msgid "NAV"
 msgstr "NAV"
 #
 msgid "NAVIGATION"
 msgstr "NAVIGATIE"
 #
-msgid "NFU could not be sent."
-msgstr "NFU kon niet worden verzonden."
+msgid "NFU failed"
+msgstr "NFU mislukt"
 #
-msgid "NFU through Signal K needs the server plugin signalk-simnet-pilot-state."
-msgstr "NFU via Signal K vraagt de serverplugin signalk-simnet-pilot-state."
+msgid "NFU not available"
+msgstr "NFU niet beschikbaar"
 #
 msgid "NO DRIFT"
 msgstr "NO DRIFT"
@@ -285,47 +291,38 @@ msgstr "Navico-stuurautomaat"
 msgid "Navico autopilot settings"
 msgstr "Instellingen Navico-stuurautomaat"
 #
-msgid "No NMEA 2000 connection chosen."
-msgstr "Geen NMEA 2000-verbinding gekozen."
+msgid "No access"
+msgstr "Geen toegang"
 #
-msgid ""
-"No answer from the autopilot: the setting may not have changed. Read again to "
-"check."
-msgstr ""
-"Geen antwoord van de stuurautomaat: de instelling is mogelijk niet gewijzigd. "
-"Lees opnieuw om te controleren."
+msgid "No autopilot"
+msgstr "Geen stuurautomaat"
 #
-msgid "No autopilot data from the Signal K server."
-msgstr "Geen gegevens van de stuurautomaat via de Signal K-server."
+msgid "No connection"
+msgstr "Geen verbinding"
 #
-msgid ""
-"No autopilot data through NMEA 0183. A Yacht Devices gateway does not pass "
-"the autopilot this way: connect its RAW server as an NMEA 2000 connection."
-msgstr ""
-"Geen gegevens van de stuurautomaat via NMEA 0183. Een Yacht Devices-gateway "
-"geeft de stuurautomaat zo niet door: koppel zijn RAW-server als NMEA 2000-"
-"verbinding."
+msgid "No data"
+msgstr "Geen gegevens"
 #
-msgid "No autopilot found"
-msgstr "Geen stuurautomaat gevonden"
+msgid "No differences"
+msgstr "Geen verschillen"
 #
-msgid "No autopilot found."
-msgstr "Geen stuurautomaat gevonden."
+msgid "No response"
+msgstr "Geen reactie"
 #
-msgid "No autopilot selected."
-msgstr "Geen stuurautomaat gekozen."
+msgid "No token (needed only with security)"
+msgstr "Geen token (alleen nodig bij beveiliging)"
 #
-msgid "No data from the autopilot."
-msgstr "Geen gegevens van de stuurautomaat."
+msgid "Not in Wind"
+msgstr "Niet in Wind"
 #
-msgid "No reply from the autopilot. Is transmitting enabled on the gateway?"
-msgstr "Geen antwoord van de stuurautomaat. Staat zenden op de gateway aan?"
+msgid "Not via Signal K"
+msgstr "Niet via Signal K"
 #
-msgid "No token (fine if the server has no security)."
-msgstr "Geen token (goed als de server geen beveiliging heeft)."
+msgid "Nothing to restore"
+msgstr "Niets terug te zetten"
 #
-msgid "Not possible through Signal K."
-msgstr "Kan niet via Signal K."
+msgid "OK"
+msgstr "OK"
 #
 msgid "Off"
 msgstr "Uit"
@@ -333,17 +330,8 @@ msgstr "Uit"
 msgid "Off heading limit"
 msgstr "Uit-koers limiet"
 #
-#, c-format
-msgid "OpenCPN: arrived at %s, next %s."
-msgstr "OpenCPN: aangekomen bij %s, volgende %s."
-#
-#, c-format
-msgid "OpenCPN: arrived at %s."
-msgstr "OpenCPN: aangekomen bij %s."
-#
-#, c-format
-msgid "OpenCPN: route %s ended."
-msgstr "OpenCPN: route %s beëindigd."
+msgid "Other autopilot!"
+msgstr "Andere stuurautomaat!"
 #
 msgid "Outboard"
 msgstr "Buitenboord"
@@ -351,18 +339,23 @@ msgstr "Buitenboord"
 msgid "Planing"
 msgstr "Planerend"
 #
-#, c-format
-msgid "Press %d more times to show the installation settings."
-msgstr "Druk nog %d keer om de installatie-instellingen te tonen."
-#
-msgid "Press a value to change it."
-msgstr "Druk op een waarde om die te wijzigen."
-#
 msgid "Read again"
 msgstr "Opnieuw lezen"
 #
+#, c-format
+msgid "Refused (%d)"
+msgstr "Geweigerd (%d)"
+#
 msgid "Request access"
 msgstr "Toegang vragen"
+#
+#, c-format
+msgid "Restore %s?"
+msgstr "%s terugzetten?"
+#
+#, c-format
+msgid "Route %s ended"
+msgstr "Route %s klaar"
 #
 msgid "Rudder"
 msgstr "Roer"
@@ -382,11 +375,17 @@ msgstr "Roerversterking"
 msgid "Rudder limit"
 msgstr "Roerlimiet"
 #
+msgid "SOG"
+msgstr "SOG"
+#
 msgid "STANDBY"
 msgstr "STANDBY"
 #
 msgid "STBY"
 msgstr "STBY"
+#
+msgid "STW"
+msgstr "STW"
 #
 msgid "Sail"
 msgstr "Zeil"
@@ -394,12 +393,11 @@ msgstr "Zeil"
 msgid "Sailing"
 msgstr "Varend"
 #
-#, c-format
-msgid "Sending failed (error %d)."
-msgstr "Zenden mislukt (fout %d)."
+msgid "Send error"
+msgstr "Zendfout"
 #
-msgid "Sending failed."
-msgstr "Verzenden mislukt."
+msgid "Server not reachable"
+msgstr "Server onbereikbaar"
 #
 msgid "Set angle"
 msgstr "Ingestelde hoek"
@@ -410,30 +408,21 @@ msgstr "Stel koers in"
 msgid "Signal K access"
 msgstr "Toegang Signal K"
 #
-#, c-format
-msgid "Signal K refused the command (%d)."
-msgstr "Signal K weigerde de opdracht (%d)."
-#
 msgid "Signal K server"
 msgstr "Signal K-server"
 #
-msgid "Signal K server not reachable."
-msgstr "Signal K-server niet bereikbaar."
+msgid "Snapshot not saved"
+msgstr "Snapshot niet opgeslagen"
 #
-msgid "Signal K: no access. Request it in the settings."
-msgstr "Signal K: geen toegang. Vraag die aan in de instellingen."
+msgid "Snapshot not saved. Change anyway?"
+msgstr "Snapshot niet opgeslagen. Toch wijzigen?"
 #
-#, c-format
-msgid ""
-"Snapshot saved: %zu values, %d not read. Read again and take another for a "
-"complete one."
-msgstr ""
-"Snapshot opgeslagen: %zu waarden, %d niet uitgelezen. Lees opnieuw en maak er "
-"nog een voor een volledige."
+msgid "Snapshot saved"
+msgstr "Snapshot opgeslagen"
 #
 #, c-format
-msgid "Snapshot saved: %zu values."
-msgstr "Snapshot opgeslagen: %zu waarden."
+msgid "Snapshot saved, %d not read"
+msgstr "Snapshot opgeslagen, %d niet gelezen"
 #
 msgid "Snapshots"
 msgstr "Snapshots"
@@ -444,30 +433,11 @@ msgstr "Snapshots..."
 msgid "Speed over ground"
 msgstr "Grondsnelheid"
 #
-msgid "Speed over ground (from OpenCPN)"
-msgstr "Grondsnelheid (uit OpenCPN)"
-#
 msgid "Speed through water"
 msgstr "Bootsnelheid"
 #
-msgid "Speed through water (log)"
-msgstr "Snelheid door het water (log)"
-#
-msgid "Start navigation"
-msgstr "Navigatie starten"
-#
-msgid "Steer to the waypoint?"
-msgstr "Naar het waypoint sturen?"
-#
-#, c-format
-msgid "Steer to waypoint %s?"
-msgstr "Naar waypoint %s sturen?"
-#
 msgid "Steering profiles"
 msgstr "Stuurprofielen"
-#
-msgid "ACK"
-msgstr "ACK"
 #
 msgid "TACK"
 msgstr "OVERSTAG"
@@ -478,9 +448,6 @@ msgstr "Overstag"
 msgid "Tack angle"
 msgstr "Overstaghoek"
 #
-msgid "Tack or gybe"
-msgstr "Overstag of gijpen"
-#
 msgid "Tack time"
 msgstr "Overstagtijd"
 #
@@ -490,60 +457,18 @@ msgstr "Overstag?"
 msgid "Take a snapshot now"
 msgstr "Nu een snapshot maken"
 #
-msgid "Take a snapshot of the settings now, or choose one to go back to."
-msgstr ""
-"Maak nu een snapshot van de instellingen, of kies er een om naar terug te "
-"gaan."
-#
 msgid "Taken by hand"
 msgstr "Met de hand gemaakt"
 #
-msgid ""
-"The autopilot did not answer. It may accept settings requests only from its "
-"own displays."
-msgstr ""
-"De stuurautomaat antwoordde niet. Mogelijk accepteert hij verzoeken alleen "
-"van zijn eigen displays."
-#
-msgid "The autopilot did not change mode."
-msgstr "De stuurautomaat wisselde niet van stand."
-#
 #, c-format
-msgid "The autopilot will turn to %s%s."
-msgstr "De stuurautomaat draait naar %s%s."
+msgid "To %s?"
+msgstr "Naar %s?"
 #
-msgid "The autopilot will turn to the waypoint."
-msgstr "De stuurautomaat draait naar het waypoint."
+msgid "To waypoint?"
+msgstr "Naar waypoint?"
 #
-msgid "The chosen sensor (not seen now)"
-msgstr "De gekozen sensor (nu niet gezien)"
-#
-msgid "The pilot settings are not available through Signal K."
-msgstr "De instellingen van de pilot zijn niet beschikbaar via Signal K."
-#
-msgid "The request expired. Ask again."
-msgstr "Het verzoek is verlopen. Vraag opnieuw."
-#
-msgid "The server denied access."
-msgstr "De server weigerde de toegang."
-#
-#, c-format
-msgid "The server refused the request (%d)."
-msgstr "De server weigerde het verzoek (%d)."
-#
-msgid "The server wants a token: request access."
-msgstr "De server vraagt een token: vraag toegang aan."
-#
-msgid "The settings are the same as in that snapshot."
-msgstr "De instellingen zijn gelijk aan die snapshot."
-#
-msgid "The snapshot could not be saved."
-msgstr "De snapshot kon niet worden opgeslagen."
-#
-msgid "The snapshot of the current settings could not be saved. Change anyway?"
-msgstr ""
-"De snapshot van de huidige instellingen kon niet worden opgeslagen. Toch "
-"wijzigen?"
+msgid "Token needed: request access"
+msgstr "Token nodig: vraag toegang"
 #
 msgid "Token present."
 msgstr "Token aanwezig."
@@ -563,42 +488,20 @@ msgstr "True"
 msgid "Turn rate"
 msgstr "Wendsnelheid"
 #
+msgid "Unconfirmed"
+msgstr "Onbevestigd"
+#
 msgid "Unknown device"
 msgstr "Onbekend apparaat"
-#
-#, c-format
-msgid "Values sent: %zu. The window shows what the autopilot answers."
-msgstr ""
-"Verstuurde waarden: %zu. Het venster toont wat de stuurautomaat antwoordt."
 #
 msgid "WIND"
 msgstr "WIND"
 #
-msgid ""
-"Waiting for approval in the server's admin page (Security, Access Requests)."
-msgstr ""
-"Wacht op goedkeuring in de beheerpagina van de server (Security, Access "
-"Requests)."
-#
-msgid "Waiting for the autopilot..."
-msgstr "Wachten op de stuurautomaat..."
-#
-#, c-format
-msgid "Wind angle %s %s becomes %s %s."
-msgstr "Windhoek %s %s wordt %s %s."
+msgid "Waiting..."
+msgstr "Even wachten..."
 #
 msgid "Wind mode"
 msgstr "Windmodus"
 #
 msgid "address:3000"
 msgstr "adres:3000"
-#
-msgid "port"
-msgstr "BB"
-#
-msgid "starboard"
-msgstr "SB"
-#
-#
-#~ msgid "(no NMEA 2000 connection in OpenCPN)"
-#~ msgstr "(geen NMEA 2000-verbinding in OpenCPN)"
