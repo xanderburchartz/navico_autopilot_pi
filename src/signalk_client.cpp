@@ -11,6 +11,8 @@
 
 #include "signalk_client.h"
 
+#include <vector>
+
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
@@ -35,8 +37,9 @@ static const int kShutBoth = SHUT_RDWR;
 
 namespace {
 
-/** Connect with a time limit; kNoSocket if that failed. */
-SocketHandle Connect(const std::string& host, int port, int seconds) {
+/** Connect within \p seconds; sending and each receive then wait at most
+ *  \p io_seconds. kNoSocket if connecting failed. */
+SocketHandle Connect(const std::string& host, int port, int seconds, int io_seconds) {
   addrinfo hints{};
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
@@ -75,12 +78,12 @@ SocketHandle Connect(const std::string& host, int port, int seconds) {
 #ifdef _WIN32
       nb = 0;
       ioctlsocket(s, FIONBIO, &nb);
-      DWORD ms = seconds * 1000;
+      DWORD ms = io_seconds * 1000;
       setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&ms), sizeof ms);
       setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const char*>(&ms), sizeof ms);
 #else
       fcntl(s, F_SETFL, flags);
-      timeval tv{seconds, 0};
+      timeval tv{io_seconds, 0};
       setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv);
       setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
 #endif
@@ -142,6 +145,33 @@ void SignalKClient::Request(const std::string& method, const std::string& path,
   m_cv.notify_one();
 }
 
+void SignalKClient::RequestFirst(const std::string& method, const std::string& path,
+                                 const std::string& body, Callback done) {
+  std::vector<Callback> dropped;
+  {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    for (auto it = m_jobs.begin(); it != m_jobs.end();) {
+      if (it->path == path) {
+        if (it->done) dropped.push_back(std::move(it->done));
+        it = m_jobs.erase(it);
+      } else {
+        ++it;
+      }
+    }
+    m_jobs.push_front({method, path, body, std::move(done)});
+  }
+  m_cv.notify_one();
+  // Callers count their pending requests: tell them about the dropped ones.
+  for (auto& cb : dropped) {
+    auto alive = m_alive;
+    m_owner->CallAfter([alive, cb] {
+      Response r;
+      r.status = kDropped;
+      if (alive->load()) cb(r);
+    });
+  }
+}
+
 void SignalKClient::Run() {
 #ifdef _WIN32
   WSADATA wsa;
@@ -179,7 +209,8 @@ SignalKClient::Response SignalKClient::Perform(const Job& job, const std::string
                                                int port, const std::string& token) {
   Response r;
   if (host.empty()) return r;
-  SocketHandle s = Connect(host, port, 1);
+  // A PUT may take the server a while (it waits for the bus); a poll should not.
+  SocketHandle s = Connect(host, port, 1, job.method == "GET" ? 1 : 3);
   if (s == kNoSocket) return r;
   {
     std::lock_guard<std::mutex> lock(m_mutex);
@@ -220,7 +251,12 @@ SignalKClient::Response SignalKClient::Perform(const Job& job, const std::string
   }
   CloseSocket(s);
   // "HTTP/1.1 200 OK\r\n...\r\n\r\nbody"
-  if (answer.compare(0, 5, "HTTP/") != 0) return r;
+  if (answer.compare(0, 5, "HTTP/") != 0) {
+    // Connected and (perhaps partly) sent, but no answer in time: not the
+    // same as "not reachable", the server may have carried it out.
+    r.status = kNoAnswer;
+    return r;
+  }
   size_t sp = answer.find(' ');
   if (sp != std::string::npos) r.status = std::atoi(answer.c_str() + sp + 1);
   size_t head = answer.find("\r\n\r\n");

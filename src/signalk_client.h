@@ -32,8 +32,13 @@
 
 class SignalKClient {
 public:
+  /** Status for a request that went out but got no (complete) answer in
+   *  time: the server may well have carried it out. */
+  static constexpr int kNoAnswer = -1;
+  /** Status for a queued request dropped by RequestFirst before it was sent. */
+  static constexpr int kDropped = -2;
   struct Response {
-    int status = 0;    ///< HTTP status, 0 if the server could not be reached
+    int status = 0;    ///< HTTP status; 0: server not reached; kNoAnswer, kDropped
     std::string body;  ///< the response body (JSON)
   };
   using Callback = std::function<void(const Response&)>;
@@ -50,6 +55,11 @@ public:
   /** GET, PUT or POST \p path (from the server root, e.g. "/signalk/v1/api/..."). */
   void Request(const std::string& method, const std::string& path, const std::string& body,
                Callback done);
+  /** As Request, but ahead of all queued requests, and queued requests for
+   *  \p path are dropped (their callback gets kDropped). For a stop that
+   *  must not wait behind polls or the movement it stops. */
+  void RequestFirst(const std::string& method, const std::string& path, const std::string& body,
+                    Callback done);
 
 private:
   struct Job {
