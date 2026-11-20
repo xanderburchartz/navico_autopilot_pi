@@ -1,5 +1,31 @@
 Test build of the Navico Autopilot plugin. Requires **OpenCPN 5.14 or later**.
 
+## New in 0.1.3
+
+Fixed (after a review of 0.1.2):
+- TACK opens one window at a time, and sends only if the pilot is still in
+  Wind mode when you confirm.
+- Signal K: a command answered late was reported as "server not
+  reachable", so pressing again could give it twice; it now says
+  "Unconfirmed". A non-follow-up stop no longer waits behind other
+  requests. An old magnetic set heading no longer wins over a current
+  true one.
+- A chosen connection that is gone is not replaced by another one.
+- When the automatic choice of pilot changes, nothing of the previous
+  pilot is shown.
+- Snapshots record which pilot they are from and warn before going back
+  on another one; values not read now are not sent back.
+
+Changed:
+- Short texts in the panel and the windows, as on a pilot display; the
+  manual explains them. The tack window only asks "Tack?".
+- Alarm texts without the NAC-3's device label (", NAC--0").
+- Through Signal K the panel names the pilot as the server does.
+
+Tested on board with a B&G NAC-3 over NMEA 2000 and Signal K: modes,
+course changes and non-follow-up steering. Not tested on board: a tack,
+-1 through Signal K. The snapshot warning is covered by unit tests only.
+
 ## New in 0.1.2
 
 Other ways to the pilot (choose in the plugin's preferences):
