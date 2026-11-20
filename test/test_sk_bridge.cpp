@@ -46,32 +46,41 @@ static void TestModes() {
 static void TestPilotState() {
   PilotState s;
   double t = 100;
-  s.HandleSignalK(4, simnet::Mode::kStandby, std::nullopt, std::nullopt, std::nullopt, t);
+  s.HandleSignalK(4, simnet::Mode::kStandby, std::nullopt, true, std::nullopt, std::nullopt, t);
   CHECK(s.Alive(t));
   CHECK(s.Address(t) == uint8_t(4));
   CHECK(s.Mode() == simnet::Mode::kStandby);
   CHECK(!s.TargetHeading());
 
   // AUTO with a heading to steer (magnetic) and a rudder angle.
-  s.HandleSignalK(4, ModeOf("heading", true), 1.5708, std::nullopt, -0.05, t + 1);
+  s.HandleSignalK(4, ModeOf("heading", true), 1.5708, true, std::nullopt, -0.05, t + 1);
   CHECK(s.Mode() == simnet::Mode::kAuto);
   CHECK(Near(s.TargetHeading(), 1.5708));
   CHECK(s.TargetMagnetic());
   CHECK(Near(s.Rudder(t + 1), -0.05));
 
+  // A pilot set to true heading: the server has only headingTrue (20 Nov 2026).
+  s.HandleSignalK(4, ModeOf("heading", true), 4.3284, false, std::nullopt, std::nullopt, t + 1.2);
+  CHECK(Near(s.TargetHeading(), 4.3284) && !s.TargetMagnetic());
+  // +10 confirmed by the new target, without an echo.
+  s.CommandSent(simnet::Command::kStarboard10,
+                simnet::CommandData(simnet::Command::kStarboard10, 4), t + 1.3);
+  s.HandleSignalK(4, ModeOf("heading", true), 4.5029, false, std::nullopt, std::nullopt, t + 1.8);
+  CHECK(!s.Unconfirmed(t + 1.9 + PilotState::kConfirmTimeout));
+
   // A heading reported in standby is not a heading to steer.
-  s.HandleSignalK(4, simnet::Mode::kStandby, 1.5708, std::nullopt, std::nullopt, t + 2);
+  s.HandleSignalK(4, simnet::Mode::kStandby, 1.5708, true, std::nullopt, std::nullopt, t + 2);
   CHECK(!s.TargetHeading());
 
   // WIND: the wind angle to hold, negative = port.
-  s.HandleSignalK(4, ModeOf("wind", true), 1.5708, -0.7, std::nullopt, t + 3);
+  s.HandleSignalK(4, ModeOf("wind", true), 1.5708, true, -0.7, std::nullopt, t + 3);
   CHECK(s.Mode() == simnet::Mode::kWind);
   CHECK(Near(s.TargetWindAngle(), -0.7));
 
   // A command is confirmed by the mode the server reports next.
   auto stby = simnet::CommandData(simnet::Command::kStandby, 4);
   s.CommandSent(simnet::Command::kStandby, stby, t + 4);
-  s.HandleSignalK(4, simnet::Mode::kStandby, std::nullopt, std::nullopt, std::nullopt, t + 4.5);
+  s.HandleSignalK(4, simnet::Mode::kStandby, std::nullopt, true, std::nullopt, std::nullopt, t + 4.5);
   CHECK(!s.Unconfirmed(t + 6));
   CHECK(!s.TargetWindAngle());
 

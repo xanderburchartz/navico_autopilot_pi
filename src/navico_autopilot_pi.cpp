@@ -1079,8 +1079,12 @@ void NavicoAutopilotPi::OnSignalKStatus(const std::string& body) {
   simnet::Mode before = m_state.Mode();
   auto target_before = m_state.TargetHeading();
   auto wind_before = m_state.TargetWindAngle();
-  m_state.HandleSignalK(address.value_or(0), mode,
-                        JsonNumber(ap["target"]["headingMagnetic"]["value"]),
+  // A NAC-3 sends its heading to steer (127237) as true or magnetic, as the
+  // compass is set up; the server has it under headingTrue or headingMagnetic.
+  auto target = JsonNumber(ap["target"]["headingMagnetic"]["value"]);
+  bool magnetic = target.has_value();
+  if (!target) target = JsonNumber(ap["target"]["headingTrue"]["value"]);
+  m_state.HandleSignalK(address.value_or(0), mode, target, magnetic,
                         JsonNumber(ap["target"]["windAngleApparent"]["value"]),
                         JsonNumber(root["rudderAngle"]["value"]), Now());
   if (m_state.Mode() != before)

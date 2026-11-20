@@ -85,9 +85,11 @@ public:
 
   void Handle(const simnet::Message& m, double now);
   /** The pilot as a Signal K server reports it: same effect as its own
-   *  messages on the bus. Signal K does not say the model; NAC is assumed. */
+   *  messages on the bus. Signal K does not say the model; NAC is assumed.
+   *  \p magnetic tells whether \p target is magnetic or true. */
   void HandleSignalK(uint8_t address, simnet::Mode mode, std::optional<double> target,
-                     std::optional<double> wind, std::optional<double> rudder, double now);
+                     bool magnetic, std::optional<double> wind, std::optional<double> rudder,
+                     double now);
 
   /** The pilot to talk to: the fixed one, else the most likely one found. */
   std::optional<uint8_t> Address(double now) const;
