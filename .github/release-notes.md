@@ -1,5 +1,38 @@
 Test build of the Navico Autopilot plugin. Requires **OpenCPN 5.14 or later**.
 
+## New in 0.1.2
+
+Other ways to the pilot (choose in the plugin's preferences):
+- An NMEA 0183 connection carrying NMEA 2000 wrapped in $PCDIN (SeaSmart)
+  or $MXPGN (MiniPlex) sentences. It needs a gateway that passes all PGNs
+  this way, such as a MiniPlex-3; Yacht Devices gateways do not (use their
+  RAW server as an NMEA 2000 connection).
+- A Signal K server, with the server plugin signalk-simnet-pilot-state (all
+  modes, course changes, NFU) or signalk-autopilot. The set heading may be
+  true or magnetic, as the pilot sends it. Not through Signal K:
+  confirming NAV, the pilot settings, acknowledging alarms.
+
+Panel:
+- ACK button: acknowledges the pilot's alarms the way a Triton2 keypad
+  does. Shown only while there is an alarm to acknowledge; sends nothing
+  without a press.
+- "Low boat speed" is shown as a plain line, not as an alarm: a Triton2
+  does not show it either, and the pilot keeps sending it after an
+  acknowledgement.
+- Waits longer before "No reply from the autopilot" (4 s, was 1.5 s) and
+  "did not change mode" (5 s, was 3 s): a Wi-Fi gateway can pass data on in
+  bursts.
+
+Tested on board with a B&G NAC-3 over NMEA 2000, Signal K and NMEA 0183
+($MXPGN and $PCDIN, through a software converter): modes, course changes
+and non-follow-up steering.
+
+Known limits:
+- The ACK button has not yet been tested with a real alarm.
+- OpenCPN does not transmit over an NMEA 2000 network connection that uses
+  UDP (OpenCPN#5564): the plugin shows the pilot but cannot control it. Use
+  TCP for the gateway.
+
 ## New in 0.1.1
 
 Fixed:
@@ -70,8 +103,8 @@ Other:
 
 1. Download the file for your system. Do not unpack it.
 2. In OpenCPN: Options, Plugins, **Import plugin...**, and pick the file.
-3. Enable the plugin, open its preferences and choose the NMEA 2000
-   connection. The connection must be able to transmit.
+3. Enable the plugin, open its preferences and choose the connection to
+   the pilot. The connection must be able to transmit.
 
 On Windows, importing the file for the other bitness gives "incompatible
 plugin" and also removes a version that was already installed.

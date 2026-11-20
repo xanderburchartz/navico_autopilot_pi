@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: navico_autopilot_pi 0.1.1\n"
+"Project-Id-Version: navico_autopilot_pi 0.1.2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-18 15:08+0100\n"
+"POT-Creation-Date: 2026-11-20 17:14+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,120 +17,120 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/navico_autopilot_pi.cpp:89 src/navico_autopilot_pi.cpp:775
-#: src/ap_prefs.cpp:65
+#: src/navico_autopilot_pi.cpp:100 src/navico_autopilot_pi.cpp:826
+#: src/ap_prefs.cpp:73
 msgid "Autopilot"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:90
+#: src/navico_autopilot_pi.cpp:101
 msgid "Navico autopilot"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:352
+#: src/navico_autopilot_pi.cpp:369
 msgid "No NMEA 2000 connection chosen."
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:357
+#: src/navico_autopilot_pi.cpp:374
 msgid "No autopilot selected."
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:368
+#: src/navico_autopilot_pi.cpp:384
 msgid "Confirm NAV on the pilot display: not possible through Signal K."
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:369
+#: src/navico_autopilot_pi.cpp:385
 msgid "Not possible through Signal K."
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:383
+#: src/navico_autopilot_pi.cpp:399 src/navico_autopilot_pi.cpp:428
 #, c-format
 msgid "Sending failed (error %d)."
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:429
+#: src/navico_autopilot_pi.cpp:476
 msgid "NFU through Signal K needs the server plugin signalk-simnet-pilot-state."
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:431 src/navico_autopilot_pi.cpp:1044
+#: src/navico_autopilot_pi.cpp:478 src/navico_autopilot_pi.cpp:1104
 msgid "Signal K: no access. Request it in the settings."
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:454
+#: src/navico_autopilot_pi.cpp:502
 msgid "NFU could not be sent."
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:500
+#: src/navico_autopilot_pi.cpp:551
 msgid "The pilot settings are not available through Signal K."
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:734
+#: src/navico_autopilot_pi.cpp:785
 #, c-format
 msgid "OpenCPN: route %s ended."
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:737
+#: src/navico_autopilot_pi.cpp:788
 #, c-format
 msgid "OpenCPN: arrived at %s."
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:738
+#: src/navico_autopilot_pi.cpp:789
 #, c-format
 msgid "OpenCPN: arrived at %s, next %s."
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:833
+#: src/navico_autopilot_pi.cpp:891
 #, c-format
 msgid "Autopilot: %s"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:973
+#: src/navico_autopilot_pi.cpp:1031
 msgid "No token (fine if the server has no security)."
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:974
+#: src/navico_autopilot_pi.cpp:1032
 msgid "Token present."
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:986
+#: src/navico_autopilot_pi.cpp:1044
 msgid "The server wants a token: request access."
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:1046 src/navico_autopilot_pi.cpp:1089
+#: src/navico_autopilot_pi.cpp:1106 src/navico_autopilot_pi.cpp:1141
 msgid "Signal K server not reachable."
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:1048
+#: src/navico_autopilot_pi.cpp:1108
 #, c-format
 msgid "Signal K refused the command (%d)."
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:1057
+#: src/navico_autopilot_pi.cpp:1116
 msgid "Enter the Signal K server first."
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:1079
+#: src/navico_autopilot_pi.cpp:1131
 msgid "Asking the server..."
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:1087
+#: src/navico_autopilot_pi.cpp:1139
 msgid ""
 "Waiting for approval in the server's admin page (Security, Access Requests)."
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:1091
+#: src/navico_autopilot_pi.cpp:1143
 #, c-format
 msgid "The server refused the request (%d)."
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:1112
+#: src/navico_autopilot_pi.cpp:1166
 msgid "The request expired. Ask again."
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:1122
+#: src/navico_autopilot_pi.cpp:1176
 msgid "Access granted, token stored."
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:1126
+#: src/navico_autopilot_pi.cpp:1180
 msgid "The server denied access."
 msgstr ""
 
@@ -459,37 +459,41 @@ msgstr ""
 msgid "TACK"
 msgstr ""
 
-#: src/ap_panel.cpp:1390
+#: src/ap_panel.cpp:1290
+msgid "ACK"
+msgstr ""
+
+#: src/ap_panel.cpp:1403
 msgid "Choose the NMEA 2000 connection in the plugin settings."
 msgstr ""
 
-#: src/ap_panel.cpp:1394
+#: src/ap_panel.cpp:1409
 msgid ""
 "No autopilot data through NMEA 0183. A Yacht Devices gateway does not pass "
 "the autopilot this way: connect its RAW server as an NMEA 2000 connection."
 msgstr ""
 
-#: src/ap_panel.cpp:1397
+#: src/ap_panel.cpp:1412
 msgid "No autopilot data from the Signal K server."
 msgstr ""
 
-#: src/ap_panel.cpp:1399
+#: src/ap_panel.cpp:1414
 msgid "No autopilot found"
 msgstr ""
 
-#: src/ap_panel.cpp:1401
+#: src/ap_panel.cpp:1416
 msgid "No data from the autopilot."
 msgstr ""
 
-#: src/ap_panel.cpp:1403
+#: src/ap_panel.cpp:1418
 msgid "No reply from the autopilot. Is transmitting enabled on the gateway?"
 msgstr ""
 
-#: src/ap_panel.cpp:1405
+#: src/ap_panel.cpp:1420
 msgid "The autopilot did not change mode."
 msgstr ""
 
-#: src/ap_panel.cpp:1415
+#: src/ap_panel.cpp:1431
 #, c-format
 msgid "Alarm: %s"
 msgstr ""
@@ -518,63 +522,63 @@ msgstr ""
 msgid "Request access"
 msgstr ""
 
-#: src/ap_prefs.cpp:72
+#: src/ap_prefs.cpp:80
 msgid "Address"
 msgstr ""
 
-#: src/ap_prefs.cpp:80
+#: src/ap_prefs.cpp:88
 msgid "Rudder angle from"
 msgstr ""
 
-#: src/ap_prefs.cpp:90
+#: src/ap_prefs.cpp:98
 msgid "Boat speed"
 msgstr ""
 
-#: src/ap_prefs.cpp:92
+#: src/ap_prefs.cpp:100
 msgid "Speed over ground (from OpenCPN)"
 msgstr ""
 
-#: src/ap_prefs.cpp:93
+#: src/ap_prefs.cpp:101
 msgid "Speed through water (log)"
 msgstr ""
 
-#: src/ap_prefs.cpp:132
+#: src/ap_prefs.cpp:140
 #, c-format
 msgid "%s, address %d"
 msgstr ""
 
-#: src/ap_prefs.cpp:137
+#: src/ap_prefs.cpp:145
 #, c-format
 msgid "%s, unique number %u"
 msgstr ""
 
-#: src/ap_prefs.cpp:140
+#: src/ap_prefs.cpp:148
 msgid "Unknown device"
 msgstr ""
 
-#: src/ap_prefs.cpp:141
+#: src/ap_prefs.cpp:149
 #, c-format
 msgid "%s, address %d: %.1f deg"
 msgstr ""
 
-#: src/ap_prefs.cpp:154
+#: src/ap_prefs.cpp:162
 msgid "Automatic: no autopilot found yet"
 msgstr ""
 
-#: src/ap_prefs.cpp:157 src/ap_prefs.cpp:201
+#: src/ap_prefs.cpp:165 src/ap_prefs.cpp:209
 #, c-format
 msgid "%s (automatic)"
 msgstr ""
 
-#: src/ap_prefs.cpp:166
+#: src/ap_prefs.cpp:174
 msgid "Fixed address"
 msgstr ""
 
-#: src/ap_prefs.cpp:198
+#: src/ap_prefs.cpp:206
 msgid "Automatic: no rudder sensor found yet"
 msgstr ""
 
-#: src/ap_prefs.cpp:213
+#: src/ap_prefs.cpp:221
 msgid "The chosen sensor (not seen now)"
 msgstr ""
 

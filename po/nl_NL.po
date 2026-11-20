@@ -466,6 +466,9 @@ msgstr "Naar waypoint %s sturen?"
 msgid "Steering profiles"
 msgstr "Stuurprofielen"
 #
+msgid "ACK"
+msgstr "ACK"
+#
 msgid "TACK"
 msgstr "OVERSTAG"
 #

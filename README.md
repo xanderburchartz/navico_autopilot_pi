@@ -69,8 +69,9 @@ network, an Actisense NGT-1, or SocketCAN on Linux.
 
 ### Other ways to the pilot
 
-The connection in the settings can also be one of these (development
-version, tested against simulators only):
+The connection in the settings can also be one of these (since 0.1.2;
+tested on board with a B&G NAC-3, NMEA 0183 through a software converter,
+not yet with a MiniPlex):
 
 - **NMEA 0183 with NMEA 2000 wrapped in $PCDIN or $MXPGN.** Each NMEA 0183
   connection of OpenCPN (input and output) is offered twice, as
@@ -105,6 +106,10 @@ following the standard drops it. Fixed in 5.14. The plugin is built against plug
 1.20 (OpenCPN 5.12) for notifications, so OpenCPN 5.10 and older do not load
 it. The Android build stays on API 1.18, as the Android OpenCPN library has
 no 1.20; there the alarms show in the panel only.
+
+OpenCPN does not transmit over an NMEA 2000 network connection that uses UDP
+([OpenCPN#5564](https://github.com/OpenCPN/OpenCPN/issues/5564)): the plugin
+then shows the pilot but cannot control it. Use TCP for the gateway.
 
 ### Safety
 
@@ -269,7 +274,7 @@ flatpak (x86_64, aarch64), Debian bookworm/trixie/forky (x86_64, arm64),
 macOS universal, Android (arm64, armhf) and Windows (Win32, x64). Each run
 keeps the tarballs as workflow artifacts. Upload to Cloudsmith and the catalog
 metadata push only happen when the `CLOUDSMITH_API_KEY` secret is set. A tag
-(for example `v0.1.1-alpha`) also creates a GitHub release with all tarballs
+(for example `v0.1.2-alpha`) also creates a GitHub release with all tarballs
 and their catalog metadata (`.xml`, with the tarball URL pointing at that
 release); tags with a hyphen become a pre-release. Those `.xml` files go to
 the [OpenCPN/plugins](https://github.com/OpenCPN/plugins) repository by pull
