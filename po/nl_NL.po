@@ -505,3 +505,6 @@ msgstr "Windmodus"
 #
 msgid "address:3000"
 msgstr "adres:3000"
+#
+msgid "UDP: read only"
+msgstr "UDP: alleen lezen"

@@ -118,7 +118,8 @@ no 1.20; there the alarms show in the panel only.
 
 OpenCPN does not transmit over an NMEA 2000 network connection that uses UDP
 ([OpenCPN#5564](https://github.com/OpenCPN/OpenCPN/issues/5564)): the plugin
-then shows the pilot but cannot control it. Use TCP for the gateway.
+then shows the pilot but cannot control it, and says "UDP: read only" in its
+settings and panel. Use TCP for the gateway.
 
 ### Safety
 

@@ -36,6 +36,8 @@ private:
   wxStaticText* m_sk_access;
   wxTimer m_sk_timer;
   std::vector<std::string> m_handles;
+  std::vector<bool> m_udp;          ///< per entry of m_connection
+  wxStaticText* m_udp_note = nullptr;
   wxChoice* m_pilot;
   std::vector<int> m_pilot_addresses;  // -1 automatic, -2 fixed (spin)
   int m_pilot_choice = -1;

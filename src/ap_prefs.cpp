@@ -29,10 +29,28 @@ ApPrefs::ApPrefs(wxWindow* parent, NavicoAutopilotPi* plugin)
   for (const auto& d : plugin->Drivers()) {
     m_connection->Append(wxString::FromUTF8(d.label.c_str()));
     m_handles.push_back(d.key);
+    m_udp.push_back(d.udp);
     if (current && current->key == d.key)
       m_connection->SetSelection(m_connection->GetCount() - 1);
   }
   grid->Add(m_connection, 1, wxEXPAND);
+  // OpenCPN does not transmit over a UDP NMEA 2000 connection (#5564).
+  grid->AddSpacer(0);
+  m_udp_note = new wxStaticText(this, wxID_ANY, _("UDP: read only"));
+  grid->Add(m_udp_note, 0);
+  auto show_udp = [this]() {
+    int c = m_connection->GetSelection();
+    bool udp = c >= 0 && c < static_cast<int>(m_udp.size()) && m_udp[c];
+    if (m_udp_note->IsShown() != udp) {
+      m_udp_note->Show(udp);
+      if (GetSizer()) GetSizer()->SetSizeHints(this);  // grow or shrink with the note
+      Layout();
+    }
+  };
+  m_connection->Bind(wxEVT_CHOICE, [show_udp](wxCommandEvent& e) {
+    show_udp();
+    e.Skip();
+  });
 
   // Signal K server: the plugin talks to it itself (OpenCPN's own Signal K
   // connection only reads).
@@ -118,6 +136,7 @@ ApPrefs::ApPrefs(wxWindow* parent, NavicoAutopilotPi* plugin)
 
   top->Add(CreateButtonSizer(wxOK | wxCANCEL), 0, wxEXPAND | wxALL, 10);
   Bind(wxEVT_BUTTON, &ApPrefs::OnOk, this, wxID_OK);
+  show_udp();  // hidden unless the chosen connection is UDP
   SetSizerAndFit(top);
   CentreOnParent();
 }

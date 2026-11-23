@@ -51,6 +51,9 @@ struct N2kDriver {
   /** What the settings store: the handle, with "pcdin:" or "mxpgn:" before
    *  it for the wrapped ways, or "signalk". */
   std::string key;
+  /** An NMEA 2000 network connection over UDP: OpenCPN receives on it but
+   *  does not transmit (OpenCPN#5564), so it can only read the pilot. */
+  bool udp = false;
 };
 
 // API 1.20 (OpenCPN 5.12) has notifications; the Android build stays on 1.18.

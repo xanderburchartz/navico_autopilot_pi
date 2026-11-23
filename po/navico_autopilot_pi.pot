@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: navico_autopilot_pi 0.1.3\n"
+"Project-Id-Version: navico_autopilot_pi 0.1.4\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-20 20:06+0100\n"
+"POT-Creation-Date: 2026-11-23 08:09+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,8 +17,8 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/navico_autopilot_pi.cpp:107 src/navico_autopilot_pi.cpp:853
-#: src/ap_prefs.cpp:73
+#: src/navico_autopilot_pi.cpp:107 src/navico_autopilot_pi.cpp:856
+#: src/ap_prefs.cpp:90
 msgid "Autopilot"
 msgstr ""
 
@@ -26,390 +26,394 @@ msgstr ""
 msgid "Navico autopilot"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:379 src/ap_panel.cpp:1403
+#: src/navico_autopilot_pi.cpp:382 src/ap_panel.cpp:1423
 msgid "No connection"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:384 src/ap_panel.cpp:1140 src/ap_panel.cpp:1413
+#: src/navico_autopilot_pi.cpp:387 src/ap_panel.cpp:1160 src/ap_panel.cpp:1433
 msgid "No autopilot"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:391
+#: src/navico_autopilot_pi.cpp:394
 msgid "Not in Wind"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:401
+#: src/navico_autopilot_pi.cpp:404
 msgid "Confirm on pilot"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:402 src/navico_autopilot_pi.cpp:576
+#: src/navico_autopilot_pi.cpp:405 src/navico_autopilot_pi.cpp:579
 msgid "Not via Signal K"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:416 src/navico_autopilot_pi.cpp:446
-#: src/ap_panel.cpp:1056
+#: src/navico_autopilot_pi.cpp:419 src/navico_autopilot_pi.cpp:449
+#: src/ap_panel.cpp:1076
 msgid "Send error"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:495
+#: src/navico_autopilot_pi.cpp:498
 msgid "NFU not available"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:497 src/navico_autopilot_pi.cpp:1143
+#: src/navico_autopilot_pi.cpp:500 src/navico_autopilot_pi.cpp:1152
 msgid "No access"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:527
+#: src/navico_autopilot_pi.cpp:530
 msgid "NFU failed"
-msgstr ""
-
-#: src/navico_autopilot_pi.cpp:812
-#, c-format
-msgid "Route %s ended"
 msgstr ""
 
 #: src/navico_autopilot_pi.cpp:815
 #, c-format
+msgid "Route %s ended"
+msgstr ""
+
+#: src/navico_autopilot_pi.cpp:818
+#, c-format
 msgid "%s reached"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:816
+#: src/navico_autopilot_pi.cpp:819
 #, c-format
 msgid "%s reached, next %s"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:918
+#: src/navico_autopilot_pi.cpp:927
 #, c-format
 msgid "Autopilot: %s"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:1058
+#: src/navico_autopilot_pi.cpp:1067
 msgid "No token (needed only with security)"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:1059
+#: src/navico_autopilot_pi.cpp:1068
 msgid "Token present."
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:1071
+#: src/navico_autopilot_pi.cpp:1080
 msgid "Token needed: request access"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:1145 src/navico_autopilot_pi.cpp:1184
+#: src/navico_autopilot_pi.cpp:1154 src/navico_autopilot_pi.cpp:1193
 msgid "Server not reachable"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:1149 src/ap_panel.cpp:1132
+#: src/navico_autopilot_pi.cpp:1158 src/ap_panel.cpp:1152
 msgid "Unconfirmed"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:1151 src/navico_autopilot_pi.cpp:1186
+#: src/navico_autopilot_pi.cpp:1160 src/navico_autopilot_pi.cpp:1195
 #, c-format
 msgid "Refused (%d)"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:1159
+#: src/navico_autopilot_pi.cpp:1168
 msgid "Enter server first"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:1174
+#: src/navico_autopilot_pi.cpp:1183
 msgid "Asking the server..."
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:1182
+#: src/navico_autopilot_pi.cpp:1191
 msgid "Approve in server: Security, Access Requests"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:1209
+#: src/navico_autopilot_pi.cpp:1218
 msgid "Expired, ask again"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:1219
+#: src/navico_autopilot_pi.cpp:1228
 msgid "Access granted"
 msgstr ""
 
-#: src/navico_autopilot_pi.cpp:1223
+#: src/navico_autopilot_pi.cpp:1232
 msgid "Access denied"
 msgstr ""
 
-#: src/ap_panel.cpp:328
+#: src/ap_panel.cpp:348
 msgid "NON FOLLOW-UP"
 msgstr ""
 
-#: src/ap_panel.cpp:329
+#: src/ap_panel.cpp:349
 msgid "STANDBY"
 msgstr ""
 
-#: src/ap_panel.cpp:330
+#: src/ap_panel.cpp:350
 msgid "HEADING HOLD"
 msgstr ""
 
-#: src/ap_panel.cpp:331 src/ap_panel.cpp:1256
+#: src/ap_panel.cpp:351 src/ap_panel.cpp:1276
 msgid "WIND"
 msgstr ""
 
-#: src/ap_panel.cpp:332
+#: src/ap_panel.cpp:352
 msgid "NAVIGATION"
 msgstr ""
 
-#: src/ap_panel.cpp:333 src/ap_panel.cpp:1258
+#: src/ap_panel.cpp:353 src/ap_panel.cpp:1278
 msgid "NO DRIFT"
 msgstr ""
 
-#: src/ap_panel.cpp:334
+#: src/ap_panel.cpp:354
 msgid "NO PILOT"
 msgstr ""
 
-#: src/ap_panel.cpp:402
+#: src/ap_panel.cpp:422
 msgid "Speed through water"
 msgstr ""
 
-#: src/ap_panel.cpp:402
+#: src/ap_panel.cpp:422
 msgid "Speed over ground"
 msgstr ""
 
-#: src/ap_panel.cpp:405
+#: src/ap_panel.cpp:425
 msgid "Apparent wind"
 msgstr ""
 
-#: src/ap_panel.cpp:406
+#: src/ap_panel.cpp:426
 msgid "Set angle"
 msgstr ""
 
-#: src/ap_panel.cpp:410
+#: src/ap_panel.cpp:430
 msgid "Bearing WPT"
 msgstr ""
 
-#: src/ap_panel.cpp:411
+#: src/ap_panel.cpp:431
 #, c-format
 msgid "Bearing %s"
 msgstr ""
 
-#: src/ap_panel.cpp:413
+#: src/ap_panel.cpp:433
 msgid "Distance WPT"
 msgstr ""
 
-#: src/ap_panel.cpp:419
+#: src/ap_panel.cpp:439
 msgid "Set heading"
 msgstr ""
 
-#: src/ap_panel.cpp:424
+#: src/ap_panel.cpp:444
 msgid "Rudder angle"
 msgstr ""
 
-#: src/ap_panel.cpp:428
+#: src/ap_panel.cpp:448
 msgid "Heading"
 msgstr ""
 
-#: src/ap_panel.cpp:633
+#: src/ap_panel.cpp:653
 msgid "Gybe"
 msgstr ""
 
-#: src/ap_panel.cpp:633
+#: src/ap_panel.cpp:653
 msgid "Tack"
 msgstr ""
 
-#: src/ap_panel.cpp:646
+#: src/ap_panel.cpp:666
 msgid "Gybe?"
 msgstr ""
 
-#: src/ap_panel.cpp:646
+#: src/ap_panel.cpp:666
 msgid "Tack?"
 msgstr ""
 
-#: src/ap_panel.cpp:648 src/ap_panel.cpp:1201
+#: src/ap_panel.cpp:668 src/ap_panel.cpp:1221
 msgid "Cancel"
 msgstr ""
 
-#: src/ap_panel.cpp:649 src/ap_panel.cpp:1202
+#: src/ap_panel.cpp:669 src/ap_panel.cpp:1222
 msgid "OK"
 msgstr ""
 
-#: src/ap_panel.cpp:684
+#: src/ap_panel.cpp:704
 msgid "Autopilot settings"
 msgstr ""
 
-#: src/ap_panel.cpp:729
+#: src/ap_panel.cpp:749
 msgid "Change"
 msgstr ""
 
-#: src/ap_panel.cpp:754 src/pilot_settings.cpp:50 src/pilot_settings.cpp:52
+#: src/ap_panel.cpp:774 src/pilot_settings.cpp:50 src/pilot_settings.cpp:52
 #: src/pilot_settings.cpp:54 src/pilot_settings.cpp:56 src/pilot_settings.cpp:58
 #: src/pilot_settings.cpp:60 src/pilot_settings.cpp:63 src/pilot_settings.cpp:65
 #: src/pilot_settings.cpp:67 src/pilot_settings.cpp:69
 msgid "Steering profiles"
 msgstr ""
 
-#: src/ap_panel.cpp:811 src/ap_panel.cpp:971
+#: src/ap_panel.cpp:831 src/ap_panel.cpp:991
 msgid "Installation"
 msgstr ""
 
-#: src/ap_panel.cpp:817
+#: src/ap_panel.cpp:837
 msgid "Snapshots..."
 msgstr ""
 
-#: src/ap_panel.cpp:822
+#: src/ap_panel.cpp:842
 msgid "Read again"
 msgstr ""
 
-#: src/ap_panel.cpp:823
+#: src/ap_panel.cpp:843
 msgid "Close"
 msgstr ""
 
-#: src/ap_panel.cpp:883
+#: src/ap_panel.cpp:903
 msgid "Take a snapshot now"
 msgstr ""
 
-#: src/ap_panel.cpp:885
+#: src/ap_panel.cpp:905
 #, c-format
 msgid "%s, %s (%zu values)"
 msgstr ""
 
-#: src/ap_panel.cpp:888 src/ap_panel.cpp:944 src/ap_panel.cpp:952
+#: src/ap_panel.cpp:908 src/ap_panel.cpp:964 src/ap_panel.cpp:972
 msgid "Snapshots"
 msgstr ""
 
-#: src/ap_panel.cpp:892
+#: src/ap_panel.cpp:912
 msgid "Taken by hand"
 msgstr ""
 
-#: src/ap_panel.cpp:894
+#: src/ap_panel.cpp:914
 msgid "Snapshot not saved"
 msgstr ""
 
-#: src/ap_panel.cpp:895
+#: src/ap_panel.cpp:915
 #, c-format
 msgid "Snapshot saved, %d not read"
 msgstr ""
 
-#: src/ap_panel.cpp:896
+#: src/ap_panel.cpp:916
 msgid "Snapshot saved"
 msgstr ""
 
-#: src/ap_panel.cpp:929
+#: src/ap_panel.cpp:949
 #, c-format
 msgid "%d not read, skipped"
 msgstr ""
 
-#: src/ap_panel.cpp:931
+#: src/ap_panel.cpp:951
 msgid "Nothing to restore"
 msgstr ""
 
-#: src/ap_panel.cpp:931
+#: src/ap_panel.cpp:951
 msgid "No differences"
 msgstr ""
 
-#: src/ap_panel.cpp:939
+#: src/ap_panel.cpp:959
 msgid "Other autopilot!"
 msgstr ""
 
-#: src/ap_panel.cpp:941
+#: src/ap_panel.cpp:961
 msgid "Autopilot unknown"
 msgstr ""
 
-#: src/ap_panel.cpp:942
+#: src/ap_panel.cpp:962
 #, c-format
 msgid "Restore %s?"
 msgstr ""
 
-#: src/ap_panel.cpp:946
+#: src/ap_panel.cpp:966
 #, c-format
 msgid "Before going back to %s"
 msgstr ""
 
-#: src/ap_panel.cpp:951 src/ap_panel.cpp:1046
+#: src/ap_panel.cpp:971 src/ap_panel.cpp:1066
 msgid "Snapshot not saved. Change anyway?"
 msgstr ""
 
-#: src/ap_panel.cpp:956
+#: src/ap_panel.cpp:976
 #, c-format
 msgid "%zu values sent"
 msgstr ""
 
-#: src/ap_panel.cpp:966
+#: src/ap_panel.cpp:986
 #, c-format
 msgid "%d more"
 msgstr ""
 
-#: src/ap_panel.cpp:1007
+#: src/ap_panel.cpp:1027
 #, c-format
 msgid "Between %g and %g %s."
 msgstr ""
 
-#: src/ap_panel.cpp:1009
+#: src/ap_panel.cpp:1029
 #, c-format
 msgid "0 = %s."
 msgstr ""
 
-#: src/ap_panel.cpp:1033
+#: src/ap_panel.cpp:1053
 #, c-format
 msgid "Change %s from %s to %s?"
 msgstr ""
 
-#: src/ap_panel.cpp:1036 src/ap_panel.cpp:1047
+#: src/ap_panel.cpp:1056 src/ap_panel.cpp:1067
 msgid "Change autopilot setting"
 msgstr ""
 
-#: src/ap_panel.cpp:1044
+#: src/ap_panel.cpp:1064
 #, c-format
 msgid "Before changing %s"
 msgstr ""
 
-#: src/ap_panel.cpp:1127
+#: src/ap_panel.cpp:1147
 #, c-format
 msgid "%s set to %s."
 msgstr ""
 
-#: src/ap_panel.cpp:1135
+#: src/ap_panel.cpp:1155
 msgid "Waiting..."
 msgstr ""
 
-#: src/ap_panel.cpp:1142 src/ap_panel.cpp:1417
+#: src/ap_panel.cpp:1162 src/ap_panel.cpp:1439
 msgid "No response"
 msgstr ""
 
-#: src/ap_panel.cpp:1181 src/ap_panel.cpp:1257
+#: src/ap_panel.cpp:1201 src/ap_panel.cpp:1277
 msgid "NAV"
 msgstr ""
 
-#: src/ap_panel.cpp:1224
+#: src/ap_panel.cpp:1244
 msgid "To waypoint?"
 msgstr ""
 
-#: src/ap_panel.cpp:1225
+#: src/ap_panel.cpp:1245
 #, c-format
 msgid "To %s?"
 msgstr ""
 
-#: src/ap_panel.cpp:1254
+#: src/ap_panel.cpp:1274
 msgid "STBY"
 msgstr ""
 
-#: src/ap_panel.cpp:1255
+#: src/ap_panel.cpp:1275
 msgid "AUTO"
 msgstr ""
 
-#: src/ap_panel.cpp:1259
+#: src/ap_panel.cpp:1279
 msgid "TACK"
 msgstr ""
 
-#: src/ap_panel.cpp:1284
+#: src/ap_panel.cpp:1304
 msgid "ACK"
 msgstr ""
 
-#: src/ap_panel.cpp:1396
+#: src/ap_panel.cpp:1416
 msgid "Connection lost"
 msgstr ""
 
-#: src/ap_panel.cpp:1409 src/ap_panel.cpp:1411 src/ap_panel.cpp:1415
+#: src/ap_panel.cpp:1429 src/ap_panel.cpp:1431 src/ap_panel.cpp:1435
 msgid "No data"
 msgstr ""
 
-#: src/ap_panel.cpp:1419
+#: src/ap_panel.cpp:1437 src/ap_prefs.cpp:39
+msgid "UDP: read only"
+msgstr ""
+
+#: src/ap_panel.cpp:1441
 msgid "Mode not changed"
 msgstr ""
 
-#: src/ap_panel.cpp:1430
+#: src/ap_panel.cpp:1452
 #, c-format
 msgid "Alarm: %s"
 msgstr ""
@@ -422,75 +426,75 @@ msgstr ""
 msgid "Connection"
 msgstr ""
 
-#: src/ap_prefs.cpp:39
+#: src/ap_prefs.cpp:56
 msgid "Signal K server"
 msgstr ""
 
-#: src/ap_prefs.cpp:41
+#: src/ap_prefs.cpp:58
 msgid "address:3000"
 msgstr ""
 
-#: src/ap_prefs.cpp:43
+#: src/ap_prefs.cpp:60
 msgid "Signal K access"
 msgstr ""
 
-#: src/ap_prefs.cpp:45
+#: src/ap_prefs.cpp:62
 msgid "Request access"
 msgstr ""
 
-#: src/ap_prefs.cpp:80
+#: src/ap_prefs.cpp:97
 msgid "Address"
 msgstr ""
 
-#: src/ap_prefs.cpp:88
+#: src/ap_prefs.cpp:105
 msgid "Rudder angle from"
 msgstr ""
 
-#: src/ap_prefs.cpp:98
+#: src/ap_prefs.cpp:115
 msgid "Boat speed"
 msgstr ""
 
-#: src/ap_prefs.cpp:100
+#: src/ap_prefs.cpp:117
 msgid "SOG"
 msgstr ""
 
-#: src/ap_prefs.cpp:101
+#: src/ap_prefs.cpp:118
 msgid "STW"
 msgstr ""
 
-#: src/ap_prefs.cpp:140
+#: src/ap_prefs.cpp:158
 #, c-format
 msgid "%s, address %d"
 msgstr ""
 
-#: src/ap_prefs.cpp:145
+#: src/ap_prefs.cpp:163
 #, c-format
 msgid "%s, unique number %u"
 msgstr ""
 
-#: src/ap_prefs.cpp:148
+#: src/ap_prefs.cpp:166
 msgid "Unknown device"
 msgstr ""
 
-#: src/ap_prefs.cpp:149
+#: src/ap_prefs.cpp:167
 #, c-format
 msgid "%s, address %d: %.1f deg"
 msgstr ""
 
-#: src/ap_prefs.cpp:162 src/ap_prefs.cpp:206
+#: src/ap_prefs.cpp:180 src/ap_prefs.cpp:224
 msgid "Automatic"
 msgstr ""
 
-#: src/ap_prefs.cpp:165 src/ap_prefs.cpp:209
+#: src/ap_prefs.cpp:183 src/ap_prefs.cpp:227
 #, c-format
 msgid "%s (automatic)"
 msgstr ""
 
-#: src/ap_prefs.cpp:174
+#: src/ap_prefs.cpp:192
 msgid "Fixed address"
 msgstr ""
 
-#: src/ap_prefs.cpp:221
+#: src/ap_prefs.cpp:239
 msgid "Chosen sensor (not seen)"
 msgstr ""
 

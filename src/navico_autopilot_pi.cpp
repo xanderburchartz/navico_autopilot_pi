@@ -301,6 +301,9 @@ std::vector<N2kDriver> NavicoAutopilotPi::Drivers() const {
       label += " (" + attr["userComment"] + ")";
     if (p->second == "nmea2000") {
       direct.push_back({handle, label, attr.count("netAddress") > 0, N2kDriver::Link::kN2k, handle});
+      // The handle is "nmea2000!@!UDP:address:port" for a UDP connection; the
+      // attributes do not say the network protocol.
+      direct.back().udp = handle.find("!@!UDP:") != std::string::npos;
       continue;
     }
     // An NMEA 0183 connection works only with a gateway that passes NMEA 2000

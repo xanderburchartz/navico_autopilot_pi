@@ -189,6 +189,11 @@ Through Signal K: the server took the command but did not answer within
 3 seconds. It may have been carried out: look at the panel before pressing
 again, or the command may be given twice. In the settings window: after
 *Change* the pilot did not answer within 3 seconds; read again to check.
+UDP: read only::
+The chosen connection is an NMEA 2000 network connection over UDP. OpenCPN
+receives over it but does not transmit
+(https://github.com/OpenCPN/OpenCPN/issues/5564[OpenCPN#5564]): the panel
+shows the pilot, but the buttons do not reach it. Use TCP for the gateway.
 Mode not changed::
 The pilot echoed the command but did not follow it within 5 seconds, for
 example NAV without navigation data.

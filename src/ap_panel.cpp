@@ -1433,6 +1433,8 @@ void ApPanel::UpdateState(double now) {
       msg = _("No autopilot");
     else if (!alive)
       msg = _("No data");
+    else if (drv->udp)
+      msg = _("UDP: read only");  // OpenCPN does not transmit over UDP (#5564)
     else if (s.Unconfirmed(now))
       msg = _("No response");
     else if (s.NotFollowed(now))
