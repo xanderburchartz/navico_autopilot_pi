@@ -79,8 +79,27 @@ Theme ThemeFor(PI_ColorScheme cs) {
   return t;
 }
 
+// Points per pixel of text height, measured once per paint (see
+// CalibrateFonts); 0: use pixel sizes as they are.
+double g_pt_per_px = 0;
+
+/** On Android (wxQt) a font given in pixels comes out about 1 px high, while
+ *  fonts in points are right: there the pixel height is turned into points,
+ *  measured on \p dc. Elsewhere pixel sizes work and are kept. */
+void CalibrateFonts(wxDC& dc) {
+#ifdef __ANDROID__
+  const double ref = 20.0;
+  dc.SetFont(wxFont(wxFontInfo(ref).Family(wxFONTFAMILY_SWISS)));
+  int h = dc.GetCharHeight();
+  g_pt_per_px = h > 0 ? ref / h : 0;
+#else
+  (void)dc;
+#endif
+}
+
 wxFont PixelFont(int px, bool bold = false) {
-  wxFontInfo info(wxSize(0, std::max(px, 6)));
+  px = std::max(px, 6);
+  wxFontInfo info = g_pt_per_px > 0 ? wxFontInfo(px * g_pt_per_px) : wxFontInfo(wxSize(0, px));
   info.Family(wxFONTFAMILY_SWISS);
   if (bold) info.Bold();
   return wxFont(info);
@@ -182,6 +201,7 @@ private:
 #else
     wxDC& dc = pdc;  // Android (wxQt) has no graphics context
 #endif
+    CalibrateFonts(dc);
     wxSize sz = GetClientSize();
     double w = sz.x, h = sz.y;
     DrawHeadingArc(dc, w, h * 0.36);
