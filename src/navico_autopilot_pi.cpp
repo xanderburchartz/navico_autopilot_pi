@@ -857,6 +857,12 @@ void NavicoAutopilotPi::ShowPanel(bool show) {
         .FloatingSize(size + wxSize(0, 2 * m_panel->GetCharHeight()))
         .FloatingPosition(100, 100)
         .Float()
+        // Always floating: docked, wxAUI stretches it over the full width or
+        // height of the chart window, possibly over the toolbar that would
+        // show it again. A click on its caption with a small drag towards an
+        // edge, or (wxWidgets 3.3, Windows) a double click, docks a dockable
+        // pane.
+        .Dockable(false)
         .CloseButton(true)
         .Hide();
     aui->AddPane(m_panel, info);
