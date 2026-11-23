@@ -132,5 +132,11 @@ macro(add_plugin_libraries)
   if (WIN32)
     target_link_libraries(${PACKAGE_NAME} ws2_32)
   endif ()
+  # OpenCPN for Windows ships an old msvcp140.dll (14.12). A std::mutex built
+  # with Visual Studio 2022 17.10 or later crashes with a runtime older than
+  # 14.40 unless its constexpr constructor is disabled (Microsoft STL notes).
+  if (MSVC)
+    target_compile_definitions(${PACKAGE_NAME} PRIVATE _DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR)
+  endif ()
 endmacro ()
 
