@@ -13,6 +13,11 @@ image::panel.png[Autopilot panel]
 * Test reports and issues: https://github.com/xanderburchartz/navico_autopilot_pi/issues[GitHub issues]
 * Installation: xref:opencpn-plugins:misc:plugin-install.adoc[Plugin Download, Install and Enable]
 
+The plugin is in OpenCPN's Alpha catalog. To see it, quit OpenCPN and add
+`CatalogExpert=1` to the `[PlugIns]` section of `opencpn.conf` (on Android
+in `Android/data/org.opencpn.opencpn/files`). Then choose Options, Plugins,
+*Settings...*, set the catalog channel to *Alpha* and update the catalog.
+
 == What it does
 
 * Switches the pilot to Standby, Auto (heading hold), Wind, Nav or No Drift.
@@ -34,12 +39,22 @@ So far it has been used with a B&G NAC-3.
 OpenCPN 5.12 loses every second command on network gateways (Yacht Devices
 RAW, Actisense RAW ASCII), so the plugin needs 5.14 for those.
 
+Instead of an NMEA 2000 connection the plugin can also use:
+
+* An NMEA 0183 connection with NMEA 2000 wrapped in $PCDIN or $MXPGN. The
+  gateway must pass all PGNs this way. On a ShipModul MiniPlex-3, set
+  "$MXPGN" in MPX-Config3 under NMEA 2000 to "all RX and TX". Yacht Devices
+  gateways wrap only a few PGNs on NMEA 0183; use their RAW server instead.
+* A Signal K server with `signalk-simnet-pilot-state` or
+  `signalk-autopilot`. Confirming NAV, the pilot settings and *ACK* are not
+  available this way.
+
 == Setting up
 
 . Make sure the NMEA 2000 connection exists in Options, Connections, with
   output enabled.
 . Enable the plugin in Options, Plugins.
-. Open its Preferences and choose the NMEA 2000 connection.
+. Open its Preferences and choose the connection.
 . The autopilot and the rudder sensor are found automatically; the first
   entry of each list names the one in use. With more than one candidate the
   plugin takes the most likely one (a Navico pilot computer, a rudder
@@ -52,7 +67,7 @@ image::preferences.png[Preferences]
 == Using it
 
 The steering wheel button in the toolbar shows and hides the panel. The
-panel can float or be docked, like other OpenCPN panels.
+panel always floats; it cannot be docked.
 
 The display follows a Navico pilot controller: the heading arc at the top,
 with the set heading (or the bearing to the waypoint) as a triangle, red to
