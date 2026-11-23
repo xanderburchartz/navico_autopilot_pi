@@ -988,8 +988,8 @@ void NavicoAutopilotPi::LoadConfig() {
   unsigned long long raw = 0;
   if (name.ToULongLong(&raw, 16)) m_state.SetPilotName(raw);
   wxString speed;
-  conf->Read("SpeedSource", &speed, "SOG");
-  m_use_stw = speed == "STW";
+  conf->Read("SpeedSource", &speed, "STW");
+  m_use_stw = speed != "SOG";
   wxString rudder;
   conf->Read("RudderName", &rudder, "");
   raw = 0;

@@ -186,7 +186,7 @@ literal echo of each command the pilot executed, 25-55 ms later), 130850 with
 byte 4 = `01` and 130856 (pilot alarms and their text), 127237 (heading to
 steer), 65341 (set wind angle), 127245 (rudder angle, bytes 4-5, positive =
 starboard), 130306 (apparent wind), 129284 (bearing and distance to the
-waypoint), 128259 (speed through the water, if chosen instead of SOG),
+waypoint), 128259 (speed through the water, unless SOG is chosen),
 60928 and 126996 (NAME and model ID, to recognise devices), 129285 (the
 waypoints of the plotter's route, for the name of the destination in
 129284 bytes 20-23; a Zeus sends the names empty). The

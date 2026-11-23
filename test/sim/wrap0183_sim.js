@@ -10,8 +10,10 @@
 // address 4, in Wind mode also 65341 (wind angle to hold, 40 degrees to
 // starboard). With "alarm": an active "Rudder limit" alarm (130850 + 130856)
 // every 8.8 s, as a NAC-3 repeats it, until it is acknowledged (state 0x38);
-// then it is cleared (0x3A). Logs every command it receives and changes the
-// mode as a NAC-3 does. Nothing here talks to a real bus.
+// then it is cleared (0x3A). Also a rudder angle (127245, 1 degree to
+// starboard) and a log with 5.2 kn through the water (128259, address 35), and
+// $IIHDM with the heading for OpenCPN. Logs every command it receives and
+// changes the mode as a NAC-3 does. Nothing here talks to a real bus.
 
 'use strict'
 const net = require('net')
@@ -117,6 +119,13 @@ function status () {
   const hc = [0xff, 0x7f, 0xff, 0x7f, 0xff, raw & 0xff, raw >> 8, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]
   out.push(...encode(127237, 2, PILOT, hc, seq++ & 7))
+  // 127245: rudder position in 0.0001 rad at bytes 4-5, 1 degree to starboard.
+  const rud = Math.round(Math.PI / 180 * 10000)
+  out.push(...encode(127245, 2, PILOT, [0xff, 0xff, 0xff, 0x7f, rud & 0xff, rud >> 8, 0xff, 0xff], 0))
+  // 128259: speed through the water in 0.01 m/s at bytes 1-2, 5.2 kn, from a log at 35.
+  const stw = Math.round(5.2 * 1852 / 3600 * 100)
+  out.push(...encode(128259, 2, 35, [0x00, stw & 0xff, stw >> 8, 0xff, 0xff, 0x00, 0xff, 0xff], 0))
+  out.push(sentence(`IIHDM,${(mode === 'standby' ? 92 : target).toFixed(1)},M`))
   if (mode === 'wind') {
     // 65341, wind mode (3), 40 degrees = 6981 in 0.0001 rad.
     out.push(...encode(65341, 6, PILOT, [0x41, 0x9f, 0xff, 0xff, 0x03, 0xff, 6981 & 0xff, 6981 >> 8], 0))

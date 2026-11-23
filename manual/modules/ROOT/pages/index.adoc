@@ -79,7 +79,7 @@ the rudder angle at the bottom.
 |Mode |Upper value |Lower value
 
 |Standby |Heading |Boat speed
-|NFU (standby, button held) |Rudder angle |Boat speed
+|NFU (in standby, a -/+ button held) |Rudder angle |Boat speed
 |Auto, No Drift |Set heading |Boat speed
 |Nav |Bearing to the waypoint |Distance to the waypoint
 |Wind |Apparent wind angle |Set wind angle
@@ -89,16 +89,17 @@ Headings are shown in the reference the pilot uses, true or magnetic. The
 colours follow OpenCPN's day, dusk and night schemes; at night everything is
 dim red.
 
-Boat speed is the speed over ground from OpenCPN, or the speed through the
-water from the log; choose it in the settings.
+Boat speed is the speed through the water from the log, or the speed over
+ground from OpenCPN; choose it in the settings. Without data it shows
+`-.-`.
 
 STBY works whenever a pilot is selected, also without recent data. The
 other mode buttons need recent data from the pilot. The course buttons work
 in Auto, Wind and No Drift.
 
 In standby the course buttons work as on a Triton2: non-follow-up (NFU).
-The rudder moves as long as you hold a button, -1 and -10 to port, +1 and
-+10 to starboard, and stops when you let go. The plugin repeats the command every
+The rudder moves as long as you hold one of them, -1 and -10 to port, +1 and
++10 to starboard, and stops when you let go. STBY itself is not held. The plugin repeats the command every
 half second while held and sends stop three times on release; it also stops
 when the panel closes or OpenCPN loses focus. So the same button means a
 course change or a rudder movement depending on the mode the pilot last

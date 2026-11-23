@@ -139,7 +139,7 @@ public:
   std::vector<pilot_settings::Snapshot> Snapshots() const;
   /** Address holding the rudder calibration (the chosen rudder sensor). */
   std::optional<uint8_t> RudderNode() const;
-  /** Show speed through the water (128259) instead of OpenCPN's SOG. */
+  /** Show speed through the water (128259, the default) or OpenCPN's SOG. */
   bool UseStw() const { return m_use_stw; }
   /** Waypoint name of OpenCPN's own active leg, if OpenCPN navigates. */
   wxString ActiveWaypoint() const;
@@ -259,7 +259,7 @@ private:
 
   double m_discover_until = 0;
   std::string m_claims_driver;  // connection the address claims were requested on
-  bool m_use_stw = false;
+  bool m_use_stw = true;
   simnet::NfuSide m_nfu = simnet::NfuSide::kStop;
   int m_nfu_stops_left = 0;
   wxTimer m_nfu_timer;
