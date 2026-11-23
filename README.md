@@ -78,7 +78,8 @@ not yet with a MiniPlex):
   "$PCDIN (SeaSmart)" and "$MXPGN (MiniPlex)". The plugin wraps and unwraps
   the same Navico messages itself (`src/wrap0183.cpp`), so everything works,
   settings included. It needs a gateway that passes *all* PGNs this way, such
-  as a ShipModul MiniPlex-3 ($MXPGN). Yacht Devices gateways do not: on their
+  as a ShipModul MiniPlex-3 ($MXPGN); in MPX-Config3 that setting is called
+  "all RX and TX". Yacht Devices gateways do not: on their
   NMEA 0183 servers they wrap only engine, transmission, tank, battery and
   switch PGNs (tables 1 and 2 of the YDWG-02 manual), so for a Navico pilot
   they need their RAW server, which is the NMEA 2000 way above.
