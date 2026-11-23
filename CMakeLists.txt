@@ -125,9 +125,12 @@ configure_file(
 
 set(checksum "@checksum@")
 # Summary and description as XML text: a bare & ("B&G") is invalid XML.
-# The plain versions stay for config.h (the plugin list in OpenCPN).
+# The catalog shows them in labels, where "&" marks a keyboard shortcut and
+# "B&G" appears as "BG" (Windows, Android): doubled first, as the plugin does
+# for its own descriptions (LabelText). The plain versions stay for config.h.
 foreach (_xml_var PKG_SUMMARY PKG_DESCRIPTION)
-  string(REPLACE "&" "&amp;" ${_xml_var}_XML "${${_xml_var}}")
+  string(REPLACE "&" "&&" ${_xml_var}_XML "${${_xml_var}}")
+  string(REPLACE "&" "&amp;" ${_xml_var}_XML "${${_xml_var}_XML}")
   string(REPLACE "<" "&lt;" ${_xml_var}_XML "${${_xml_var}_XML}")
   string(REPLACE ">" "&gt;" ${_xml_var}_XML "${${_xml_var}_XML}")
 endforeach ()
