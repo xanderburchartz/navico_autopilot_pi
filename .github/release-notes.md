@@ -1,5 +1,25 @@
 Test build of the Navico Autopilot plugin. Requires **OpenCPN 5.14 or later**.
 
+## New in 0.1.4
+
+Fixed:
+- Windows: OpenCPN crashed while loading 0.1.3 (installing it, or at start).
+- Android: the text the panel draws itself (heading, mode, scale) was about
+  1 pixel high.
+- The catalog showed "BG" instead of "B&G" on Windows and Android.
+- The panel could dock to the edge of the chart and spread over its whole
+  width; it now always floats.
+
+Changed:
+- A UDP NMEA 2000 connection shows "UDP: read only" in the settings and the
+  panel: OpenCPN does not transmit over UDP (OpenCPN#5564).
+- README: the MiniPlex-3 setting for $MXPGN is called "all RX and TX".
+
+Tested: Windows with OpenCPN 5.14.2 (32-bit), the plugin loads; Android
+with OpenCPN 5.14.0, the panel text, "B&G" in the catalog and "UDP: read
+only" in the settings and the panel. Not tested: Windows 64-bit, Linux,
+docking on Windows.
+
 ## New in 0.1.3
 
 Fixed (after a review of 0.1.2):

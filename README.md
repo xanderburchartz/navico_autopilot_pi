@@ -298,7 +298,7 @@ flatpak (x86_64, aarch64), Debian bookworm/trixie/forky (x86_64, arm64),
 macOS universal, Android (arm64, armhf) and Windows (Win32, x64). Each run
 keeps the tarballs as workflow artifacts. Upload to Cloudsmith and the catalog
 metadata push only happen when the `CLOUDSMITH_API_KEY` secret is set. A tag
-(for example `v0.1.3-alpha`) also creates a GitHub release with all tarballs
+(for example `v0.1.4-alpha`) also creates a GitHub release with all tarballs
 and their catalog metadata (`.xml`, with the tarball URL pointing at that
 release); tags with a hyphen become a pre-release. Those `.xml` files go to
 the [OpenCPN/plugins](https://github.com/OpenCPN/plugins) repository by pull
