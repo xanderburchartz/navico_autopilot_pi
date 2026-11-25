@@ -49,6 +49,7 @@ private:
   std::map<simnet::Command, wxWindow*> m_buttons;
   NavConfirmDialog* m_confirm = nullptr;
   wxWeakRef<wxWindow> m_tack;  ///< the open tack window, at most one
+  wxWeakRef<wxWindow> m_settings;  ///< the open settings window, at most one
   double m_confirm_handled = -1e9;  ///< AwaitingSince() of the last shown request
   bool m_nfu_buttons = false;
 };

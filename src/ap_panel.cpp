@@ -1287,12 +1287,18 @@ ApPanel::ApPanel(wxWindow* parent, NavicoAutopilotPi* plugin)
   top->Add(course, 0, wxEXPAND | wxALL, 6);
 
   m_display->SetOnSettings([this]() {
+    // One window at a time: each would read the pilot's settings again.
+    if (m_settings) {
+      m_settings->Raise();
+      return;
+    }
     auto* dlg = new SettingsDialog(wxGetTopLevelParent(this), m_plugin,
                                    ThemeFor(m_plugin->ColorScheme()));
     // Next to the panel, which OpenCPN keeps above other windows.
     wxRect r = GetScreenRect();
     dlg->Move(r.GetRight() + 8, r.GetTop());
     dlg->Show();
+    m_settings = dlg;
   });
 
   m_message = new wxStaticText(this, wxID_ANY, "", wxDefaultPosition, wxSize(-1, -1),
