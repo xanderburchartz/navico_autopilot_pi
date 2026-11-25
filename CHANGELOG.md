@@ -1,0 +1,162 @@
+# Changelog
+
+All notable changes to the Navico Autopilot plugin. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
+[Semantic Versioning](https://semver.org/). Releases are on
+[GitHub](https://github.com/xanderburchartz/navico_autopilot_pi/releases).
+
+## [Unreleased]
+
+### Changed
+- Boat speed shows the speed through the water by default. A choice made
+  earlier in the settings stays.
+
+### Fixed
+- Each click on the gear opened another settings window. A second click now
+  brings the open window to the front.
+
+## [0.1.4] - 2026-11-23
+
+### Fixed
+- Windows: OpenCPN crashed while loading 0.1.3 (installing it, or at start).
+- Android: the text the panel draws itself (heading, mode, scale) was about
+  1 pixel high.
+- The catalog showed "BG" instead of "B&G" on Windows and Android.
+- The panel could dock to the edge of the chart and spread over its whole
+  width; it now always floats.
+
+### Changed
+- A UDP NMEA 2000 connection shows "UDP: read only" in the settings and the
+  panel: OpenCPN does not transmit over UDP (OpenCPN#5564).
+- README: the MiniPlex-3 setting for $MXPGN is called "all RX and TX".
+
+Tested: Windows with OpenCPN 5.14.2 (32-bit), the plugin loads; Android
+with OpenCPN 5.14.0, the panel text, "B&G" in the catalog and "UDP: read
+only" in the settings and the panel. Not tested: Windows 64-bit, Linux,
+docking on Windows.
+
+## [0.1.3] - 2026-11-20
+
+### Fixed
+- TACK opens one window at a time, and sends only if the pilot is still in
+  Wind mode when you confirm.
+- Signal K: a command answered late was reported as "server not
+  reachable", so pressing again could give it twice; it now says
+  "Unconfirmed". A non-follow-up stop no longer waits behind other
+  requests. An old magnetic set heading no longer wins over a current
+  true one.
+- A chosen connection that is gone is not replaced by another one.
+- When the automatic choice of pilot changes, nothing of the previous
+  pilot is shown.
+- Snapshots record which pilot they are from and warn before going back
+  on another one; values not read now are not sent back.
+
+### Changed
+- Short texts in the panel and the windows, as on a pilot display; the
+  manual explains them. The tack window only asks "Tack?".
+- Alarm texts without the NAC-3's device label (", NAC--0").
+- Through Signal K the panel names the pilot as the server does.
+
+Tested on board with a B&G NAC-3 over NMEA 2000 and Signal K: modes,
+course changes and non-follow-up steering. Not tested on board: a tack,
+-1 through Signal K. The snapshot warning is covered by unit tests only.
+
+## [0.1.2] - 2026-11-20
+
+### Added
+- An NMEA 0183 connection carrying NMEA 2000 wrapped in $PCDIN (SeaSmart)
+  or $MXPGN (MiniPlex) sentences. It needs a gateway that passes all PGNs
+  this way, such as a MiniPlex-3; Yacht Devices gateways do not (use their
+  RAW server as an NMEA 2000 connection).
+- A Signal K server, with the server plugin signalk-simnet-pilot-state (all
+  modes, course changes, NFU) or signalk-autopilot. The set heading may be
+  true or magnetic, as the pilot sends it. Not through Signal K:
+  confirming NAV, the pilot settings, acknowledging alarms.
+- ACK button: acknowledges the pilot's alarms the way a Triton2 keypad
+  does. Shown only while there is an alarm to acknowledge; sends nothing
+  without a press.
+
+### Changed
+- "Low boat speed" is shown as a plain line, not as an alarm: a Triton2
+  does not show it either, and the pilot keeps sending it after an
+  acknowledgement.
+- Waits longer before "No reply from the autopilot" (4 s, was 1.5 s) and
+  "did not change mode" (5 s, was 3 s): a Wi-Fi gateway can pass data on in
+  bursts.
+
+Tested on board with a B&G NAC-3 over NMEA 2000, Signal K and NMEA 0183
+($MXPGN and $PCDIN, through a software converter): modes, course changes
+and non-follow-up steering.
+
+Known limits:
+- The ACK button has not yet been tested with a real alarm.
+- OpenCPN does not transmit over an NMEA 2000 network connection that uses
+  UDP (OpenCPN#5564): the plugin shows the pilot but cannot control it. Use
+  TCP for the gateway.
+
+## [0.1.1] - 2026-11-14
+
+### Fixed
+- OpenCPN could crash on quit when a window of the plugin (settings, tack,
+  NAV confirmation) was open or had been open. The windows are now closed
+  before the plugin is unloaded.
+- The catalog metadata (.xml) was invalid XML because of the "&" in "B&G".
+  This release has metadata files for each tarball.
+- Translations come from the plugin's own catalog only. Before, a common word
+  such as "Cancel" or "True" could take OpenCPN's translation, and the
+  plugin's Dutch catalog could change texts elsewhere in OpenCPN. All texts
+  of the settings window are now in the translation template
+  (`po/navico_autopilot_pi.pot`).
+
+### Added
+Panel:
+- Display in the style of a Navico pilot: mode, heading, set heading or
+  wind angle, rudder angle, boat speed (STW or SOG, your choice) and the
+  pilot's alarms.
+- NAV asks for a confirmation and then confirms on the pilot the way a
+  Triton2 keypad does (without it the pilot does not take Nav).
+- Tack or gybe in Wind mode; non-follow-up steering with the course buttons
+  in standby (the rudder moves while the button is held).
+- Name of the waypoint the pilot steers to: from the plotter if it sends one
+  (129285), else from OpenCPN's active route, with a short note on arrival
+  and at the end of the route.
+- Follows OpenCPN's day, dusk and night colours.
+- Pilot alarms also appear as OpenCPN notifications (the bell on the chart).
+  An alarm that comes and goes keeps one notification; it is taken back 30 s
+  after the pilot stopped reporting it. Not on Android.
+
+Pilot settings (gear icon top right of the panel):
+- Reads the settings of the pilot computer and lets you change them, each
+  change after a confirmation: wind mode, tack time and angle, manual speed,
+  and per steering profile ("Low speed" and "High speed", as on a Triton2)
+  turn rate, rudder gain, counter rudder, autotrim, init rudder, rudder
+  limit, off heading limit, track response, approach angle and course change
+  confirm angle.
+- Installation settings (boat length and speeds, rudder deadband, minimum
+  and maximum power, minimum rudder) stay hidden until you press
+  "Installation" three times within 3 s. Boat type, drive voltage, drive
+  engage and rudder calibration are only shown, not changed. The control
+  method is not in the plugin yet.
+- Before the first change, the plugin stores a snapshot of all settings.
+  "Snapshots..." lists them and can put an earlier snapshot back; it shows
+  what will change and asks first.
+- Measured on a B&G NAC-3. Other pilots may answer differently.
+
+### Changed
+- Built against plugin API 1.20 (OpenCPN 5.12 and later load it; network
+  gateways need 5.14, see the README). The Android builds stay on API 1.18.
+- No product information requests over network gateways (OpenCPN keeps the
+  answers to itself there).
+
+## [0.1.0] - 2026-11-11
+
+First test build: controls a Navico autopilot computer (B&G, Simrad) over an
+NMEA 2000 connection in OpenCPN. Requires OpenCPN 5.14 or later. Superseded
+by 0.1.1, which fixes a crash on quit.
+
+[Unreleased]: https://github.com/xanderburchartz/navico_autopilot_pi/compare/v0.1.4-alpha...HEAD
+[0.1.4]: https://github.com/xanderburchartz/navico_autopilot_pi/releases/tag/v0.1.4-alpha
+[0.1.3]: https://github.com/xanderburchartz/navico_autopilot_pi/releases/tag/v0.1.3-alpha
+[0.1.2]: https://github.com/xanderburchartz/navico_autopilot_pi/releases/tag/v0.1.2-alpha
+[0.1.1]: https://github.com/xanderburchartz/navico_autopilot_pi/releases/tag/v0.1.1-alpha
+[0.1.0]: https://github.com/xanderburchartz/navico_autopilot_pi/releases/tag/v0.1.0-alpha

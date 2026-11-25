@@ -151,10 +151,12 @@ done
 # If Plugin.cmake exists we should also update CMakeLists.txt
 if [ -f Plugin.cmake ]; then CMakeLists=CMakeLists.txt; fi
 
+# Changelog.md is not taken from the templates: this plugin keeps its own
+# CHANGELOG.md, which the template file would overwrite on a case-insensitive
+# file system.
 echo "Templates: Updating other files"
 for f in \
     appveyor.yml \
-    Changelog.md \
     .circleci \
     .clang-format \
     .cmake-format.yaml \
@@ -307,8 +309,8 @@ git commit -m "cmake: Update TemplateVersion to $commit"
 cat << EOF
 
 
-Shipdriver templates has been updated. Please review Changelog.md for info
-about changes in last release.
+Shipdriver templates has been updated. Please review the shipdriver
+Changelog.md for info about changes in last release.
 
 See UPDATE_TEMPLATES.md for more info.
 EOF
